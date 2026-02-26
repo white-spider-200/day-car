@@ -1,39 +1,72 @@
-import Header from './components/Header';
-import HeroSearch from './components/HeroSearch';
-import CategoryGrid from './components/CategoryGrid';
-import DoctorCard from './components/DoctorCard';
-import HowItWorks from './components/HowItWorks';
-import CTAForDoctors from './components/CTAForDoctors';
-import Footer from './components/Footer';
-import { categories, featuredDoctors } from './data/homeData';
+import { useEffect, useState } from 'react';
+import MainHomePage from './pages/MainHomePage';
+import DashboardPage from './pages/DashboardPage';
+import AdminPage from './pages/AdminPage';
+import AdminUserProfilePage from './pages/AdminUserProfilePage';
+import DoctorProfilePage from './pages/DoctorProfilePage';
+import AboutPage from './pages/AboutPage';
+
+type AppPage = 'profile' | 'main' | 'dashboard' | 'admin' | 'admin-users' | 'about';
+
+function pageFromPath(pathname: string): AppPage {
+  if (pathname === '/home' || pathname === '/home/') {
+    return 'main';
+  }
+
+  if (pathname === '/dashboard' || pathname === '/dashboard/') {
+    return 'dashboard';
+  }
+
+  if (pathname.startsWith('/admin/users') || pathname === '/admin/users/') {
+    return 'admin-users';
+  }
+
+  if (pathname === '/admin' || pathname === '/admin/') {
+    return 'admin';
+  }
+
+  if (pathname === '/about' || pathname === '/about/') {
+    return 'about';
+  }
+
+  if (pathname === '/' || pathname === '/doctor-profile' || pathname === '/doctor-profile/') {
+    return 'profile';
+  }
+
+  return 'profile';
+}
 
 export default function App() {
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50/40 via-white to-white text-textMain">
-      <Header />
+  const [page, setPage] = useState<AppPage>(() => pageFromPath(window.location.pathname));
 
-      <main>
-        <HeroSearch />
+  useEffect(() => {
+    const onPopState = () => {
+      setPage(pageFromPath(window.location.pathname));
+    };
 
-        <CategoryGrid categories={categories} />
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
-        <section id="featured-doctors" className="section-shell py-14 sm:py-16" aria-labelledby="featured-title">
-          <h2 id="featured-title" className="section-title">
-            Featured doctors
-          </h2>
+  if (page === 'main') {
+    return <MainHomePage />;
+  }
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {featuredDoctors.map((doctor) => (
-              <DoctorCard key={doctor.name} doctor={doctor} />
-            ))}
-          </div>
-        </section>
+  if (page === 'dashboard') {
+    return <DashboardPage />;
+  }
 
-        <HowItWorks />
-        <CTAForDoctors />
-      </main>
+  if (page === 'admin-users') {
+    return <AdminUserProfilePage />;
+  }
 
-      <Footer />
-    </div>
-  );
+  if (page === 'admin') {
+    return <AdminPage />;
+  }
+
+  if (page === 'about') {
+    return <AboutPage />;
+  }
+
+  return <DoctorProfilePage />;
 }

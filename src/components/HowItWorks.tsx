@@ -1,23 +1,27 @@
-const steps = [
-  {
-    title: 'Search',
-    description: 'Filter by specialty, location, online sessions, language, and availability.'
-  },
-  {
-    title: 'Compare',
-    description: 'Read profiles, prices, ratings, and reviews to find your match.'
-  },
-  {
-    title: 'Book',
-    description: 'Pick a time slot and confirm your appointment in seconds.'
-  }
-];
+import { useLanguage } from '../context/LanguageContext';
 
 export default function HowItWorks() {
+  const { t } = useLanguage();
+
+  const steps = [
+    {
+      title: t('about.howStep1Title'),
+      description: t('about.howStep1Desc')
+    },
+    {
+      title: t('about.howStep2Title'),
+      description: t('about.howStep2Desc')
+    },
+    {
+      title: t('about.howStep3Title'),
+      description: t('about.howStep3Desc')
+    }
+  ];
+
   return (
     <section id="how-it-works" className="section-shell py-14 sm:py-16" aria-labelledby="how-title">
       <h2 id="how-title" className="section-title">
-        How it works
+        {t('nav.howItWorks')}
       </h2>
 
       <div className="mt-8 grid gap-4 md:grid-cols-3">

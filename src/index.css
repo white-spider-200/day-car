@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+Arabic:wght@400;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,12 +6,16 @@
 
 :root {
   color-scheme: light;
-  --primary: #2563eb;
-  --primary-dark: #1d4ed8;
-  --blue-bg: #eff6ff;
+  --primary: #30D5C8;
+  --primary-dark: #2BBDB2;
+  --primary-bg: #F0FDFA;
   --border-gray: #e5e7eb;
   --text-main: #0f172a;
   --muted: #475569;
+}
+
+[dir="rtl"] {
+  font-family: 'Noto Sans Arabic', sans-serif;
 }
 
 * {
@@ -48,3 +52,53 @@ body {
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2;
   }
 }
+
+@keyframes float-soft {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes float-soft-delayed {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(6px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-slide-up-soft {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@layer utilities {
+  .animate-float-soft {
+    animation: float-soft 6s ease-in-out infinite;
+  }
+
+  .animate-float-soft-delayed {
+    animation: float-soft-delayed 7s ease-in-out infinite;
+  }
+
+  .animate-fade-slide-up-soft {
+    animation: fade-slide-up-soft 600ms ease-out forwards;
+  }
+}
+

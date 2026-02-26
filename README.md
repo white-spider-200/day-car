@@ -1,6 +1,10 @@
-# MindCare Home Page (UI Only)
+# MindCare Frontend
 
-Responsive, production-ready home page UI for a psychology/therapist listing platform built with React + Vite + TypeScript + Tailwind CSS.
+Clean React + Vite + TypeScript + Tailwind frontend for MindCare with a full Doctor Profile UI and preserved additional pages:
+- Doctor profile page (`/` or `/doctor-profile`)
+- Home page (`/home`)
+- Dashboard page (`/dashboard`)
+- Admin page (`/admin`)
 
 ## Stack
 - React 18
@@ -8,9 +12,14 @@ Responsive, production-ready home page UI for a psychology/therapist listing pla
 - TypeScript
 - Tailwind CSS
 
-## Run locally
+## Run
 ```bash
 npm install
+npm start
+```
+
+Alternative:
+```bash
 npm run dev
 ```
 
@@ -21,18 +30,40 @@ npm run preview
 ```
 
 ## Edit content
-- Categories and doctors data: `src/data/homeData.ts`
-- Layout composition: `src/App.tsx`
-- Reusable sections:
-  - `src/components/Header.tsx`
-  - `src/components/HeroSearch.tsx`
-  - `src/components/CategoryGrid.tsx`
-  - `src/components/DoctorCard.tsx`
-  - `src/components/HowItWorks.tsx`
-  - `src/components/CTAForDoctors.tsx`
-  - `src/components/Footer.tsx`
-- Theme tokens and base styles: `src/index.css` and `tailwind.config.ts`
+- Main app routing: `src/App.tsx`
+- Doctor profile page layout: `src/pages/DoctorProfilePage.tsx`
+- Main home page layout: `src/pages/MainHomePage.tsx`
+- Dashboard page: `src/pages/DashboardPage.tsx`
+- Admin page shell + workflow: `src/pages/AdminPage.tsx`
+- Reusable profile components: `src/components/profile/*`
+- Reusable home components: `src/components/*`
+- Doctor profile data arrays: `src/data/doctorProfileData.ts`
+- Home data arrays: `src/data/homeData.ts`
+- Admin doctors dummy dataset: `src/data/adminDoctorsData.ts`
+- Theme/base styles: `src/index.css` and `tailwind.config.ts`
+
+## MindCare Admin Workflow
+- URL: `/admin`
+- Exactly two pages (UI views):
+  - Doctors List page
+  - Doctor Review page
+- Data and local state:
+  - Edit dummy doctors/documents/history in `src/data/adminDoctorsData.ts`
+  - Status updates (Approve / Reject / Needs changes) and history entries are local state in `src/pages/AdminPage.tsx`
+  - No backend or API calls are used
+- Important:
+  - Pricing transparency is intentionally not implemented in admin review UI yet
+
+## Admin run checklist
+1. Start app: `npm run dev`
+2. Open `http://localhost:5173/admin`
+3. Test flows:
+   - Search + filters + sort
+   - Open Doctor Review from list
+   - Verification checklist updates
+   - Approve / Reject / Needs changes modals
+   - History timeline updates after decisions
 
 ## Notes
-- UI only (no backend integration).
-- Buttons and links point to placeholders.
+- UI only (no backend).
+- Buttons and links use placeholder navigation behavior.

@@ -1,13 +1,38 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useLanguage } from '../context/LanguageContext';
 
-const navItems = [
-  { label: 'Doctors', href: '#featured-doctors' },
-  { label: 'How it works', href: '#how-it-works' },
-  { label: 'For Doctors', href: '#for-doctors' }
+type HeaderNavItem = {
+  labelKey: string;
+  href: string;
+};
+
+type HeaderProps = {
+  brandHref?: string;
+  navItems?: HeaderNavItem[];
+  signInHref?: string;
+  signUpHref?: string;
+  accent?: 'blue' | 'teal';
+};
+
+const defaultNavItems: HeaderNavItem[] = [
+  { labelKey: 'nav.doctors', href: '/home#featured-doctors' },
+  { labelKey: 'nav.howItWorks', href: '/home#how-it-works' },
+  { labelKey: 'nav.forDoctors', href: '/home#for-doctors' },
+  { labelKey: 'nav.about', href: '/about' }
 ];
 
-export default function Header() {
+export default function Header({
+  brandHref = '/',
+  navItems,
+  signInHref = '#',
+  signUpHref = '#',
+  accent = 'teal'
+}: HeaderProps) {
+  const { lang, setLang, t } = useLanguage();
   const [isScrolled, setIsScrolled] = useState(false);
+
+  const items = useMemo(() => navItems ?? defaultNavItems, [navItems]);
+  const isTeal = accent === 'teal';
 
   useEffect(() => {
     const onScroll = () => {
@@ -28,8 +53,12 @@ export default function Header() {
       }`}
     >
       <div className="section-shell flex h-20 items-center justify-between gap-4">
-        <a href="#" className="focus-outline inline-flex items-center gap-3 rounded-xl" aria-label="MindCare home">
-          <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primaryDark text-white shadow-sm">
+        <a href={brandHref} className="focus-outline inline-flex items-center gap-3 rounded-xl" aria-label="MindCare home">
+          <span
+            className={`inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-sm ${
+              isTeal ? 'from-cyan-500 to-teal-600' : 'from-primary to-primaryDark'
+            }`}
+          >
             <svg
               aria-hidden="true"
               viewBox="0 0 24 24"
@@ -47,36 +76,53 @@ export default function Header() {
         </a>
 
         <nav className="hidden items-center gap-6 md:flex" aria-label="Main navigation">
-          {navItems.map((item) => (
+          {items.map((item) => (
             <a
-              key={item.label}
+              key={item.labelKey}
               href={item.href}
-              className="focus-outline rounded-lg px-2 py-1 text-sm font-medium text-muted transition hover:text-primary"
+              className={`focus-outline rounded-lg px-2 py-1 text-sm font-medium text-muted transition ${
+                isTeal ? 'hover:text-teal-600' : 'hover:text-primary'
+              }`}
             >
-              {item.label}
+              {t(item.labelKey)}
             </a>
           ))}
         </nav>
 
-        <div className="hidden items-center gap-3 sm:flex">
-          <a
-            href="#"
-            className="focus-outline rounded-xl border border-borderGray px-4 py-2 text-sm font-semibold text-textMain transition hover:border-primary/30 hover:text-primary"
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setLang(lang === 'en' ? 'ar' : 'en')}
+            className="focus-outline flex h-10 w-10 items-center justify-center rounded-xl border border-borderGray text-sm font-bold text-primary transition hover:bg-primaryBg"
           >
-            Sign in
-          </a>
-          <a
-            href="#"
-            className="focus-outline rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primaryDark"
-          >
-            Sign up
-          </a>
+            {lang === 'en' ? 'AR' : 'EN'}
+          </button>
+
+          <div className="hidden items-center gap-3 sm:flex">
+            <a
+              href={signInHref}
+              className={`focus-outline rounded-xl border border-borderGray px-4 py-2 text-sm font-semibold text-textMain transition ${
+                isTeal ? 'hover:border-teal-300 hover:text-teal-700' : 'hover:border-primary/30 hover:text-primary'
+              }`}
+            >
+              {t('auth.signIn')}
+            </a>
+            <a
+              href={signUpHref}
+              className={`focus-outline rounded-xl px-4 py-2 text-sm font-semibold text-white transition ${
+                isTeal ? 'bg-teal-600 hover:bg-teal-700' : 'bg-primary hover:bg-primaryDark'
+              }`}
+            >
+              {t('auth.signUp')}
+            </a>
+          </div>
         </div>
 
         <button
           type="button"
           aria-label="Open navigation menu"
-          className="focus-outline inline-flex h-10 w-10 items-center justify-center rounded-xl border border-borderGray text-muted transition hover:border-primary/30 hover:text-primary md:hidden"
+          className={`focus-outline inline-flex h-10 w-10 items-center justify-center rounded-xl border border-borderGray text-muted transition md:hidden ${
+            isTeal ? 'hover:border-teal-300 hover:text-teal-700' : 'hover:border-primary/30 hover:text-primary'
+          }`}
         >
           <svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
