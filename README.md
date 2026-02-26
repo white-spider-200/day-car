@@ -55,7 +55,10 @@ python -m venv venv
 source venv/bin/activate # or venv\Scripts\activate on Windows
 
 # Install dependencies
-pip install -r requirements.txt
+# If your python is 3.14+, use:
+PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 pip install -r requirements.txt
+# Otherwise:
+# pip install -r requirements.txt
 
 # Run server
 uvicorn app.main:app --reload

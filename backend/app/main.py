@@ -7,8 +7,9 @@ from sqlalchemy.exc import OperationalError, ProgrammingError
 from app.api.routes import admin, auth, doctor, public_doctors, user_appointments
 from app.core.config import settings
 from app.core.security import hash_password
+from app.db.base import Base
 from app.db.models import User, UserRole, UserStatus
-from app.db.session import SessionLocal
+from app.db.session import SessionLocal, engine
 from app.services.storage_service import ensure_upload_dir
 
 app = FastAPI(title="doctrs API", version="1.0.0")
@@ -33,6 +34,9 @@ app.mount(settings.upload_base_url, StaticFiles(directory=settings.upload_dir), 
 
 @app.on_event("startup")
 def seed_admin_user() -> None:
+    # Local-dev safety: ensure tables exist before auth endpoints are used.
+    Base.metadata.create_all(bind=engine)
+
     with SessionLocal() as db:
         try:
             admin = db.scalar(select(User).where(User.email == settings.seed_admin_email))

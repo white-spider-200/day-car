@@ -2,9 +2,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 
 const bgImages = [
-  "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&q=80&w=1920", // Calm Meditation
-  "https://images.unsplash.com/photo-1516589174184-c685ca3d142d?auto=format&fit=crop&q=80&w=1920", // Soft light/Nature
-  "https://images.unsplash.com/photo-1499209974431-9dac3e74a131?auto=format&fit=crop&q=80&w=1920"  // Peaceful sky
+  "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&q=80&w=1920", // Therapist engaged in talk
+  "https://images.unsplash.com/photo-1527137342181-19aab11a8ee1?auto=format&fit=crop&q=80&w=1920", // Professional session context
+  "https://images.unsplash.com/photo-1516584224416-86e16bd74442?auto=format&fit=crop&q=80&w=1920", // Patient and therapist talking
+  "https://images.unsplash.com/photo-1582213726895-42ac0288b77d?auto=format&fit=crop&q=80&w=1920", // Supportive session conversation
+  "https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&q=80&w=1920"  // One-on-one therapy consultation
 ];
 
 export default function DynamicBackground() {
@@ -17,13 +19,34 @@ export default function DynamicBackground() {
   useEffect(() => {
     const interval = setInterval(() => {
       setIndex((prev) => (prev + 1) % bgImages.length);
-    }, 8000); // Change image every 8 seconds
+    }, 6000); // Faster: Change image every 6 seconds
     return () => clearInterval(interval);
   }, []);
 
   return (
     <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-      {/* Background Video */}
+      {/* Layered Animated Image Slider with Ken Burns Effect */}
+      <AnimatePresence>
+        <motion.div
+          key={index}
+          initial={{ opacity: 0, scale: 1.1 }}
+          animate={{ opacity: 0.5, scale: 1.25 }}
+          exit={{ opacity: 0 }}
+          transition={{ 
+            opacity: { duration: 2 },
+            scale: { duration: 6, ease: "linear" } 
+          }}
+          className="absolute inset-0 w-full h-full"
+        >
+          <img
+            src={bgImages[index]}
+            alt=""
+            className="w-full h-full object-cover"
+          />
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Background Video (Overlayed with very low opacity) */}
       <video
         autoPlay
         muted
@@ -31,35 +54,15 @@ export default function DynamicBackground() {
         playsInline
         onLoadedData={() => setVideoLoaded(true)}
         className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
-          videoLoaded ? 'opacity-30' : 'opacity-0'
+          videoLoaded ? 'opacity-5' : 'opacity-0'
         }`}
       >
         <source src={videoUrl} type="video/mp4" />
       </video>
 
-      {/* Fallback Animated Image Slider (Visible if video is low opacity or loading) */}
-      {!videoLoaded && (
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, scale: 1.1 }}
-            animate={{ opacity: 0.25, scale: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 2, ease: "easeInOut" }}
-            className="absolute inset-0 w-full h-full"
-          >
-            <img
-              src={bgImages[index]}
-              alt=""
-              className="w-full h-full object-cover"
-            />
-          </motion.div>
-        </AnimatePresence>
-      )}
-
-      {/* Modern Overlay Gradient */}
-      <div className="absolute inset-0 bg-gradient-to-b from-white via-white/40 to-white" />
-      <div className="absolute inset-0 bg-gradient-to-r from-white via-transparent to-white opacity-60" />
+      {/* Modern Overlay Gradient - Adjusted for visibility */}
+      <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-white/20 to-white/80" />
+      <div className="absolute inset-0 bg-gradient-to-r from-white/40 via-transparent to-white/40" />
     </div>
   );
 }

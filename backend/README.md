@@ -59,10 +59,13 @@ make migrate
 cd backend
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+# Python 3.14+ needs this for pydantic-core (PyO3 compatibility check)
+PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 pip install -r requirements.txt
 export DATABASE_URL='postgresql+psycopg://postgres:postgres@localhost:5432/doctrs'
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
+
+If you use `make setup-local`, this flag is applied automatically when Python 3.14+ is detected.
 
 ## Tests
 A separate test DB is expected (`postgres_test` service at port `5433`).

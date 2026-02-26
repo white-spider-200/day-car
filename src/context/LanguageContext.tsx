@@ -260,7 +260,6 @@ const translations = {
     'booking.similar': 'أطباء مشابهون',
     'footer.rights': '© 2026 Sabina. جميع الحقوق محفوظة.',
   }
-};  }
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
