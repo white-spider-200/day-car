@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
+import { logout } from '../utils/auth';
 
 type HeaderNavItem = {
   labelKey: string;
@@ -30,6 +31,7 @@ export default function Header({
 }: HeaderProps) {
   const { lang, setLang, t } = useLanguage();
   const [isScrolled, setIsScrolled] = useState(false);
+  const [authRole, setAuthRole] = useState<string | null>(() => localStorage.getItem('auth_role'));
 
   const navigateTo = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
     e.preventDefault();
@@ -49,6 +51,15 @@ export default function Header({
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
+    const onAuthChanged = () => {
+      setAuthRole(localStorage.getItem('auth_role'));
+    };
+
+    window.addEventListener('auth-changed', onAuthChanged);
+    return () => window.removeEventListener('auth-changed', onAuthChanged);
   }, []);
 
   return (
@@ -109,26 +120,43 @@ export default function Header({
             {lang === 'en' ? 'AR' : 'EN'}
           </button>
 
-          <div className="hidden items-center gap-3 sm:flex">
-            <a
-              href={signInHref}
-              onClick={(e) => navigateTo(e, signInHref)}
-              className={`focus-outline rounded-xl border border-borderGray px-4 py-2 text-sm font-semibold text-textMain transition ${
-                isTeal ? 'hover:border-teal-300 hover:text-teal-700' : 'hover:border-primary/30 hover:text-primary'
-              }`}
-            >
-              {t('auth.signIn')}
-            </a>
-            <a
-              href={signUpHref}
-              onClick={(e) => navigateTo(e, signUpHref)}
-              className={`focus-outline rounded-xl px-4 py-2 text-sm font-semibold text-white transition ${
-                isTeal ? 'bg-teal-600 hover:bg-teal-700' : 'bg-primary hover:bg-primaryDark'
-              }`}
-            >
-              {t('auth.signUp')}
-            </a>
-          </div>
+          {authRole ? (
+            <div className="flex items-center gap-2">
+              <span className="hidden rounded-full border border-borderGray bg-white px-3 py-1 text-xs font-semibold text-muted sm:inline-flex">
+                {authRole}
+              </span>
+              <button
+                type="button"
+                onClick={() => logout('/login')}
+                className={`focus-outline rounded-xl border border-borderGray px-4 py-2 text-sm font-semibold text-textMain transition ${
+                  isTeal ? 'hover:border-teal-300 hover:text-teal-700' : 'hover:border-primary/30 hover:text-primary'
+                }`}
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <div className="hidden items-center gap-3 sm:flex">
+              <a
+                href={signInHref}
+                onClick={(e) => navigateTo(e, signInHref)}
+                className={`focus-outline rounded-xl border border-borderGray px-4 py-2 text-sm font-semibold text-textMain transition ${
+                  isTeal ? 'hover:border-teal-300 hover:text-teal-700' : 'hover:border-primary/30 hover:text-primary'
+                }`}
+              >
+                {t('auth.signIn')}
+              </a>
+              <a
+                href={signUpHref}
+                onClick={(e) => navigateTo(e, signUpHref)}
+                className={`focus-outline rounded-xl px-4 py-2 text-sm font-semibold text-white transition ${
+                  isTeal ? 'bg-teal-600 hover:bg-teal-700' : 'bg-primary hover:bg-primaryDark'
+                }`}
+              >
+                {t('auth.signUp')}
+              </a>
+            </div>
+          )}
         </div>
 
         <button

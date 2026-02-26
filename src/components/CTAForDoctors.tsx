@@ -16,9 +16,9 @@ export default function CTAForDoctors() {
         {/* Background Image with Overlay */}
         <div className="absolute inset-0 z-0">
           <img 
-            src="https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&q=80&w=1200" 
-            alt="" 
-            className="h-full w-full object-cover opacity-30"
+            src="https://images.unsplash.com/photo-1544027993-37dbfe43562a?auto=format&fit=crop&q=80&w=1200" 
+            alt="Therapy session" 
+            className="h-full w-full object-cover opacity-20"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-primary/90 to-primaryDark/90 mix-blend-multiply" />
         </div>

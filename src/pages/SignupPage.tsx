@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useLanguage } from '../context/LanguageContext';
 
 export default function SignupPage() {
-  const { t, lang } = useLanguage();
+  const { lang } = useLanguage();
   const isAr = lang === 'ar';
   
   const [role, setRole] = useState<'USER' | 'DOCTOR'>('USER');

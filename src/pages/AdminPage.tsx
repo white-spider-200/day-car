@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { adminDoctorsSeed, type AdminDoctor, type AdminDoctorStatus, type AdminDocument } from '../data/adminDoctorsData';
+import { logout } from '../utils/auth';
 
 type AdminView = 'list' | 'review';
 type StatusFilter = 'all' | AdminDoctorStatus;
@@ -1319,7 +1320,18 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FBFF] text-textMain">
-      <main className="section-shell py-6 sm:py-8">{view === 'list' ? listContent : reviewContent}</main>
+      <main className="section-shell py-6 sm:py-8">
+        <div className="mb-4 flex justify-end">
+          <button
+            type="button"
+            onClick={() => logout('/login')}
+            className="focus-outline rounded-xl border border-borderGray bg-white px-4 py-2 text-sm font-semibold text-textMain transition hover:border-primary/30 hover:text-primary"
+          >
+            Logout
+          </button>
+        </div>
+        {view === 'list' ? listContent : reviewContent}
+      </main>
 
       {acceptModalDoctorId ? (
         <ModalFrame

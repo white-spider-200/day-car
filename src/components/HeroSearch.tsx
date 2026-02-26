@@ -1,23 +1,8 @@
 import { useState, type FormEvent } from 'react';
-import { motion, type Variants } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { categories } from '../data/homeData';
 import { useLanguage } from '../context/LanguageContext';
-
-const containerVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.15,
-      delayChildren: 0.2
-    }
-  }
-};
-
-const itemVariants: Variants = {
-  hidden: { y: 20, opacity: 0 },
-  visible: { y: 0, opacity: 1, transition: { duration: 0.6, ease: "easeOut" } }
-};
+import DynamicBackground from './DynamicBackground';
 
 export default function HeroSearch() {
   const { t } = useLanguage();
@@ -36,52 +21,50 @@ export default function HeroSearch() {
   ];
 
   return (
-    <section className="relative overflow-hidden bg-white pb-16 pt-10 sm:pb-24 sm:pt-16">
-      {/* Background decoration with actual photos */}
-      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none opacity-40">
-        <motion.div 
-          animate={{ y: [0, -20, 0] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -top-10 -right-20 w-96 h-96 rounded-full overflow-hidden blur-2xl opacity-20"
-        >
-          <img src="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&q=80&w=800" alt="" className="w-full h-full object-cover" />
-        </motion.div>
-        
-        <motion.div 
-          animate={{ y: [0, 20, 0] }}
-          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -bottom-20 -left-20 w-[30rem] h-[30rem] rounded-full overflow-hidden blur-3xl opacity-30"
-        >
-          <img src="https://images.unsplash.com/photo-1516589174184-c685ca3d142d?auto=format&fit=crop&q=80&w=800" alt="" className="w-full h-full object-cover" />
-        </motion.div>
-      </div>
+    <section className="relative min-h-[600px] flex items-center overflow-hidden bg-white pb-16 pt-10 sm:pb-24 sm:pt-16">
+      {/* High-End Dynamic Background (Video + Photo Slider) */}
+      <DynamicBackground />
 
       <div className="section-shell relative z-10">
-        <motion.div 
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="grid gap-12 lg:grid-cols-[1.2fr_0.8fr] lg:items-center"
-        >
+        <div className="grid gap-12 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
           <div className="text-left rtl:text-right">
-            <motion.div variants={itemVariants}>
-              <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-primary mb-6">
+            <div>
+              <motion.span 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-primary mb-6"
+              >
                 <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
                 {t('hero.badge')}
-              </span>
-            </motion.div>
+              </motion.span>
+            </div>
             
-            <motion.h1 variants={itemVariants} className="max-w-3xl text-4xl font-black leading-[1.1] tracking-tight text-textMain sm:text-6xl lg:text-7xl">
+            <motion.h1 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="max-w-3xl text-4xl font-black leading-[1.1] tracking-tight text-textMain sm:text-6xl lg:text-7xl"
+            >
               {t('hero.title')} <br />
               <span className="text-primary italic">{t('hero.titleAccent')}</span>
             </motion.h1>
             
-            <motion.p variants={itemVariants} className="mt-8 max-w-2xl text-lg leading-relaxed text-muted sm:text-xl">
+            <motion.p 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="mt-8 max-w-2xl text-lg leading-relaxed text-muted sm:text-xl font-medium"
+            >
               {t('hero.subtitle')}
             </motion.p>
 
             {/* Search Bar */}
-            <motion.div variants={itemVariants} className="mt-12 max-w-4xl">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="mt-12 max-w-4xl"
+            >
               <form
                 className="group flex flex-col gap-3 rounded-[32px] border-2 border-slate-100 bg-white p-3 shadow-2xl shadow-primary-900/5 transition-all hover:border-primary/20 sm:flex-row sm:items-center sm:gap-0 sm:p-2.5"
                 aria-label="Search doctors"
@@ -125,57 +108,61 @@ export default function HeroSearch() {
 
               <div className="mt-8 flex flex-wrap gap-x-8 gap-y-4">
                 {trustPills.map((pill) => (
-                  <motion.div
+                  <div
                     key={pill}
-                    whileHover={{ scale: 1.05 }}
                     className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.15em] text-muted/50"
                   >
                     <svg className="h-3.5 w-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                     </svg>
                     {pill}
-                  </motion.div>
+                  </div>
                 ))}
               </div>
             </motion.div>
           </div>
 
           {/* Hero Decorative Image Grid */}
-          <motion.div 
-            variants={itemVariants}
-            className="hidden lg:grid grid-cols-2 gap-4 h-[500px]"
-          >
+          <div className="hidden lg:grid grid-cols-2 gap-4 h-[500px]">
             <div className="space-y-4 pt-12">
               <motion.div 
-                whileHover={{ y: -10 }}
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                 className="h-64 w-full rounded-[40px] overflow-hidden border-4 border-white shadow-soft"
               >
-                <img src="https://images.unsplash.com/photo-1527137341206-696bc2773950?auto=format&fit=crop&q=80&w=600" alt="" className="w-full h-full object-cover" />
+                <img 
+                  src="https://images.unsplash.com/photo-1544027993-37dbfe43562a?auto=format&fit=crop&q=80&w=600" 
+                  alt="Therapy session" 
+                  className="w-full h-full object-cover" 
+                />
               </motion.div>
-              <motion.div 
-                whileHover={{ y: -10 }}
-                className="h-40 w-full rounded-[40px] overflow-hidden border-4 border-white shadow-soft bg-primary/10 flex items-center justify-center p-8"
-              >
+              <div className="h-40 w-full rounded-[40px] overflow-hidden border-4 border-white shadow-soft bg-primary/10 flex items-center justify-center p-8">
                 <div className="text-center">
                   <p className="text-3xl font-black text-primary">500+</p>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-primary/60">{t('hero.sessions')}</p>
                 </div>
-              </motion.div>
+              </div>
             </div>
             <div className="space-y-4">
+              <div className="h-48 w-full rounded-[40px] overflow-hidden border-4 border-white shadow-soft bg-primaryBg flex items-center justify-center p-6 text-center">
+                <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] leading-relaxed">
+                  Trusted & <br /> Secure
+                </p>
+              </div>
               <motion.div 
-                whileHover={{ y: -10 }}
-                className="h-48 w-full rounded-[40px] overflow-hidden border-4 border-white shadow-soft bg-primaryBg"
-              />
-              <motion.div 
-                whileHover={{ y: -10 }}
+                animate={{ y: [0, 10, 0] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1 }}
                 className="h-80 w-full rounded-[40px] overflow-hidden border-4 border-white shadow-soft"
               >
-                <img src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&q=80&w=600" alt="" className="w-full h-full object-cover" />
+                <img 
+                  src="https://images.unsplash.com/photo-1527689368864-3a821dbccc34?auto=format&fit=crop&q=80&w=600" 
+                  alt="Doctor listening" 
+                  className="w-full h-full object-cover" 
+                />
               </motion.div>
             </div>
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       </div>
     </section>
   );

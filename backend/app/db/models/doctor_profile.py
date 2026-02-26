@@ -20,6 +20,7 @@ class DoctorProfile(Base, TimestampMixin):
     display_name: Mapped[str] = mapped_column(String(255), nullable=False)
     headline: Mapped[str | None] = mapped_column(String(255), nullable=True)
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
+    photo_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     languages: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
     specialties: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
     session_types: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)

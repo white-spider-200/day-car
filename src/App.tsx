@@ -48,15 +48,31 @@ function pageFromPath(pathname: string): AppPage {
 
 export default function App() {
   const [page, setPage] = useState<AppPage>(() => pageFromPath(window.location.pathname));
+  const [authRole, setAuthRole] = useState<string | null>(() => localStorage.getItem('auth_role'));
 
   useEffect(() => {
     const onPopState = () => {
       setPage(pageFromPath(window.location.pathname));
     };
+    const onAuthChanged = () => {
+      setAuthRole(localStorage.getItem('auth_role'));
+    };
 
     window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
+    window.addEventListener('auth-changed', onAuthChanged);
+    return () => {
+      window.removeEventListener('popstate', onPopState);
+      window.removeEventListener('auth-changed', onAuthChanged);
+    };
   }, []);
+
+  if ((page === 'admin' || page === 'admin-users') && authRole !== 'ADMIN') {
+    return <LoginPage />;
+  }
+
+  if (page === 'login' && authRole === 'ADMIN') {
+    return <AdminPage />;
+  }
 
   if (page === 'main') {
     return <MainHomePage />;

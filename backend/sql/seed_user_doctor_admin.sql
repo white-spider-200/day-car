@@ -122,6 +122,7 @@ BEGIN
         display_name,
         headline,
         bio,
+        photo_url,
         languages,
         specialties,
         session_types,
@@ -140,6 +141,7 @@ BEGIN
         'Dr. Test Doctor',
         'Clinical Psychologist',
         'Public seeded doctor profile.',
+        'https://images.unsplash.com/photo-1612277795421-9bc7706a4a41?auto=format&fit=crop&q=80&w=400&h=400',
         '["English","Arabic"]'::jsonb,
         '["Anxiety","CBT"]'::jsonb,
         '["VIDEO","IN_PERSON"]'::jsonb,
@@ -158,6 +160,7 @@ BEGIN
         display_name = EXCLUDED.display_name,
         headline = EXCLUDED.headline,
         bio = EXCLUDED.bio,
+        photo_url = EXCLUDED.photo_url,
         languages = EXCLUDED.languages,
         specialties = EXCLUDED.specialties,
         session_types = EXCLUDED.session_types,
@@ -173,4 +176,3 @@ BEGIN
 
     RAISE NOTICE 'Seed complete. admin=%, doctor=%, user=%', v_admin_id, v_doctor_id, v_user_id;
 END $$;
-

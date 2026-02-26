@@ -79,6 +79,7 @@ CREATE TABLE IF NOT EXISTS doctor_profiles (
     display_name VARCHAR(255) NOT NULL,
     headline VARCHAR(255),
     bio TEXT,
+    photo_url VARCHAR(1000),
     languages JSONB,
     specialties JSONB,
     session_types JSONB,
@@ -126,4 +127,3 @@ CREATE TABLE IF NOT EXISTS admin_actions (
 );
 
 CREATE INDEX IF NOT EXISTS ix_admin_actions_admin_user_id ON admin_actions (admin_user_id);
-

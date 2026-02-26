@@ -1,9 +1,40 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useLanguage } from '../context/LanguageContext';
+import { fetchFirstReachable } from '../utils/api';
+
+type AuthRole = 'ADMIN' | 'DOCTOR' | 'USER';
+
+type TokenResponse = {
+  access_token: string;
+  token_type: string;
+};
+
+type MeResponse = {
+  id: string;
+  email: string | null;
+  phone: string | null;
+  role: AuthRole;
+  status: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type OfflineUser = {
+  email: string;
+  phone: string;
+  password: string;
+  role: AuthRole;
+};
+
+const OFFLINE_USERS: OfflineUser[] = [
+  { email: 'admin.test@sabina.local', phone: '+962790000001', password: 'Admin12345!', role: 'ADMIN' },
+  { email: 'doctor.test@sabina.local', phone: '+962790000002', password: 'Doctor12345!', role: 'DOCTOR' },
+  { email: 'user.test@sabina.local', phone: '+962790000003', password: 'User12345!', role: 'USER' }
+];
 
 export default function LoginPage() {
-  const { t, lang } = useLanguage();
+  const { lang } = useLanguage();
   const isAr = lang === 'ar';
   
   const [loginMethod, setLoginMethod] = useState<'email' | 'phone'>('email');
@@ -12,11 +43,91 @@ export default function LoginPage() {
     phone: '',
     password: ''
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const completeLogin = (role: AuthRole, email: string) => {
+    localStorage.setItem('auth_role', role);
+    localStorage.setItem('auth_email', email);
+    window.dispatchEvent(new Event('auth-changed'));
+
+    if (role === 'ADMIN') {
+      navigateTo('/admin');
+      return;
+    }
+    if (role === 'DOCTOR') {
+      navigateTo('/dashboard');
+      return;
+    }
+    navigateTo('/home');
+  };
+
+  const tryOfflineLogin = (): boolean => {
+    const email = formData.email.trim().toLowerCase();
+    const phone = formData.phone.trim();
+    const password = formData.password;
+    const match = OFFLINE_USERS.find((user) => {
+      const identifierMatches = loginMethod === 'email' ? user.email === email : user.phone === phone;
+      return identifierMatches && user.password === password;
+    });
+    if (!match) {
+      return false;
+    }
+    localStorage.removeItem('auth_token');
+    setInfoMessage(isAr ? 'تم تسجيل الدخول بوضع تجريبي (بدون API).' : 'Logged in using demo mode (API offline).');
+    completeLogin(match.role, match.email);
+    return true;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Logging in with:', formData);
-    // TODO: Call API
+    setErrorMessage(null);
+    setInfoMessage(null);
+    setIsSubmitting(true);
+
+    try {
+      const payload =
+        loginMethod === 'email'
+          ? { email: formData.email.trim().toLowerCase(), password: formData.password }
+          : { phone: formData.phone.trim(), password: formData.password };
+
+      const loginResponse = await fetchFirstReachable('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!loginResponse.ok) {
+        const responseBody = await loginResponse.json().catch(() => null);
+        const detail = typeof responseBody?.detail === 'string' ? responseBody.detail : null;
+        throw new Error(detail ?? `Login failed (${loginResponse.status})`);
+      }
+
+      const tokenPayload = (await loginResponse.json()) as TokenResponse;
+      const token = tokenPayload.access_token;
+      localStorage.setItem('auth_token', token);
+
+      const meResponse = await fetchFirstReachable('/auth/me', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!meResponse.ok) {
+        throw new Error('Unable to load user profile after login');
+      }
+
+      const mePayload = (await meResponse.json()) as MeResponse;
+      completeLogin(mePayload.role, mePayload.email ?? '');
+    } catch (error) {
+      const isNetworkError =
+        error instanceof TypeError ||
+        (error instanceof Error && /failed to fetch|network|failed to reach api/i.test(error.message));
+      if (isNetworkError && tryOfflineLogin()) {
+        return;
+      }
+      setErrorMessage(error instanceof Error ? error.message : 'Login failed');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleGoogleLogin = () => {
@@ -117,10 +228,23 @@ export default function LoginPage() {
 
             <button
               type="submit"
+              disabled={isSubmitting}
               className="w-full py-4 bg-primary hover:bg-primaryDark text-white font-black rounded-2xl shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98] mt-4"
             >
-              {isAr ? 'تسجيل الدخول' : 'Sign In'}
+              {isSubmitting ? (isAr ? 'جاري تسجيل الدخول...' : 'Signing in...') : isAr ? 'تسجيل الدخول' : 'Sign In'}
             </button>
+
+            {errorMessage && (
+              <p className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {errorMessage}
+              </p>
+            )}
+
+            {infoMessage && (
+              <p className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                {infoMessage}
+              </p>
+            )}
           </form>
 
           <div className="relative my-10 text-center">

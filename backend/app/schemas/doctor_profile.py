@@ -12,6 +12,7 @@ class DoctorProfileOut(BaseModel):
     display_name: str
     headline: str | None
     bio: str | None
+    photo_url: str | None
     languages: list[str] | None
     specialties: list[str] | None
     session_types: list[str] | None
@@ -34,6 +35,7 @@ class DoctorProfileListItem(BaseModel):
     doctor_user_id: uuid.UUID
     display_name: str
     headline: str | None
+    photo_url: str | None
     specialties: list[str] | None
     languages: list[str] | None
     session_types: list[str] | None
