@@ -1,69 +1,74 @@
-# MindCare Frontend
+# MindCare - Modern Doctor Booking Platform
 
-Clean React + Vite + TypeScript + Tailwind frontend for MindCare with a full Doctor Profile UI and preserved additional pages:
-- Doctor profile page (`/` or `/doctor-profile`)
-- Home page (`/home`)
-- Dashboard page (`/dashboard`)
-- Admin page (`/admin`)
+MindCare is a high-performance, full-stack medical booking platform designed with a focus on user experience, "calm-tech" aesthetics, and dual-language support (English & Arabic/RTL).
 
-## Stack
-- React 18
-- Vite 5
-- TypeScript
-- Tailwind CSS
+## 🚀 Key Features
 
-## Run
-```bash
-npm install
-npm start
+### Frontend (React + Vite)
+- **Modern Animations**: Powered by `framer-motion` with staggered reveals and smooth interactive states.
+- **Multilingual Support**: Full i18n support for English and Arabic with automated RTL (Right-to-Left) layout switching.
+- **Calm-Tech Design**: Custom "living" background animations and a clean, medical-grade aesthetic.
+- **Dual Authentication**: Support for both Email/Password and Phone/Password login methods.
+- **Google OAuth**: Integrated UI for Google Social Login.
+- **Responsive Dashboards**: Specialized views for Patients, Doctors, and Admin users.
+
+### Backend (FastAPI)
+- **Asynchronous API**: Built with FastAPI for high-concurrency and speed.
+- **Secure Auth**: JWT-based authentication with Bcrypt password hashing.
+- **Flexible Data Model**: Supports Email, Phone, and Social login profiles.
+- **PostgreSQL Database**: Relational storage using SQLAlchemy ORM.
+- **Service-Oriented Logic**: Specialized services for appointment booking, availability management, and doctor verification.
+
+## 🏗️ Architecture
+
+The project follows a decoupled architecture. You can find the detailed system flow in `ARCHITECTURE_DIAGRAM.md`.
+
+```mermaid
+graph LR
+    A[React Frontend] <--> B[FastAPI Backend]
+    B <--> C[PostgreSQL Database]
+    B --> D[Cloud Storage/S3]
 ```
 
-Alternative:
+## 🛠️ Tech Stack
+
+- **Frontend**: React 18, TypeScript, Tailwind CSS, Framer Motion, Vite.
+- **Backend**: Python 3.10+, FastAPI, SQLAlchemy, Alembic (Migrations), Pydantic.
+- **Database**: PostgreSQL.
+
+## 🏃 Getting Started
+
+### Frontend
 ```bash
+# Install dependencies
+npm install
+
+# Start development server
 npm run dev
 ```
 
-## Build
+### Backend
 ```bash
-npm run build
-npm run preview
+cd backend
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate # or venv\Scripts\activate on Windows
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run server
+uvicorn app.main:app --reload
 ```
 
-## Edit content
-- Main app routing: `src/App.tsx`
-- Doctor profile page layout: `src/pages/DoctorProfilePage.tsx`
-- Main home page layout: `src/pages/MainHomePage.tsx`
-- Dashboard page: `src/pages/DashboardPage.tsx`
-- Admin page shell + workflow: `src/pages/AdminPage.tsx`
-- Reusable profile components: `src/components/profile/*`
-- Reusable home components: `src/components/*`
-- Doctor profile data arrays: `src/data/doctorProfileData.ts`
-- Home data arrays: `src/data/homeData.ts`
-- Admin doctors dummy dataset: `src/data/adminDoctorsData.ts`
-- Theme/base styles: `src/index.css` and `tailwind.config.ts`
+## 📂 Project Structure
 
-## MindCare Admin Workflow
-- URL: `/admin`
-- Exactly two pages (UI views):
-  - Doctors List page
-  - Doctor Review page
-- Data and local state:
-  - Edit dummy doctors/documents/history in `src/data/adminDoctorsData.ts`
-  - Status updates (Approve / Reject / Needs changes) and history entries are local state in `src/pages/AdminPage.tsx`
-  - No backend or API calls are used
-- Important:
-  - Pricing transparency is intentionally not implemented in admin review UI yet
+- `src/pages/`: Main application views (Home, Login, Profile, etc.)
+- `src/components/`: Reusable UI components.
+- `src/context/`: State management (Language, Auth).
+- `backend/app/api/`: API endpoint definitions.
+- `backend/app/db/`: Database models and session management.
+- `backend/app/services/`: Core business logic.
 
-## Admin run checklist
-1. Start app: `npm run dev`
-2. Open `http://localhost:5173/admin`
-3. Test flows:
-   - Search + filters + sort
-   - Open Doctor Review from list
-   - Verification checklist updates
-   - Approve / Reject / Needs changes modals
-   - History timeline updates after decisions
-
-## Notes
-- UI only (no backend).
-- Buttons and links use placeholder navigation behavior.
+## 🤝 Contribution
+The project is currently in active development. Current focus is on connecting the frontend UI to the finalized backend services.
