@@ -22,14 +22,21 @@ const defaultNavItems: HeaderNavItem[] = [
 ];
 
 export default function Header({
-  brandHref = '/',
+  brandHref = '/home',
   navItems,
-  signInHref = '#',
-  signUpHref = '#',
+  signInHref = '/login',
+  signUpHref = '/signup',
   accent = 'teal'
 }: HeaderProps) {
   const { lang, setLang, t } = useLanguage();
   const [isScrolled, setIsScrolled] = useState(false);
+
+  const navigateTo = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+    e.preventDefault();
+    window.history.pushState({}, '', path);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const items = useMemo(() => navItems ?? defaultNavItems, [navItems]);
   const isTeal = accent === 'teal';
@@ -53,7 +60,12 @@ export default function Header({
       }`}
     >
       <div className="section-shell flex h-20 items-center justify-between gap-4">
-        <a href={brandHref} className="focus-outline inline-flex items-center gap-3 rounded-xl" aria-label="MindCare home">
+        <a 
+          href={brandHref} 
+          onClick={(e) => navigateTo(e, brandHref)}
+          className="focus-outline inline-flex items-center gap-3 rounded-xl" 
+          aria-label="MindCare home"
+        >
           <span
             className={`inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-sm ${
               isTeal ? 'from-cyan-500 to-teal-600' : 'from-primary to-primaryDark'
@@ -100,6 +112,7 @@ export default function Header({
           <div className="hidden items-center gap-3 sm:flex">
             <a
               href={signInHref}
+              onClick={(e) => navigateTo(e, signInHref)}
               className={`focus-outline rounded-xl border border-borderGray px-4 py-2 text-sm font-semibold text-textMain transition ${
                 isTeal ? 'hover:border-teal-300 hover:text-teal-700' : 'hover:border-primary/30 hover:text-primary'
               }`}
@@ -108,6 +121,7 @@ export default function Header({
             </a>
             <a
               href={signUpHref}
+              onClick={(e) => navigateTo(e, signUpHref)}
               className={`focus-outline rounded-xl px-4 py-2 text-sm font-semibold text-white transition ${
                 isTeal ? 'bg-teal-600 hover:bg-teal-700' : 'bg-primary hover:bg-primaryDark'
               }`}

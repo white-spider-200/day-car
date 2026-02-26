@@ -125,5 +125,21 @@ export const featuredDoctors: Doctor[] = [
     tagsAr: ['الضغوط', 'الاحتراق النفسي', 'العمل'],
     isVerified: true,
     photo: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&q=80&w=400&h=400'
+  },
+  {
+    name: 'Dr. Test Doctor',
+    nameAr: 'د. طبيب تجريبي',
+    title: 'QA Test Profile',
+    titleAr: 'ملف تجريبي للاختبار',
+    location: 'Amman • Online',
+    locationAr: 'عمان • أونلاين',
+    price: '30 JOD / session',
+    priceAr: '30 دينار / جلسة',
+    rating: 4.6,
+    reviewsCount: 12,
+    tags: ['Test', 'CBT', 'Demo'],
+    tagsAr: ['تجريبي', 'العلاج المعرفي السلوكي', 'عرض'],
+    isVerified: true,
+    photo: 'https://images.unsplash.com/photo-1612277795421-9bc7706a4a41?auto=format&fit=crop&q=80&w=400&h=400'
   }
 ];

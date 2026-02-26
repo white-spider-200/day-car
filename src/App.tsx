@@ -5,12 +5,22 @@ import AdminPage from './pages/AdminPage';
 import AdminUserProfilePage from './pages/AdminUserProfilePage';
 import DoctorProfilePage from './pages/DoctorProfilePage';
 import AboutPage from './pages/AboutPage';
+import LoginPage from './pages/LoginPage';
+import SignupPage from './pages/SignupPage';
 
-type AppPage = 'profile' | 'main' | 'dashboard' | 'admin' | 'admin-users' | 'about';
+type AppPage = 'profile' | 'main' | 'dashboard' | 'admin' | 'admin-users' | 'about' | 'login' | 'signup';
 
 function pageFromPath(pathname: string): AppPage {
   if (pathname === '/home' || pathname === '/home/') {
     return 'main';
+  }
+
+  if (pathname === '/login' || pathname === '/login/') {
+    return 'login';
+  }
+
+  if (pathname === '/signup' || pathname === '/signup/') {
+    return 'signup';
   }
 
   if (pathname === '/dashboard' || pathname === '/dashboard/') {
@@ -50,6 +60,14 @@ export default function App() {
 
   if (page === 'main') {
     return <MainHomePage />;
+  }
+
+  if (page === 'login') {
+    return <LoginPage />;
+  }
+
+  if (page === 'signup') {
+    return <SignupPage />;
   }
 
   if (page === 'dashboard') {
