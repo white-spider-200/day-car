@@ -25,7 +25,7 @@ const translations = {
     // Hero
     'hero.title': 'A safe space',
     'hero.titleAccent': 'to be heard.',
-    'hero.subtitle': 'At MindCare, we believe everyone deserves access to compassionate, professional support. We\'ve built a bridge between clinical excellence and the human need for connection.',
+    'hero.subtitle': 'At Sabina, we believe everyone deserves access to compassionate, professional support. We\'ve built a bridge between clinical excellence and the human need for connection.',
     'hero.badge': 'Trusted Mental Health Network',
     'hero.sessions': 'Verified Sessions',
     'hero.findSupport': 'Find Support Now',
@@ -49,14 +49,14 @@ const translations = {
     // Home Sections
     'home.featuredTitle': 'Featured Professionals',
     'home.featuredSubtitle': 'Hand-picked, highly-rated specialists ready to support your journey.',
-    'home.howTitle': 'How MindCare works',
+    'home.howTitle': 'How Sabina works',
     'home.howSubtitle': 'A simple, step-by-step journey designed to help users feel informed, safe, and ready to book.',
     // About Page
     'about.heroTitle': 'A safe space',
     'about.heroTitleAccent': 'to be heard.',
-    'about.heroSubtitle': 'At MindCare, we believe everyone deserves access to compassionate, professional support. We\'ve built a bridge between clinical excellence and the human need for connection.',
+    'about.heroSubtitle': 'At Sabina, we believe everyone deserves access to compassionate, professional support. We\'ve built a bridge between clinical excellence and the human need for connection.',
     'about.commitmentTitle': 'Our commitment to you',
-    'about.commitmentSubtitle': 'MindCare isn\'t just a platform; it\'s a safe haven. We exist to make mental health support easier to access with more clarity, trust, and empathy. We bring verified psychologists together with the simple goal of helping you heal.',
+    'about.commitmentSubtitle': 'Sabina isn\'t just a platform; it\'s a safe haven. We exist to make mental health support easier to access with more clarity, trust, and empathy. We bring verified psychologists together with the simple goal of helping you heal.',
     'about.promisesTitle': 'What we promise',
     'about.promise1': 'Simple search and comparison so people can find a good fit faster.',
     'about.promise2': 'Clear profile details, pricing, and session options before booking.',
@@ -70,7 +70,7 @@ const translations = {
     'about.howStep4Title': 'Follow up',
     'about.howStep4Desc': 'Manage upcoming sessions and contact support if you need assistance.',
     'about.impactTitle': 'Our Collective Impact',
-    'about.impactSubtitle': 'A quick snapshot of the growing MindCare community and our shared progress.',
+    'about.impactSubtitle': 'A quick snapshot of the growing Sabina community and our shared progress.',
     'about.impactLabel1': 'Licensed Professionals',
     'about.impactLabel2': 'Moments of Connection',
     'about.impactLabel3': 'Average Support Rating',
@@ -80,7 +80,7 @@ const translations = {
     'about.founderCareer': 'Career Highlights',
     'about.founderExperience': 'Clinical Experience',
     'about.founderSpecializations': 'Primary Specializations',
-    'about.whyTitle': 'Why MindCare?',
+    'about.whyTitle': 'Why Sabina?',
     'about.treatmentTitle': 'What You Get From Treatment',
     'about.credentialsTitle': 'Professional Credentials',
     'about.credentialsBoard': 'Board Certification',
@@ -102,7 +102,7 @@ const translations = {
     'about.faqTitle': 'Frequently asked questions',
     'about.faqSubtitle': 'Quick answers to common questions from users and doctors.',
     'about.ctaTitle': 'Start your search today',
-    'about.ctaSubtitle': 'Discover verified psychologists and book confidently, or apply as a doctor to join the MindCare network.',
+    'about.ctaSubtitle': 'Discover verified psychologists and book confidently, or apply as a doctor to join the Sabina network.',
     'about.ctaFind': 'Find a doctor',
     'about.ctaApply': 'Apply as a doctor',
     // Doctor Card/Profile
@@ -133,7 +133,7 @@ const translations = {
     'booking.time': 'Time slots',
     'booking.continue': 'Continue to booking',
     'booking.similar': 'Similar doctors',
-    'footer.rights': '© 2026 MindCare. All rights reserved.',
+    'footer.rights': '© 2026 Sabina. All rights reserved.',
   },
   ar: {
     // Nav
@@ -150,7 +150,7 @@ const translations = {
     // Hero
     'hero.title': 'مساحة آمنة',
     'hero.titleAccent': 'ليتم سماعك.',
-    'hero.subtitle': 'في MindCare، نؤمن بأن الجميع يستحق الوصول إلى دعم مهني مليء بالتعاطف. لقد بنينا جسراً بين التميز السريري والحاجة الإنسانية للتواصل.',
+    'hero.subtitle': 'في Sabina، نؤمن بأن الجميع يستحق الوصول إلى دعم مهني مليء بالتعاطف. لقد بنينا جسراً بين التميز السريري والحاجة الإنسانية للتواصل.',
     'hero.badge': 'شبكة الصحة النفسية الموثوقة',
     'hero.sessions': 'جلسة معتمدة',
     'hero.findSupport': 'ابحث عن الدعم الآن',
@@ -174,14 +174,14 @@ const translations = {
     // Home Sections
     'home.featuredTitle': 'متخصصون متميزون',
     'home.featuredSubtitle': 'متخصصون مختارون بعناية وحاصلون على تقييمات عالية مستعدون لدعم رحلتك.',
-    'home.howTitle': 'كيف يعمل MindCare',
+    'home.howTitle': 'كيف يعمل Sabina',
     'home.howSubtitle': 'رحلة بسيطة خطوة بخطوة مصممة لمساعدة المستخدمين على الشعور بالاطلاع والأمان والاستعداد للحجز.',
     // About Page
     'about.heroTitle': 'مساحة آمنة',
     'about.heroTitleAccent': 'ليتم سماعك.',
-    'about.heroSubtitle': 'في MindCare، نؤمن بأن الجميع يستحق الوصول إلى دعم مهني مليء بالتعاطف. لقد بنينا جسراً بين التميز السريري والحاجة الإنسانية للتواصل.',
+    'about.heroSubtitle': 'في Sabina، نؤمن بأن الجميع يستحق الوصول إلى دعم مهني مليء بالتعاطف. لقد بنينا جسراً بين التميز السريري والحاجة الإنسانية للتواصل.',
     'about.commitmentTitle': 'التزامنا تجاهك',
-    'about.commitmentSubtitle': 'MindCare ليس مجرد منصة؛ إنه ملاذ آمن. نحن موجودون لجعل دعم الصحة النفسية أسهل في الوصول إليه مع مزيد من الوضوح والثقة والتعاطف. نحن نجمع الأطباء النفسيين المعتمدين مع الهدف البسيط المتمثل في مساعدتك على الشفاء.',
+    'about.commitmentSubtitle': 'Sabina ليس مجرد منصة؛ إنه ملاذ آمن. نحن موجودون لجعل دعم الصحة النفسية أسهل في الوصول إليه مع مزيد من الوضوح والثقة والتعاطف. نحن نجمع الأطباء النفسيين المعتمدين مع الهدف البسيط المتمثل في مساعدتك على الشفاء.',
     'about.promisesTitle': 'ما نعد به',
     'about.promise1': 'بحث ومقارنة بسيطة حتى يتمكن الأشخاص من العثور على الشخص المناسب بشكل أسرع.',
     'about.promise2': 'تفاصيل واضحة للملف الشخصي والأسعار وخيارات الجلسات قبل الحجز.',
@@ -195,7 +195,7 @@ const translations = {
     'about.howStep4Title': 'المتابعة',
     'about.howStep4Desc': 'إدارة الجلسات القادمة والتواصل مع الدعم إذا كنت بحاجة إلى مساعدة.',
     'about.impactTitle': 'تأثيرنا الجماعي',
-    'about.impactSubtitle': 'لقطة سريعة لمجتمع MindCare المتنامي وتقدمنا المشترك.',
+    'about.impactSubtitle': 'لقطة سريعة لمجتمع Sabina المتنامي وتقدمنا المشترك.',
     'about.impactLabel1': 'أخصائيون مرخصون',
     'about.impactLabel2': 'لحظات تواصل',
     'about.impactLabel3': 'متوسط تقييم الدعم',
@@ -205,7 +205,7 @@ const translations = {
     'about.founderCareer': 'أبرز المحطات المهنية',
     'about.founderExperience': 'الخبرة السريرية',
     'about.founderSpecializations': 'التخصصات الأساسية',
-    'about.whyTitle': 'لماذا MindCare؟',
+    'about.whyTitle': 'لماذا Sabina؟',
     'about.treatmentTitle': 'ما تحصل عليه من العلاج',
     'about.credentialsTitle': 'الاعتمادات المهنية',
     'about.credentialsBoard': 'شهادة البورد',
@@ -227,7 +227,7 @@ const translations = {
     'about.faqTitle': 'الأسئلة الشائعة',
     'about.faqSubtitle': 'إجابات سريعة على الأسئلة الشائعة من المستخدمين والأطباء.',
     'about.ctaTitle': 'ابدأ بحثك اليوم',
-    'about.ctaSubtitle': 'اكتشف أخصائيين نفسيين معتمدين واحجز بثقة، أو قدم طلباً كطبيب للانضمام إلى شبكة MindCare.',
+    'about.ctaSubtitle': 'اكتشف أخصائيين نفسيين معتمدين واحجز بثقة، أو قدم طلباً كطبيب للانضمام إلى شبكة Sabina.',
     'about.ctaFind': 'ابحث عن طبيب',
     'about.ctaApply': 'انضم كطبيب',
     // Doctor Card/Profile
@@ -258,8 +258,9 @@ const translations = {
     'booking.time': 'المواعيد المتاحة',
     'booking.continue': 'المتابعة للحجز',
     'booking.similar': 'أطباء مشابهون',
-    'footer.rights': '© 2026 MindCare. جميع الحقوق محفوظة.',
+    'footer.rights': '© 2026 Sabina. جميع الحقوق محفوظة.',
   }
+};  }
 };
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);

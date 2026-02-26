@@ -62,6 +62,71 @@ export default function Header({
     return () => window.removeEventListener('auth-changed', onAuthChanged);
   }, []);
 
+import { useEffect, useMemo, useState } from 'react';
+import { useLanguage } from '../context/LanguageContext';
+import { logout } from '../utils/auth';
+import sabinaLogo from '../assets/sabina-logo.png';
+
+type HeaderNavItem = {
+  labelKey: string;
+  href: string;
+};
+
+type HeaderProps = {
+  brandHref?: string;
+  navItems?: HeaderNavItem[];
+  signInHref?: string;
+  signUpHref?: string;
+  accent?: 'blue' | 'teal';
+};
+
+const defaultNavItems: HeaderNavItem[] = [
+  { labelKey: 'nav.doctors', href: '/home#featured-doctors' },
+  { labelKey: 'nav.howItWorks', href: '/home#how-it-works' },
+  { labelKey: 'nav.forDoctors', href: '/home#for-doctors' },
+  { labelKey: 'nav.about', href: '/about' }
+];
+
+export default function Header({
+  brandHref = '/home',
+  navItems,
+  signInHref = '/login',
+  signUpHref = '/signup',
+  accent = 'teal'
+}: HeaderProps) {
+  const { lang, setLang, t } = useLanguage();
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [authRole, setAuthRole] = useState<string | null>(() => localStorage.getItem('auth_role'));
+
+  const navigateTo = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+    e.preventDefault();
+    window.history.pushState({}, '', path);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const items = useMemo(() => navItems ?? defaultNavItems, [navItems]);
+  const isTeal = accent === 'teal';
+
+  useEffect(() => {
+    const onScroll = () => {
+      setIsScrolled(window.scrollY > 8);
+    };
+
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
+    const onAuthChanged = () => {
+      setAuthRole(localStorage.getItem('auth_role'));
+    };
+
+    window.addEventListener('auth-changed', onAuthChanged);
+    return () => window.removeEventListener('auth-changed', onAuthChanged);
+  }, []);
+
   return (
     <header
       className={`sticky top-0 z-50 border-b border-transparent transition-all duration-300 ${
@@ -74,28 +139,17 @@ export default function Header({
         <a 
           href={brandHref} 
           onClick={(e) => navigateTo(e, brandHref)}
-          className="focus-outline inline-flex items-center gap-3 rounded-xl" 
-          aria-label="MindCare home"
+          className="focus-outline inline-flex items-center gap-3 rounded-xl transition-transform hover:scale-105" 
+          aria-label="Sabina Therapy home"
         >
-          <span
-            className={`inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-sm ${
-              isTeal ? 'from-cyan-500 to-teal-600' : 'from-primary to-primaryDark'
-            }`}
-          >
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-            >
-              <path d="M12 20c5-3.4 8-6.2 8-10a4.8 4.8 0 0 0-8-3.5A4.8 4.8 0 0 0 4 10c0 3.8 3 6.6 8 10Z" />
-              <path d="M12 8.7v6.6" />
-              <path d="M8.7 12h6.6" />
-            </svg>
-          </span>
-          <span className="text-lg font-extrabold tracking-tight text-textMain">MindCare</span>
+          <div className="h-10 w-10 overflow-hidden rounded-lg bg-slate-950 flex items-center justify-center p-0.5 shadow-sm">
+            <img 
+              src={sabinaLogo} 
+              alt="Sabina Logo" 
+              className="h-full w-full object-contain"
+            />
+          </div>
+          <span className="text-xl font-black tracking-tighter text-slate-900 uppercase">Sabina</span>
         </a>
 
         <nav className="hidden items-center gap-6 md:flex" aria-label="Main navigation">
