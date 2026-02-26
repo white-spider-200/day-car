@@ -1,8 +1,10 @@
+import { motion } from 'framer-motion';
 import type { Doctor } from '../data/homeData';
 import { useLanguage } from '../context/LanguageContext';
 
 type DoctorCardProps = {
   doctor: Doctor;
+  index?: number;
 };
 
 function initialsFromName(name: string) {
@@ -15,7 +17,7 @@ function initialsFromName(name: string) {
     .toUpperCase();
 }
 
-export default function DoctorCard({ doctor }: DoctorCardProps) {
+export default function DoctorCard({ doctor, index = 0 }: DoctorCardProps) {
   const { lang, t } = useLanguage();
   const isAr = lang === 'ar';
 
@@ -26,7 +28,14 @@ export default function DoctorCard({ doctor }: DoctorCardProps) {
   const tags = isAr ? doctor.tagsAr : doctor.tags;
 
   return (
-    <article className="rounded-card border border-borderGray bg-white p-5 shadow-card transition duration-200 hover:-translate-y-1 hover:border-primary/30 hover:shadow-soft">
+    <motion.article 
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.4, delay: index * 0.05 }}
+      whileHover={{ y: -5, transition: { duration: 0.2 } }}
+      className="rounded-card border border-borderGray bg-white p-5 shadow-card transition-colors duration-200 hover:border-primary/30 hover:shadow-soft"
+    >
       <div className="flex items-start gap-4">
         <div className="relative flex h-14 w-14 flex-none items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-primary/15 to-primary/30 text-lg font-bold text-primary">
           {doctor.photo ? (
@@ -81,6 +90,6 @@ export default function DoctorCard({ doctor }: DoctorCardProps) {
           {t('doctor.viewProfile')}
         </a>
       </div>
-    </article>
+    </motion.article>
   );
 }

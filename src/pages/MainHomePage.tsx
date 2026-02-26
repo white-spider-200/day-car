@@ -32,8 +32,8 @@ export default function MainHomePage() {
           </h2>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {featuredDoctors.map((doctor) => (
-              <DoctorCard key={doctor.name} doctor={doctor} />
+            {featuredDoctors.map((doctor, idx) => (
+              <DoctorCard key={doctor.name} doctor={doctor} index={idx} />
             ))}
           </div>
         </section>
