@@ -21,12 +21,12 @@ flowchart LR
 
     subgraph BE[Backend: FastAPI]
       Main[app/main.py<br/>Router wiring + CORS + static uploads + seeded admin]
-      AuthRoute[/auth/*]
-      PublicApps[/doctor-applications]
-      PublicDoctors[/doctors*]
-      DoctorRoute[/doctor/*]
-      ApptRoute[/appointments/*]
-      AdminRoute[/admin/*]
+      AuthRoute["/auth/*"]
+      PublicApps["/doctor-applications"]
+      PublicDoctors["/doctors*"]
+      DoctorRoute["/doctor/*"]
+      ApptRoute["/appointments/*"]
+      AdminRoute["/admin/*"]
     end
 
     subgraph SVCS[Business Services]
@@ -49,7 +49,7 @@ flowchart LR
 
     subgraph FS[File Storage]
       UploadDir[backend/uploads]
-      UploadURL[/uploads/* static URLs]
+      UploadURL["/uploads/* static URLs"]
     end
 
     Browser --> AppRouter
