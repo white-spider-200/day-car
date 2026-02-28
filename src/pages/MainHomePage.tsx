@@ -4,9 +4,10 @@ import HeroSearch from '../components/HeroSearch';
 import DoctorSearchArabic, { type DoctorSearchFilters } from '../components/DoctorSearchArabic';
 import DoctorCard from '../components/DoctorCard';
 import HowItWorks from '../components/HowItWorks';
+import VRTherapySection from '../components/VRTherapySection';
 import CTAForDoctors from '../components/CTAForDoctors';
-import FounderSection from '../components/FounderSection';
 import Footer from '../components/Footer';
+import TimelineFeed from '../components/TimelineFeed';
 import { useLanguage } from '../context/LanguageContext';
 import type { Doctor } from '../data/homeData';
 import { fetchFirstReachable } from '../utils/api';
@@ -203,6 +204,8 @@ export default function MainHomePage() {
       <main>
         <HeroSearch />
         <DoctorSearchArabic onSearch={handleArabicSearch} />
+        <HowItWorks />
+        <VRTherapySection />
 
         <section id="featured-doctors" className="section-shell py-12 sm:py-14" aria-labelledby="featured-title">
           <h2 id="featured-title" className="section-title">
@@ -234,9 +237,10 @@ export default function MainHomePage() {
           </div>
         </section>
 
-        <FounderSection />
+        <div className="section-shell py-8">
+          <TimelineFeed title={lang === 'ar' ? 'الجدول الطبي الاجتماعي' : 'Social Medical Timeline'} />
+        </div>
 
-        <HowItWorks />
         <CTAForDoctors />
       </main>
 

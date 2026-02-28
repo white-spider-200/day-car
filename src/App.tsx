@@ -9,8 +9,10 @@ import DoctorProfilePage from './pages/DoctorProfilePage';
 import TherapistProfilePage from './pages/TherapistProfilePage';
 import DoctorDetailsPage from './pages/DoctorDetailsPage';
 import AboutPage from './pages/AboutPage';
+import FounderProfilePage from './pages/FounderProfilePage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
+import AdminFinancialReportsPage from './pages/AdminFinancialReportsPage';
 import { getStoredAuthRole, navigateTo, roleHomePath, type AuthRole } from './utils/auth';
 
 type AppPage =
@@ -23,8 +25,10 @@ type AppPage =
   | 'admin'
   | 'admin-applications'
   | 'admin-users'
+  | 'admin-financial'
   | 'apply-doctor'
   | 'about'
+  | 'founder'
   | 'login'
   | 'signup';
 
@@ -57,6 +61,10 @@ function pageFromPath(pathname: string): AppPage {
     return 'admin-users';
   }
 
+  if (pathname === '/admin/financial-reports' || pathname === '/admin/financial-reports/') {
+    return 'admin-financial';
+  }
+
   if (pathname === '/admin/applications' || pathname === '/admin/applications/') {
     return 'admin-applications';
   }
@@ -67,6 +75,10 @@ function pageFromPath(pathname: string): AppPage {
 
   if (pathname === '/about' || pathname === '/about/') {
     return 'about';
+  }
+
+  if (pathname === '/founder' || pathname === '/founder/') {
+    return 'founder';
   }
 
   if (pathname.startsWith('/doctors/')) {
@@ -90,7 +102,8 @@ function isProtectedPage(page: AppPage): boolean {
     page === 'doctor-dashboard' ||
     page === 'admin' ||
     page === 'admin-applications' ||
-    page === 'admin-users'
+    page === 'admin-users' ||
+    page === 'admin-financial'
   );
 }
 
@@ -101,7 +114,12 @@ function hasAccess(role: AuthRole | null, page: AppPage): boolean {
   if (page === 'doctor-dashboard') {
     return role === 'DOCTOR';
   }
-  if (page === 'admin' || page === 'admin-applications' || page === 'admin-users') {
+  if (
+    page === 'admin' ||
+    page === 'admin-applications' ||
+    page === 'admin-users' ||
+    page === 'admin-financial'
+  ) {
     return role === 'ADMIN';
   }
   return true;
@@ -176,12 +194,20 @@ export default function App() {
     return <AdminUserProfilePage />;
   }
 
+  if (page === 'admin-financial') {
+    return <AdminFinancialReportsPage />;
+  }
+
   if (page === 'admin' || page === 'admin-applications') {
     return <AdminPage />;
   }
 
   if (page === 'about') {
     return <AboutPage />;
+  }
+
+  if (page === 'founder') {
+    return <FounderProfilePage />;
   }
 
   if (page === 'therapist-profile') {
