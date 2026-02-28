@@ -1,4 +1,3 @@
-import os
 import uuid
 from pathlib import Path
 
@@ -6,7 +5,15 @@ from fastapi import HTTPException, UploadFile, status
 
 from app.core.config import settings
 
-ALLOWED_CONTENT_TYPES = {"application/pdf", "image/jpeg", "image/png"}
+DOCUMENT_CONTENT_TYPES = {"application/pdf", "image/jpeg", "image/png"}
+PHOTO_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp"}
+LICENSE_CONTENT_TYPES = {"application/pdf", "image/jpeg", "image/png", "image/webp"}
+CONTENT_TYPE_TO_EXTENSION = {
+    "application/pdf": ".pdf",
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+}
 
 
 def ensure_upload_dir() -> Path:
@@ -15,16 +22,16 @@ def ensure_upload_dir() -> Path:
     return upload_dir
 
 
-async def save_document(file: UploadFile) -> str:
-    if file.content_type not in ALLOWED_CONTENT_TYPES:
+async def save_uploaded_file(file: UploadFile, *, allowed_content_types: set[str], label: str) -> str:
+    if file.content_type not in allowed_content_types:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Unsupported file type. Allowed: pdf, jpg, png",
+            detail=f"Unsupported {label} file type.",
         )
 
     upload_dir = ensure_upload_dir()
-    ext = os.path.splitext(file.filename or "")[1] or ".bin"
-    file_name = f"{uuid.uuid4()}{ext.lower()}"
+    extension = CONTENT_TYPE_TO_EXTENSION.get(file.content_type or "", ".bin")
+    file_name = f"{uuid.uuid4()}{extension}"
     full_path = upload_dir / file_name
 
     max_size = settings.max_upload_mb * 1024 * 1024
@@ -46,3 +53,15 @@ async def save_document(file: UploadFile) -> str:
             out.write(chunk)
 
     return f"{settings.upload_base_url}/{file_name}"
+
+
+async def save_document(file: UploadFile) -> str:
+    return await save_uploaded_file(file, allowed_content_types=DOCUMENT_CONTENT_TYPES, label="document")
+
+
+async def save_application_photo(file: UploadFile) -> str:
+    return await save_uploaded_file(file, allowed_content_types=PHOTO_CONTENT_TYPES, label="photo")
+
+
+async def save_license_document(file: UploadFile) -> str:
+    return await save_uploaded_file(file, allowed_content_types=LICENSE_CONTENT_TYPES, label="license")

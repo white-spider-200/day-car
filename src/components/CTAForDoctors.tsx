@@ -32,7 +32,7 @@ export default function CTAForDoctors() {
               transition={{ delay: 0.2 }}
               className="text-3xl font-black tracking-tight sm:text-5xl"
             >
-              {t('about.ctaApply')}?
+              {t('doctor.forDoctorsTitle')}
             </motion.h2>
             <motion.p 
               initial={{ opacity: 0, y: 10 }}
@@ -41,7 +41,7 @@ export default function CTAForDoctors() {
               transition={{ delay: 0.3 }}
               className="mt-4 text-base font-medium text-primary-50 sm:text-lg opacity-90"
             >
-              {t('about.ctaSubtitle')}
+              {t('doctor.forDoctorsSubtitle')}
             </motion.p>
           </div>
 
@@ -52,7 +52,7 @@ export default function CTAForDoctors() {
             transition={{ delay: 0.4 }}
           >
             <a
-              href="#"
+              href="/apply-doctor"
               className="focus-outline inline-flex h-14 items-center justify-center rounded-2xl bg-white px-8 text-base font-bold text-primary transition-all hover:bg-primary-50 hover:scale-105 active:scale-95 shadow-lg"
             >
               {t('about.ctaApply')}

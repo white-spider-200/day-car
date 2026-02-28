@@ -4,7 +4,14 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
-from app.api.routes import admin, auth, doctor, public_doctors, user_appointments
+from app.api.routes import (
+    admin,
+    auth,
+    doctor,
+    doctor_applications_public,
+    public_doctors,
+    user_appointments,
+)
 from app.core.config import settings
 from app.core.security import hash_password
 from app.db.base import Base
@@ -24,6 +31,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(public_doctors.router)
+app.include_router(doctor_applications_public.router)
 app.include_router(doctor.router)
 app.include_router(user_appointments.router)
 app.include_router(admin.router)

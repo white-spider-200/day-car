@@ -7,10 +7,19 @@ from app.db.models import DocumentStatus
 
 class RejectApplicationRequest(BaseModel):
     reason: str = Field(min_length=3, max_length=2000)
+    note: str | None = Field(default=None, max_length=2000)
+
+
+class ApproveApplicationRequest(BaseModel):
+    note: str | None = Field(default=None, max_length=2000)
 
 
 class RequestChangesRequest(BaseModel):
     notes: str = Field(min_length=3, max_length=2000)
+
+
+class AdminApplicationNoteRequest(BaseModel):
+    admin_note: str = Field(min_length=1, max_length=2000)
 
 
 class SetDocumentStatusRequest(BaseModel):
