@@ -1,0 +1,150 @@
+
+> mindcare-home@0.0.0 dev
+> vite --host 0.0.0.0
+
+
+  VITE v5.4.21  ready in 174 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://192.168.1.228:5173/
+3:06:03 PM [vite] page reload src/components/DoctorSearchArabic.tsx
+3:08:59 PM [vite] page reload src/components/doctor-search-section.html
+3:12:38 PM [vite] hmr update /src/pages/MainHomePage.tsx, /src/index.css
+3:23:59 PM [vite] hmr update /src/components/HeroSearch.tsx, /src/index.css
+3:24:22 PM [vite] page reload src/components/DoctorSearchArabic.tsx
+3:25:40 PM [vite] http proxy error: /doctors
+Error: socket hang up
+    at Socket.socketOnEnd (node:_http_client:599:25)
+    at Socket.emit (node:events:520:22)
+    at endReadableNT (node:internal/streams/readable:1729:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+3:25:40 PM [vite] http proxy error: /doctors
+Error: socket hang up
+    at Socket.socketOnEnd (node:_http_client:599:25)
+    at Socket.emit (node:events:520:22)
+    at endReadableNT (node:internal/streams/readable:1729:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+3:32:46 PM [vite] hmr update /src/context/LanguageContext.tsx, /src/index.css
+3:32:46 PM [vite] hmr invalidate /src/context/LanguageContext.tsx Could not Fast Refresh ("useLanguage" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+3:32:46 PM [vite] page reload src/context/LanguageContext.tsx
+3:34:06 PM [vite] hmr update /src/pages/AboutPage.tsx, /src/index.css
+3:34:29 PM [vite] hmr update /src/components/CTAForDoctors.tsx, /src/index.css
+3:34:44 PM [vite] hmr update /src/components/Footer.tsx, /src/index.css
+3:35:02 PM [vite] hmr update /src/context/LanguageContext.tsx, /src/index.css
+3:35:02 PM [vite] hmr invalidate /src/context/LanguageContext.tsx Could not Fast Refresh ("useLanguage" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+3:35:02 PM [vite] page reload src/context/LanguageContext.tsx
+3:35:02 PM [vite] hmr update /src/context/LanguageContext.tsx, /src/index.css
+3:35:51 PM [vite] hmr update /src/context/LanguageContext.tsx, /src/index.css
+3:35:51 PM [vite] warning: Duplicate key "search.locationPlaceholder" in object literal
+176|      'search.mainPlaceholder': 'What are you looking for?',
+177|      'search.specialtyPlaceholder': 'Search by specialty, treatment, condition...',
+178|      'search.locationPlaceholder': 'Search by region...',
+   |      ^
+179|      'search.insurancePlaceholder': 'Search by insurance...',
+180|      'search.doctorNamePlaceholder': 'Search by doctor name...',
+
+  Plugin: vite:esbuild
+  File: /home/whitespider/Desktop/project/doctor/src/context/LanguageContext.tsx
+3:35:51 PM [vite] warning: Duplicate key "search.locationPlaceholder" in object literal
+217|      'search.mainPlaceholder': 'ما الذي تبحث عنه؟',
+218|      'search.specialtyPlaceholder': 'ابحث عن التخصص، العلاجات، الحالات...',
+219|      'search.locationPlaceholder': 'ابحث عن المنطقة...',
+   |      ^
+220|      'search.insurancePlaceholder': 'ابحث عن التأمين...',
+221|      'search.doctorNamePlaceholder': 'ابحث باسم الدكتور...',
+
+  Plugin: vite:esbuild
+  File: /home/whitespider/Desktop/project/doctor/src/context/LanguageContext.tsx
+3:35:51 PM [vite] hmr invalidate /src/context/LanguageContext.tsx Could not Fast Refresh ("useLanguage" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+3:35:51 PM [vite] page reload src/context/LanguageContext.tsx
+3:36:13 PM [vite] hmr update /src/components/DoctorSearchArabic.tsx, /src/index.css
+3:36:19 PM [vite] hmr update /src/pages/MainHomePage.tsx, /src/index.css
+3:36:22 PM [vite] hmr update /src/components/FounderSection.tsx, /src/index.css
+3:38:41 PM [vite] hmr update /src/pages/LoginPage.tsx, /src/index.css
+3:39:17 PM [vite] hmr update /src/components/HeroSearch.tsx, /src/index.css
+3:46:41 PM [vite] hmr update /src/context/LanguageContext.tsx, /src/index.css
+3:46:42 PM [vite] hmr invalidate /src/context/LanguageContext.tsx Could not Fast Refresh ("useLanguage" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+3:46:42 PM [vite] page reload src/context/LanguageContext.tsx
+3:49:05 PM [vite] hmr update /src/pages/LoginPage.tsx, /src/index.css
+4:02:22 PM [vite] hmr update /src/context/LanguageContext.tsx, /src/index.css
+4:02:22 PM [vite] hmr invalidate /src/context/LanguageContext.tsx Could not Fast Refresh ("useLanguage" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+4:02:22 PM [vite] page reload src/context/LanguageContext.tsx
+4:05:47 PM [vite] hmr update /src/components/HeroSearch.tsx, /src/index.css
+4:06:20 PM [vite] hmr update /src/components/HeroSearch.tsx, /src/index.css
+4:28:55 PM [vite] hmr update /src/components/DoctorSearchArabic.tsx, /src/index.css
+4:30:04 PM [vite] hmr update /src/components/DoctorSearchArabic.tsx
+4:30:18 PM [vite] hmr update /src/components/DoctorSearchArabic.css
+4:30:49 PM [vite] hmr update /src/pages/MainHomePage.tsx, /src/index.css
+4:31:02 PM [vite] hmr update /src/context/LanguageContext.tsx, /src/index.css
+4:31:03 PM [vite] hmr invalidate /src/context/LanguageContext.tsx Could not Fast Refresh ("useLanguage" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+4:31:03 PM [vite] page reload src/context/LanguageContext.tsx
+4:37:04 PM [vite] hmr update /src/components/HeroSearch.tsx, /src/index.css
+4:38:16 PM [vite] hmr update /src/App.tsx, /src/index.css
+4:38:16 PM [vite] Internal server error: Failed to resolve import "./pages/TherapistProfilePage" from "src/App.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /home/whitespider/Desktop/project/doctor/src/App.tsx:7:33
+  22 |  import AdminUserProfilePage from "./pages/AdminUserProfilePage";
+  23 |  import DoctorProfilePage from "./pages/DoctorProfilePage";
+  24 |  import TherapistProfilePage from "./pages/TherapistProfilePage";
+     |                                    ^
+  25 |  import AboutPage from "./pages/AboutPage";
+  26 |  import LoginPage from "./pages/LoginPage";
+      at TransformPluginContext._formatError (file:///home/whitespider/Desktop/project/doctor/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41)
+      at TransformPluginContext.error (file:///home/whitespider/Desktop/project/doctor/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16)
+      at normalizeUrl (file:///home/whitespider/Desktop/project/doctor/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async file:///home/whitespider/Desktop/project/doctor/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39
+      at async Promise.all (index 9)
+      at async TransformPluginContext.transform (file:///home/whitespider/Desktop/project/doctor/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7)
+      at async PluginContainer.transform (file:///home/whitespider/Desktop/project/doctor/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18)
+      at async loadAndTransform (file:///home/whitespider/Desktop/project/doctor/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27)
+      at async viteTransformMiddleware (file:///home/whitespider/Desktop/project/doctor/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:62106:24)
+4:38:49 PM [vite] page reload src/data/therapists.ts
+4:38:49 PM [vite] Pre-transform error: Failed to resolve import "./pages/TherapistProfilePage" from "src/App.tsx". Does the file exist?
+4:38:49 PM [vite] Internal server error: Failed to resolve import "./pages/TherapistProfilePage" from "src/App.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /home/whitespider/Desktop/project/doctor/src/App.tsx:7:33
+  22 |  import AdminUserProfilePage from "./pages/AdminUserProfilePage";
+  23 |  import DoctorProfilePage from "./pages/DoctorProfilePage";
+  24 |  import TherapistProfilePage from "./pages/TherapistProfilePage";
+     |                                    ^
+  25 |  import AboutPage from "./pages/AboutPage";
+  26 |  import LoginPage from "./pages/LoginPage";
+      at TransformPluginContext._formatError (file:///home/whitespider/Desktop/project/doctor/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41)
+      at TransformPluginContext.error (file:///home/whitespider/Desktop/project/doctor/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16)
+      at normalizeUrl (file:///home/whitespider/Desktop/project/doctor/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async file:///home/whitespider/Desktop/project/doctor/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39
+      at async Promise.all (index 9)
+      at async TransformPluginContext.transform (file:///home/whitespider/Desktop/project/doctor/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7)
+      at async PluginContainer.transform (file:///home/whitespider/Desktop/project/doctor/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18)
+      at async loadAndTransform (file:///home/whitespider/Desktop/project/doctor/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27)
+      at async viteTransformMiddleware (file:///home/whitespider/Desktop/project/doctor/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:62106:24)
+4:39:22 PM [vite] page reload src/data/therapists.ts
+4:39:23 PM [vite] Pre-transform error: Failed to resolve import "./pages/TherapistProfilePage" from "src/App.tsx". Does the file exist?
+4:39:23 PM [vite] Internal server error: Failed to resolve import "./pages/TherapistProfilePage" from "src/App.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /home/whitespider/Desktop/project/doctor/src/App.tsx:7:33
+  22 |  import AdminUserProfilePage from "./pages/AdminUserProfilePage";
+  23 |  import DoctorProfilePage from "./pages/DoctorProfilePage";
+  24 |  import TherapistProfilePage from "./pages/TherapistProfilePage";
+     |                                    ^
+  25 |  import AboutPage from "./pages/AboutPage";
+  26 |  import LoginPage from "./pages/LoginPage";
+      at TransformPluginContext._formatError (file:///home/whitespider/Desktop/project/doctor/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41)
+      at TransformPluginContext.error (file:///home/whitespider/Desktop/project/doctor/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16)
+      at normalizeUrl (file:///home/whitespider/Desktop/project/doctor/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async file:///home/whitespider/Desktop/project/doctor/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39
+      at async Promise.all (index 9)
+      at async TransformPluginContext.transform (file:///home/whitespider/Desktop/project/doctor/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7)
+      at async PluginContainer.transform (file:///home/whitespider/Desktop/project/doctor/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18)
+      at async loadAndTransform (file:///home/whitespider/Desktop/project/doctor/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27)
+      at async viteTransformMiddleware (file:///home/whitespider/Desktop/project/doctor/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:62106:24)
+4:41:10 PM [vite] page reload src/pages/TherapistProfilePage.tsx
+4:51:06 PM [vite] hmr update /src/index.css, /src/pages/TherapistProfilePage.tsx
+4:51:23 PM [vite] hmr update /src/pages/TherapistProfilePage.tsx, /src/index.css
+4:51:43 PM [vite] Pre-transform error: Failed to load url /src/pages/TherapistProfilePage.tsx (resolved id: /home/whitespider/Desktop/project/doctor/src/pages/TherapistProfilePage.tsx) in /home/whitespider/Desktop/project/doctor/src/App.tsx. Does the file exist?
+4:52:44 PM [vite] hmr update /src/pages/TherapistProfilePage.tsx
+4:52:49 PM [vite] hmr update /src/pages/TherapistProfilePage.tsx
+4:53:20 PM [vite] hmr update /src/pages/TherapistProfilePage.tsx

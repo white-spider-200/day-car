@@ -1,0 +1,301 @@
+- generic [ref=e4]:
+  - banner [ref=e5]:
+    - generic [ref=e6]:
+      - link "Sabina Therapy home" [ref=e7] [cursor=pointer]:
+        - /url: /home
+        - img "Sabina Logo" [ref=e9]
+        - generic [ref=e10]: Sabina
+      - navigation "Main navigation" [ref=e11]:
+        - link "الأطباء" [ref=e12] [cursor=pointer]:
+          - /url: "#featured-doctors"
+        - link "كيف يعمل" [ref=e13] [cursor=pointer]:
+          - /url: "#how-it-works"
+        - link "للأطباء" [ref=e14] [cursor=pointer]:
+          - /url: "#for-doctors"
+        - link "حول" [ref=e15] [cursor=pointer]:
+          - /url: /about
+      - generic [ref=e16]:
+        - button "EN" [ref=e17] [cursor=pointer]
+        - generic [ref=e18]:
+          - link "دخول" [ref=e19] [cursor=pointer]:
+            - /url: /login
+          - link "اشترك" [ref=e20] [cursor=pointer]:
+            - /url: /signup
+  - main [ref=e21]:
+    - generic [ref=e24]:
+      - generic [ref=e25]:
+        - generic [ref=e27]: شبكة الصحة النفسية الموثوقة
+        - heading "مساحتك الآمنة للتوازن النفسي والهدوء." [level=1] [ref=e29]:
+          - text: مساحتك الآمنة
+          - text: للتوازن النفسي والهدوء.
+        - paragraph [ref=e30]: في "صابينا"، نؤمن أن طلب الدعم هو خطوة شجاعة نحو حياة أكثر اتزاناً. نصلك بنخبة من المختصين النفسيين المرخصين لمساعدتك على تجاوز التحديات في بيئة تتسم بالخصوصية التامة والتفهم العميق، بعيداً عن أي أحكام.
+        - generic [ref=e32]:
+          - generic [ref=e33]:
+            - img [ref=e34]
+            - text: أطباء معتمدون
+          - generic [ref=e36]:
+            - img [ref=e37]
+            - text: الخصوصية أولاً
+          - generic [ref=e39]:
+            - img [ref=e40]
+            - text: أسعار شفافة
+          - generic [ref=e42]:
+            - img [ref=e43]
+            - text: جلسة معتمدة
+      - generic [ref=e45]:
+        - generic [ref=e46]:
+          - button "Learn more about Sabina on the About page" [ref=e47] [cursor=pointer]:
+            - img "Therapy session" [ref=e48]
+          - button "Go to About page" [ref=e49] [cursor=pointer]:
+            - generic [ref=e50]:
+              - paragraph [ref=e51]: 500+
+              - paragraph [ref=e52]: جلسة معتمدة
+        - generic [ref=e53]:
+          - button "عرض الملف الطبي للدكتور عبدالرحمن مزهر" [ref=e54] [cursor=pointer]:
+            - generic [ref=e55]:
+              - img "Dr. Abdelrahman Mizher" [ref=e57]
+              - generic [ref=e58]:
+                - paragraph [ref=e59]: د. عبدالرحمن مزهر
+                - paragraph [ref=e60]: Dr. Abdelrahman Mizher
+                - paragraph [ref=e61]: استشاري / معالج نفسي معتمد
+                - paragraph [ref=e62]: Verified Consultant / Licensed Therapist
+                - paragraph [ref=e63]: عرض الملف الطبي
+          - button "Learn more about Sabina on the About page" [ref=e64] [cursor=pointer]:
+            - img "Doctor listening" [ref=e65]
+    - generic [ref=e68]:
+      - generic [ref=e69]:
+        - generic [ref=e70]:
+          - generic [ref=e71]: نوع الاستشارة
+          - combobox "نوع الاستشارة" [ref=e72] [cursor=pointer]:
+            - option "كل الجلسات" [selected]
+            - option "أونلاين فقط"
+            - option "حضوري فقط"
+          - generic:
+            - img
+        - generic [ref=e73]:
+          - generic [ref=e74]: ابحث عن معالج نفسي، تخصص، أو مشكلة مثل القلق والاكتئاب
+          - searchbox "ابحث عن معالج نفسي، تخصص، أو مشكلة مثل القلق والاكتئاب" [ref=e75]
+        - button "بحث" [ref=e76] [cursor=pointer]:
+          - img [ref=e77]
+      - generic [ref=e80]:
+        - generic [ref=e81]:
+          - generic:
+            - img
+          - generic [ref=e82]: التخصص
+          - combobox "التخصص" [ref=e83] [cursor=pointer]:
+            - option "التخصص" [selected]
+            - option "CBT"
+            - option "DBT"
+            - option "علاج الأزواج"
+            - option "علاج الصدمات"
+            - option "صحة نفسية للمراهقين"
+          - generic:
+            - img
+        - generic [ref=e84]:
+          - generic:
+            - img
+          - generic [ref=e85]: المشكلة أو الأعراض
+          - combobox "المشكلة أو الأعراض" [ref=e86] [cursor=pointer]:
+            - option "المشكلة أو الأعراض" [selected]
+            - option "القلق"
+            - option "الاكتئاب"
+            - option "الصدمات"
+            - option "OCD"
+            - option "الأرق"
+            - option "مشاكل العلاقات"
+          - generic:
+            - img
+        - generic [ref=e87]:
+          - generic:
+            - img
+          - generic [ref=e88]: المنهج العلاجي
+          - combobox "المنهج العلاجي" [ref=e89] [cursor=pointer]:
+            - option "المنهج العلاجي" [selected]
+            - option "CBT"
+            - option "DBT"
+            - option "العلاج النفسي الديناميكي"
+            - option "اليقظة الذهنية"
+            - option "ACT"
+            - option "EMDR"
+          - generic:
+            - img
+        - generic [ref=e90]:
+          - generic:
+            - img
+          - generic [ref=e91]: اللغة
+          - combobox "اللغة" [ref=e92] [cursor=pointer]:
+            - option "اللغة" [selected]
+            - option "العربية"
+            - option "الإنجليزية"
+            - option "الفرنسية"
+          - generic:
+            - img
+        - generic [ref=e93]:
+          - generic:
+            - img
+          - generic [ref=e94]: نوع الجلسة
+          - combobox "نوع الجلسة" [ref=e95] [cursor=pointer]:
+            - option "نوع الجلسة" [selected]
+            - option "فيديو"
+            - option "صوتي"
+            - option "رسائل"
+            - option "حضوري"
+          - generic:
+            - img
+        - generic [ref=e96]:
+          - generic:
+            - img
+          - generic [ref=e97]: الموقع أو أونلاين
+          - combobox "الموقع أو أونلاين" [ref=e98] [cursor=pointer]:
+            - option "الموقع أو أونلاين" [selected]
+            - option "أونلاين"
+            - option "عمّان"
+            - option "إربد"
+            - option "الزرقاء"
+            - option "العقبة"
+          - generic:
+            - img
+        - generic [ref=e99]:
+          - generic:
+            - img
+          - generic [ref=e100]: جنس المعالج
+          - combobox "جنس المعالج" [ref=e101] [cursor=pointer]:
+            - option "جنس المعالج" [selected]
+            - option "أنثى"
+            - option "ذكر"
+          - generic:
+            - img
+        - generic [ref=e102]:
+          - generic:
+            - img
+          - generic [ref=e103]: مزود التأمين
+          - combobox "مزود التأمين" [ref=e104] [cursor=pointer]:
+            - option "مزود التأمين" [selected]
+            - option "MedNet"
+            - option "NatHealth"
+            - option "GIG Jordan"
+          - generic:
+            - img
+        - generic [ref=e105]:
+          - generic:
+            - img
+          - generic [ref=e106]: أقرب موعد متاح
+          - combobox "أقرب موعد متاح" [ref=e107] [cursor=pointer]:
+            - option "أقرب موعد متاح" [selected]
+            - option "خلال 3 أيام"
+            - option "خلال أسبوع"
+            - option "خلال أسبوعين"
+            - option "خلال شهر"
+          - generic:
+            - img
+        - generic [ref=e108]:
+          - generic:
+            - img
+          - generic [ref=e109]: أقل سعر
+          - combobox "أقل سعر" [ref=e110] [cursor=pointer]:
+            - option "أقل سعر" [selected]
+            - option "20"
+            - option "30"
+            - option "40"
+            - option "50"
+            - option "60"
+            - option "80"
+            - option "100"
+          - generic:
+            - img
+        - generic [ref=e111]:
+          - generic:
+            - img
+          - generic [ref=e112]: أعلى سعر
+          - combobox "أعلى سعر" [ref=e113] [cursor=pointer]:
+            - option "أعلى سعر" [selected]
+            - option "20"
+            - option "30"
+            - option "40"
+            - option "50"
+            - option "60"
+            - option "80"
+            - option "100"
+          - generic:
+            - img
+      - button "إعادة تعيين الفلاتر" [ref=e115] [cursor=pointer]
+    - region "متخصصون متميزون" [ref=e116]:
+      - heading "متخصصون متميزون" [level=2] [ref=e117]
+      - article [ref=e119]:
+        - generic [ref=e120]:
+          - img "Dr. Abdelrahman Mizher" [ref=e122]
+          - generic [ref=e123]:
+            - generic [ref=e124]:
+              - heading "Dr. Abdelrahman Mizher" [level=3] [ref=e125]
+              - generic [ref=e126]: معتمد
+            - paragraph [ref=e127]: Consultant Psychiatrist & Addiction Treatment Specialist • Amman • Jordan • Online
+        - list "Dr. Abdelrahman Mizher specialties" [ref=e128]:
+          - listitem [ref=e129]: Consultant Psychiatry
+          - listitem [ref=e130]: Addiction Psychiatry
+          - listitem [ref=e131]: Adult Psychiatry
+          - listitem [ref=e132]: Child & Adolescent Psychiatry
+          - listitem [ref=e133]: Family Counseling
+        - generic [ref=e134]:
+          - generic [ref=e135]:
+            - paragraph [ref=e136]: 50 JOD / session
+            - paragraph [ref=e137]:
+              - img [ref=e138]
+              - text: 4.7 (0 تقييم)
+          - link "عرض الملف الشخصي" [ref=e140] [cursor=pointer]:
+            - /url: /profile
+    - region "د. عبدالرحمن مزهر" [ref=e141]:
+      - generic [ref=e143]:
+        - img "Dr. Abdelrahman Mizher" [ref=e147]
+        - generic [ref=e153]:
+          - generic [ref=e154]:
+            - generic [ref=e155]: مؤسس المنصة
+            - generic [ref=e156]:
+              - heading "د. عبدالرحمن مزهر" [level=2] [ref=e157]
+              - generic [ref=e158]:
+                - paragraph [ref=e159]: د. عبدالرحمن مزهر
+                - paragraph [ref=e160]: Founder & Consultant Psychiatrist
+                - paragraph [ref=e161]: 📍 Amman, Jordan
+          - generic [ref=e162]:
+            - generic [ref=e163]:
+              - img [ref=e164]
+              - paragraph [ref=e166]: "\"Dr. Abdelrahman Mizher is a leading consultant psychiatrist with over 30 years of clinical practice in the MENA region. Since 1995, he has been at the forefront of psychiatric care, specializing in adult and child psychiatry, addiction treatment, and neuropsychological evaluation. His medical traini...\""
+            - link "اقرأ المزيد عن المؤسس" [ref=e168] [cursor=pointer]:
+              - /url: /about#founder
+    - region "كيف يعمل" [ref=e169]:
+      - heading "كيف يعمل" [level=2] [ref=e170]
+      - generic [ref=e171]:
+        - article [ref=e172]:
+          - generic [ref=e173]: "1"
+          - heading "البحث" [level=3] [ref=e174]
+          - paragraph [ref=e175]: ابحث عن أخصائيين نفسيين حسب التخصص والمدينة واللغة والتوافر عبر الإنترنت.
+        - article [ref=e176]:
+          - generic [ref=e177]: "2"
+          - heading "المقارنة" [level=3] [ref=e178]
+          - paragraph [ref=e179]: راجع تفاصيل الملف الشخصي والأسعار والتقييمات للاختيار بثقة.
+        - article [ref=e180]:
+          - generic [ref=e181]: "3"
+          - heading "الحجز" [level=3] [ref=e182]
+          - paragraph [ref=e183]: اختر جلسات عبر الإنترنت أو شخصية وأكد موعدك.
+    - generic [ref=e185]:
+      - img "Therapy session" [ref=e187]
+      - generic [ref=e189]:
+        - generic [ref=e190]:
+          - heading "انضم إلى مجتمع صابينا المهني" [level=2] [ref=e191]
+          - paragraph [ref=e192]: هل أنت معالج نفسي مرخص تسعى لإحداث فرق حقيقي؟ انضم إلى "صابينا ثيرابي" لتوسيع نطاق وصولك المهني وتقديم خبراتك لمن يحتاجها في بيئة رقمية متطورة. نحن نوفر لك المنصة التي تعزز حضورك، وتمنحك الأدوات اللازمة لإدارة جلساتك بمرونة واحترافية، مع التركيز الكامل على جودة الرعاية التي تقدمها.
+        - link "انضم كطبيب" [ref=e194] [cursor=pointer]:
+          - /url: "#"
+  - contentinfo [ref=e195]:
+    - generic [ref=e196]:
+      - generic [ref=e197]:
+        - img [ref=e199]
+        - generic [ref=e201]: Sabina Therapy
+      - navigation "Footer links" [ref=e202]:
+        - link "حول" [ref=e203] [cursor=pointer]:
+          - /url: /about
+        - link "Contact" [ref=e204] [cursor=pointer]:
+          - /url: "#"
+        - link "Terms" [ref=e205] [cursor=pointer]:
+          - /url: "#"
+        - link "Privacy" [ref=e206] [cursor=pointer]:
+          - /url: "#"
+      - paragraph [ref=e207]: © 2026 صابينا ثيرابي. جميع الحقوق محفوظة.

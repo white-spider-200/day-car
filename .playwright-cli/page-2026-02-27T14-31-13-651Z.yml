@@ -1,0 +1,102 @@
+- generic [ref=e4]:
+  - banner [ref=e5]:
+    - generic [ref=e6]:
+      - link "Sabina Therapy home" [ref=e7] [cursor=pointer]:
+        - /url: /home
+        - img "Sabina Logo" [ref=e9]
+        - generic [ref=e10]: Sabina
+      - navigation "Main navigation" [ref=e11]:
+        - link "الأطباء" [ref=e12] [cursor=pointer]:
+          - /url: /home#featured-doctors
+        - link "كيف يعمل" [ref=e13] [cursor=pointer]:
+          - /url: /home#how-it-works
+        - link "للأطباء" [ref=e14] [cursor=pointer]:
+          - /url: /home#for-doctors
+        - link "حول" [ref=e15] [cursor=pointer]:
+          - /url: /about
+      - generic [ref=e16]:
+        - button "EN" [ref=e17] [cursor=pointer]
+        - generic [ref=e18]:
+          - link "دخول" [ref=e19] [cursor=pointer]:
+            - /url: /login
+          - link "اشترك" [ref=e20] [cursor=pointer]:
+            - /url: /signup
+  - main [ref=e21]:
+    - generic [ref=e22]:
+      - generic [ref=e24]:
+        - img "Dr. Lina Sabri" [ref=e26]
+        - generic [ref=e27]:
+          - generic [ref=e28]:
+            - heading "Dr. Lina Sabri" [level=1] [ref=e29]
+            - generic [ref=e30]: Verified
+          - paragraph [ref=e31]: Clinical Psychologist (CBT/ACT)
+          - paragraph [ref=e32]: "Rating: 4.90 (128 reviews)"
+          - paragraph [ref=e33]: "Experience: 9 years"
+      - generic [ref=e34]:
+        - heading "Quick Info" [level=2] [ref=e35]
+        - generic [ref=e36]:
+          - article [ref=e37]:
+            - paragraph [ref=e38]: Location
+            - paragraph [ref=e39]: Sabina Therapy Center • Khalda, near the main circle (Fake Address for Testing) • Amman • Jordan
+            - link "Open map" [ref=e40] [cursor=pointer]:
+              - /url: https://maps.google.com/?q=Amman+Khalda
+          - article [ref=e41]:
+            - paragraph [ref=e42]: Languages
+            - paragraph [ref=e43]: Arabic • English
+          - article [ref=e44]:
+            - paragraph [ref=e45]: Session Types
+            - paragraph [ref=e46]: In-person • Online
+          - article [ref=e47]:
+            - paragraph [ref=e48]: Pricing
+            - paragraph [ref=e49]: "Session: 35 JOD"
+            - paragraph [ref=e50]: "Follow-up: 25 JOD"
+      - generic [ref=e51]:
+        - heading "About" [level=2] [ref=e52]
+        - paragraph [ref=e53]: Dr. Lina Sabri is a clinical psychologist providing structured, compassionate therapy for anxiety, depression, and trauma-related concerns. She uses evidence-based approaches and focuses on practical skills, emotional regulation, and long-term resilience. (Dummy profile for testing only.)
+      - generic [ref=e54]:
+        - heading "Therapy Approach" [level=2] [ref=e55]
+        - paragraph [ref=e56]: "Integrative CBT + ACT approach. Sessions are goal-oriented: we define the problem, build coping skills, and practice tools between sessions. Emphasis on safety, confidentiality, and measurable progress."
+      - generic [ref=e57]:
+        - heading "Specialties" [level=2] [ref=e58]
+        - generic [ref=e59]:
+          - generic [ref=e60]: Anxiety
+          - generic [ref=e61]: Depression
+          - generic [ref=e62]: Trauma
+          - generic [ref=e63]: Stress Management
+          - generic [ref=e64]: Panic Disorder
+      - generic [ref=e65]:
+        - heading "Education & Certifications" [level=2] [ref=e66]
+        - generic [ref=e67]:
+          - article [ref=e68]:
+            - heading "Education" [level=3] [ref=e69]
+            - list [ref=e70]:
+              - listitem [ref=e71]: MSc Clinical Psychology – University of Jordan (Dummy)
+              - listitem [ref=e72]: BA Psychology – Yarmouk University (Dummy)
+          - article [ref=e73]:
+            - heading "Certifications" [level=3] [ref=e74]
+            - list [ref=e75]:
+              - listitem [ref=e76]: CBT Certification (Dummy)
+              - listitem [ref=e77]: Trauma-Informed Care Training (Dummy)
+      - generic [ref=e78]:
+        - heading "Availability Preview" [level=2] [ref=e79]
+        - paragraph [ref=e80]: "Timezone: Asia/Amman"
+        - list [ref=e81]:
+          - listitem [ref=e82]: Mar 2, 2026, 05:00 PM
+          - listitem [ref=e83]: Mar 3, 2026, 12:30 PM
+          - listitem [ref=e84]: Mar 4, 2026, 07:00 PM
+      - button "Book appointment" [ref=e86] [cursor=pointer]
+  - contentinfo [ref=e87]:
+    - generic [ref=e88]:
+      - generic [ref=e89]:
+        - img [ref=e91]
+        - generic [ref=e93]: Sabina Therapy
+      - navigation "Footer links" [ref=e94]:
+        - link "حول" [ref=e95] [cursor=pointer]:
+          - /url: /about
+        - link "Contact" [ref=e96] [cursor=pointer]:
+          - /url: "#"
+        - link "Terms" [ref=e97] [cursor=pointer]:
+          - /url: "#"
+        - link "Privacy" [ref=e98] [cursor=pointer]:
+          - /url: "#"
+      - paragraph [ref=e99]: © 2026 صابينا ثيرابي. جميع الحقوق محفوظة.
