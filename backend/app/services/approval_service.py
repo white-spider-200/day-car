@@ -141,6 +141,9 @@ def approve_application(
     profile.insurance_providers = application.insurance_providers
     profile.location_country = application.location_country
     profile.location_city = application.location_city
+    profile.clinic_name = application.clinic_name
+    profile.address_line = application.address_line
+    profile.map_url = application.map_url
     profile.years_experience = application.years_experience
     profile.education = application.education
     profile.licenses_public = _sanitize_licenses_public(application.licenses)

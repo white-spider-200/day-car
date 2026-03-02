@@ -1,6 +1,18 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 
+// Import all 8 therapy videos
+import v1 from '../assets/media/therapy-man-psychiatrist.mp4';
+import v2 from '../assets/media/therapy-pregnant-woman.mp4';
+import v3 from '../assets/media/therapy-doctor-online.mp4';
+import v4 from '../assets/media/therapy-black-man-consultation.mp4';
+import v5 from '../assets/media/therapy-woman-mental-health.mp4';
+import v6 from '../assets/media/therapy-stress-concept.mp4';
+import v7 from '../assets/media/therapy-online-laptop.mp4';
+import v8 from '../assets/media/therapy-elderly-care.mp4';
+
+const bgVideos = [v1, v2, v3, v4, v5, v6, v7, v8];
+
 const bgImages = [
   "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&q=80&w=1920", // Therapist engaged in talk
   "https://images.unsplash.com/photo-1527137342181-19aab11a8ee1?auto=format&fit=crop&q=80&w=1920", // Professional session context
@@ -11,15 +23,15 @@ const bgImages = [
 
 export default function DynamicBackground() {
   const [index, setIndex] = useState(0);
+  const [videoIndex, setVideoIndex] = useState(0);
   const [videoLoaded, setVideoLoaded] = useState(false);
-
-  // Background video URL (Pexels calm nature video)
-  const videoUrl = "https://player.vimeo.com/external/434045526.sd.mp4?s=c27df3410659635f75607b9e782d8c323f4a4788&profile_id=164&oauth2_token_id=57447761";
 
   useEffect(() => {
     const interval = setInterval(() => {
       setIndex((prev) => (prev + 1) % bgImages.length);
-    }, 6000); // Faster: Change image every 6 seconds
+      // Change video every 2 image cycles (12 seconds)
+      setVideoIndex((prev) => (prev + 1) % bgVideos.length);
+    }, 6000); 
     return () => clearInterval(interval);
   }, []);
 
@@ -47,18 +59,22 @@ export default function DynamicBackground() {
       </AnimatePresence>
 
       {/* Background Video (Overlayed with very low opacity) */}
-      <video
-        autoPlay
-        muted
-        loop
-        playsInline
-        onLoadedData={() => setVideoLoaded(true)}
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
-          videoLoaded ? 'opacity-5' : 'opacity-0'
-        }`}
-      >
-        <source src={videoUrl} type="video/mp4" />
-      </video>
+      <AnimatePresence mode="wait">
+        <motion.video
+          key={videoIndex}
+          autoPlay
+          muted
+          loop
+          playsInline
+          initial={{ opacity: 0 }}
+          animate={{ opacity: videoLoaded ? 0.08 : 0 }}
+          exit={{ opacity: 0 }}
+          onLoadedData={() => setVideoLoaded(true)}
+          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000"
+        >
+          <source src={bgVideos[videoIndex]} type="video/mp4" />
+        </motion.video>
+      </AnimatePresence>
 
       {/* Modern Overlay Gradient - Adjusted for visibility */}
       <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-white/20 to-white/80" />

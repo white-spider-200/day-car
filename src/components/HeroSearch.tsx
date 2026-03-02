@@ -1,149 +1,206 @@
-import { motion } from 'framer-motion';
+import { useEffect, useRef, useState } from 'react';
+import therapyBlackManConsultationVideo from '../assets/media/therapy-black-man-consultation.mp4';
+import therapyDoctorOnlineVideo from '../assets/media/therapy-doctor-online.mp4';
+import therapyElderlyCareVideo from '../assets/media/therapy-elderly-care.mp4';
+import therapyManPsychiatristVideo from '../assets/media/therapy-man-psychiatrist.mp4';
+import therapyOnlineLaptopVideo from '../assets/media/therapy-online-laptop.mp4';
+import therapyPregnantWomanVideo from '../assets/media/therapy-pregnant-woman.mp4';
+import therapyStressConceptVideo from '../assets/media/therapy-stress-concept.mp4';
+import therapyWomanMentalHealthVideo from '../assets/media/therapy-woman-mental-health.mp4';
 import { useLanguage } from '../context/LanguageContext';
-import { founderImageFallback, founderProfile } from '../data/founderProfile';
-import { navigateTo } from '../utils/auth';
-import DynamicBackground from './DynamicBackground';
-import { useState } from 'react';
+
+const HERO_VIDEOS = [
+  therapyDoctorOnlineVideo,
+  therapyManPsychiatristVideo,
+  therapyPregnantWomanVideo,
+  therapyBlackManConsultationVideo,
+  therapyElderlyCareVideo,
+  therapyOnlineLaptopVideo,
+  therapyStressConceptVideo,
+  therapyWomanMentalHealthVideo
+];
 
 export default function HeroSearch() {
-  const { t, lang } = useLanguage();
-  const [imageSrc, setImageSrc] = useState(founderProfile.image);
+  const { t, lang, setLang } = useLanguage();
   const isAr = lang === 'ar';
+  const doctorPreviewSide = isAr ? 'left-0 -translate-x-4' : 'right-0 translate-x-4';
+  const statCardSide = isAr ? 'right-0 translate-x-4' : 'left-0 -translate-x-4';
+  const [videoIndex, setVideoIndex] = useState(0);
+  const [isVideoVisible, setIsVideoVisible] = useState(true);
+  const transitionTimeoutRef = useRef<number | null>(null);
 
-  const trustPills = [
-    t('hero.trustPills.verified'),
-    t('hero.trustPills.privacy'),
-    t('hero.trustPills.pricing'),
-    t('hero.sessions')
-  ];
-
-  const goToFounder = () => {
-    navigateTo('/founder');
+  const scheduleNextVideo = () => {
+    if (HERO_VIDEOS.length <= 1) {
+      return;
+    }
+    setIsVideoVisible(false);
+    if (transitionTimeoutRef.current !== null) {
+      window.clearTimeout(transitionTimeoutRef.current);
+    }
+    transitionTimeoutRef.current = window.setTimeout(() => {
+      setVideoIndex((current) => (current + 1) % HERO_VIDEOS.length);
+      setIsVideoVisible(true);
+    }, 420);
   };
 
-  const founderCard = (
-    <a
-      href="/founder"
-      aria-label={isAr ? 'عرض ملف المؤسس د. عبدالرحمن مزهر' : 'View founder profile Dr. Abdulrahman Muzher'}
-      onClick={(event) => {
-        event.preventDefault();
-        goToFounder();
-      }}
-      className="group block w-full max-w-[360px] cursor-pointer rounded-[22px] border border-white/40 bg-[rgba(255,255,255,0.92)] p-6 shadow-[0_12px_30px_rgba(15,23,42,0.12)] backdrop-blur-[10px] transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(15,23,42,0.16)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-    >
-      <span className="inline-flex rounded-full bg-primary/10 px-3 py-1 text-[11px] font-black uppercase tracking-wide text-primary">
-        {isAr ? 'المؤسس' : 'Founder'}
-      </span>
-
-      <div className="mt-4 flex items-start gap-3">
-        <img
-          src={imageSrc}
-          alt={isAr ? founderProfile.name_ar : founderProfile.name_en}
-          className="h-[72px] w-[72px] rounded-xl object-cover ring-2 ring-primary/20"
-          onError={() => setImageSrc(founderImageFallback)}
-        />
-        <div className="min-w-0">
-          <h3 className="flex items-center gap-2 truncate text-lg font-extrabold text-textMain">
-            <span className="truncate">{isAr ? founderProfile.name_ar : founderProfile.name_en}</span>
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 20 20"
-              className="h-4 w-4 flex-none text-primary"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-            >
-              <circle cx="10" cy="10" r="8.2" />
-              <path d="m6.8 10 2.1 2.1 4.5-4.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </h3>
-          <p className="mt-1 line-clamp-2 text-xs font-medium text-muted">
-            {isAr ? founderProfile.title_ar : founderProfile.title_en}
-          </p>
-          <p className="mt-1 text-[11px] text-slate-500">{founderProfile.location}</p>
-        </div>
-      </div>
-      <span className="mt-5 inline-flex h-10 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-white transition group-hover:bg-primaryDark">
-        {isAr ? 'عرض الملف' : 'View Profile'}
-      </span>
-    </a>
-  );
+  useEffect(() => {
+    return () => {
+      if (transitionTimeoutRef.current !== null) {
+        window.clearTimeout(transitionTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
-    <section className="relative flex min-h-[420px] items-center overflow-hidden bg-white pb-8 pt-8 sm:min-h-[480px] sm:pb-12 sm:pt-12">
-      {/* High-End Dynamic Background (Video + Photo Slider) */}
-      <DynamicBackground />
-      <div className="pointer-events-none absolute inset-0 bg-white/45 sm:bg-white/35" />
-
-      <div className="section-shell relative z-10">
-        <div
-          className={`hidden md:block md:absolute md:top-[clamp(90px,11vw,130px)] ${
-            isAr ? 'md:left-[clamp(40px,5vw,70px)]' : 'md:right-[clamp(40px,5vw,70px)]'
-          }`}
+    <section className="relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <video
+          key={HERO_VIDEOS[videoIndex]}
+          className={`h-full w-full object-cover transition-opacity duration-700 ${isVideoVisible ? 'opacity-100' : 'opacity-0'} brightness-[0.95] contrast-[1.08] saturate-[1.08]`}
+          autoPlay
+          muted
+          playsInline
+          preload="auto"
+          onEnded={scheduleNextVideo}
+          onError={scheduleNextVideo}
         >
-          {founderCard}
+          <source src={HERO_VIDEOS[videoIndex]} type="video/mp4" />
+        </video>
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(240,250,250,0.28)_0%,rgba(244,248,251,0.34)_52%,rgba(247,251,255,0.38)_100%)]" />
+      </div>
+
+      <div className="sticky top-0 z-40 border-b border-[#e5edf2] bg-white/95 shadow-[0_2px_12px_rgba(13,31,60,0.06)] backdrop-blur">
+        <div className="section-shell">
+          <div className="relative flex items-center justify-between py-4">
+            <a href="/home" className="flex items-center gap-2">
+              <span className="text-3xl font-black tracking-tight text-[#0D1F3C]">SABINA</span>
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#00B8A0]/10 text-[#00B8A0]">
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <path d="M12 3l7 3v5c0 4.2-2.6 7.7-7 10-4.4-2.3-7-5.8-7-10V6l7-3Z" />
+                  <path d="m8.5 12 2.2 2.2 4.8-4.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
+            </a>
+
+            <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-10 text-[19px] font-semibold text-[#2f425d] md:flex">
+              <a href="#featured-doctors" className="transition hover:text-[#00B8A0]">
+                {t('nav.doctors')}
+              </a>
+              <a href="#how-it-works" className="transition hover:text-[#00B8A0]">
+                {t('nav.howItWorks')}
+              </a>
+              <a href="#for-doctors" className="transition hover:text-[#00B8A0]">
+                {t('nav.forDoctors')}
+              </a>
+              <a href="/about" className="transition hover:text-[#00B8A0]">
+                {t('nav.about')}
+              </a>
+            </nav>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setLang(isAr ? 'en' : 'ar')}
+                className="focus-outline inline-flex h-10 items-center gap-2 rounded-xl border border-[#d7e3ea] px-3 text-sm font-bold text-[#00B8A0] transition hover:border-[#00B8A0]/40 hover:bg-[#00B8A0]/5"
+                aria-label={isAr ? 'Switch to English' : 'التبديل إلى العربية'}
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M3.6 9h16.8M3.6 15h16.8M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" />
+                </svg>
+                {isAr ? 'EN' : 'AR'}
+              </button>
+              <a
+                href="/login"
+                className="focus-outline inline-flex h-10 items-center rounded-xl border border-[#d7e3ea] bg-white px-5 text-sm font-extrabold text-[#0D1F3C] transition hover:bg-[#f6fafc]"
+              >
+                {t('auth.signIn')}
+              </a>
+              <a
+                href="/signup"
+                className="focus-outline inline-flex h-10 items-center rounded-xl bg-[#00B8A0] px-5 text-sm font-extrabold text-white shadow-[0_8px_20px_rgba(0,184,160,0.22)] transition hover:-translate-y-0.5 hover:bg-[#00a18c]"
+              >
+                {t('auth.signUp')}
+              </a>
+            </div>
+
+          </div>
         </div>
+      </div>
 
+      <div className="section-shell relative py-12 sm:py-16">
         <div
-          className={`max-w-4xl ${
-            isAr
-              ? 'text-right md:pr-6 md:pl-[clamp(320px,33vw,430px)]'
-              : 'text-left md:pl-6 md:pr-[clamp(320px,33vw,430px)]'
+          className={`pointer-events-none absolute inset-y-0 hidden w-[420px] rounded-full bg-[#00B8A0]/8 blur-3xl lg:block ${
+            isAr ? 'left-0' : 'right-0'
           }`}
-        >
-          <div>
-            <motion.span
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-primary"
-            >
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+        />
+
+        <div className="grid items-center gap-10 lg:grid-cols-2">
+          <div className="animate-fade-slide-up-soft">
+            <span className="inline-flex rounded-full border border-[#9ddfd5] bg-[#dff7f2] px-5 py-2 text-[13px] font-bold text-[#008d7d]">
               {t('hero.badge')}
-            </motion.span>
+            </span>
+
+            <h1 className="mt-5 text-[42px] font-black leading-[1.18] tracking-tight text-[#0D1F3C] sm:text-[48px]">
+              {t('hero.title')}{' '}
+              <span className="text-[#00B8A0]">
+                {t('hero.titleAccent')}
+              </span>
+            </h1>
+
+            <p className="mt-5 max-w-[62ch] text-[17px] leading-[1.9] text-[#6B7280]">{t('hero.subtitle')}</p>
+
+            <div className="mt-8 flex flex-wrap gap-3">
+              <a
+                href="#featured-doctors"
+                className="focus-outline inline-flex h-14 items-center rounded-2xl bg-[#00B8A0] px-8 text-base font-extrabold text-white shadow-[0_12px_24px_rgba(0,184,160,0.2)] transition hover:-translate-y-1 hover:bg-[#00a18c]"
+              >
+                {t('hero.findSupport')}
+              </a>
+              <a
+                href="#how-it-works"
+                className="focus-outline inline-flex h-14 items-center rounded-2xl border border-[#cad8e2] bg-white px-8 text-base font-extrabold text-[#0D1F3C] transition hover:-translate-y-1 hover:shadow-[0_10px_20px_rgba(13,31,60,0.08)]"
+              >
+                {t('hero.howProtect')}
+              </a>
+            </div>
           </div>
 
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="max-w-3xl text-4xl font-black leading-[1.1] tracking-tight text-textMain sm:text-6xl lg:text-7xl"
-          >
-            {t('hero.title')} <br />
-            <span className="italic text-primary">{t('hero.titleAccent')}</span>
-          </motion.h1>
+          <div className="animate-fade-slide-up-soft [animation-delay:120ms]">
+            <div className="relative mx-auto max-w-[460px]">
+              <article className="group relative overflow-hidden rounded-[26px] border border-[#dbe8ef] bg-white p-3 shadow-[0_16px_34px_rgba(13,31,60,0.1)] transition duration-300 hover:-translate-y-1">
+                <img
+                  src="https://lh3.googleusercontent.com/gps-cs-s/AHVAweoQoTHslLTqlg2ImLSt9ojJMaAFpIY_RzhR8a0xS4TCWK0qfmCFurOnzViOYWF851dAWe9YL7iSz0RcSuq5m489lRyzTVIFLUQmK8nq8tJlMKKPvghBmgpO5gKvmf1XCkW1UWMbOw=s680-w680-h510"
+                  alt={isAr ? 'طبيب نفسي' : 'Therapist'}
+                  loading="lazy"
+                  className="h-[350px] w-full rounded-[20px] object-cover"
+                />
+              </article>
 
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="mt-8 max-w-2xl text-lg font-medium leading-relaxed text-muted sm:text-xl"
-          >
-            {t('hero.subtitle')}
-          </motion.p>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="mt-9"
-          >
-            <div className="flex flex-wrap gap-x-8 gap-y-4">
-              {trustPills.map((pill) => (
-                <div
-                  key={pill}
-                  className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.15em] text-muted/50"
+              <article
+                className={`group absolute ${doctorPreviewSide} top-5 w-[220px] rounded-[22px] border border-[#dbe8ef] bg-white p-4 shadow-[0_16px_34px_rgba(13,31,60,0.12)] transition duration-300 hover:-translate-y-1`}
+              >
+                <p className="text-sm font-black text-[#0D1F3C]">
+                  {isAr ? 'د. عبد الرحمن مزهر' : 'Dr. Abdulrahman Muzher'}
+                </p>
+                <p className="mt-1 text-xs font-medium text-[#6B7280]">
+                  {isAr ? 'مؤسس منصة صابينا' : 'Founder of SABINA'}
+                </p>
+                <a
+                  href="/founder"
+                  className="mt-3 inline-flex h-9 items-center rounded-lg bg-[#00B8A0] px-4 text-sm font-bold text-white transition hover:bg-[#00a18c]"
                 >
-                  <svg className="h-3.5 w-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                  </svg>
-                  {pill}
-                </div>
-              ))}
-            </div>
-          </motion.div>
+                  {isAr ? 'عرض الملف' : 'View profile'}
+                </a>
+              </article>
 
-          <div className="mt-8 flex justify-center md:hidden">
-            {founderCard}
+              <article
+                className={`absolute ${statCardSide} -bottom-6 rounded-[22px] border border-[#dbe8ef] bg-white px-8 py-5 text-center shadow-[0_16px_34px_rgba(13,31,60,0.12)] transition duration-300 hover:-translate-y-1`}
+              >
+                <p className="text-[38px] font-black leading-none text-[#00B8A0]">+500</p>
+                <p className="mt-2 text-sm font-medium text-[#6B7280]">{isAr ? 'جلسة معتمدة' : 'Verified Sessions'}</p>
+              </article>
+            </div>
           </div>
         </div>
       </div>

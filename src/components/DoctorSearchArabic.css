@@ -1,0 +1,196 @@
+.doctor-search-clean {
+  position: relative;
+  overflow: hidden;
+  padding: 80px 16px;
+  background: linear-gradient(180deg, #f5fbfa 0%, #f8fafc 100%);
+}
+
+.doctor-search-clean__shape {
+  position: absolute;
+  top: -120px;
+  left: 50%;
+  width: min(760px, 92vw);
+  height: 320px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 35% 45%, rgba(94, 207, 203, 0.15), rgba(94, 207, 203, 0) 62%),
+    radial-gradient(circle at 68% 55%, rgba(127, 216, 212, 0.12), rgba(127, 216, 212, 0) 64%);
+  pointer-events: none;
+}
+
+.doctor-search-clean__container {
+  position: relative;
+  z-index: 1;
+  margin-inline: auto;
+  width: min(1180px, 100%);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 22px 48px rgba(15, 23, 42, 0.08);
+  padding: 38px 28px 34px;
+  text-align: center;
+}
+
+.doctor-search-clean__title {
+  margin: 0;
+  font-size: clamp(28px, 3vw, 32px);
+  font-weight: 800;
+  color: #1f2937;
+  letter-spacing: -0.01em;
+}
+
+.doctor-search-clean__bar {
+  margin-top: 24px;
+  min-height: 66px;
+  display: grid;
+  grid-template-columns: minmax(260px, 1.45fr) repeat(3, minmax(150px, 1fr)) auto;
+  align-items: center;
+  gap: 12px;
+  border-radius: 18px;
+  background: #ffffff;
+  padding: 8px 10px 8px 20px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.doctor-search-clean__input,
+.doctor-search-clean__select {
+  width: 100%;
+  height: 50px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: #f8fafc;
+  color: #1f2937;
+  font-size: 15px;
+  font-weight: 500;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.doctor-search-clean__input {
+  padding: 0 14px;
+}
+
+.doctor-search-clean__input-wrap {
+  position: relative;
+}
+
+.doctor-search-clean__input::placeholder {
+  color: #93a0b2;
+}
+
+.doctor-search-clean__select {
+  padding: 0 14px;
+  cursor: pointer;
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #8fa1ac 50%),
+    linear-gradient(135deg, #8fa1ac 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) calc(50% + 1px),
+    calc(100% - 12px) calc(50% + 1px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+}
+
+.doctor-search-clean__input:hover,
+.doctor-search-clean__select:hover {
+  background: #f3faf9;
+}
+
+.doctor-search-clean__input:focus,
+.doctor-search-clean__select:focus {
+  border-color: rgba(94, 207, 203, 0.48);
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(94, 207, 203, 0.16);
+}
+
+.doctor-search-clean__button {
+  width: 50px;
+  height: 50px;
+  border: none;
+  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  cursor: pointer;
+  background: linear-gradient(135deg, #7fd8d4 0%, #5ecfcb 100%);
+  transition: transform 0.3s ease, filter 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 10px 22px rgba(94, 207, 203, 0.35);
+}
+
+.doctor-search-clean__button svg {
+  width: 22px;
+  height: 22px;
+}
+
+.doctor-search-clean__button:hover {
+  transform: scale(1.05);
+  filter: brightness(0.96);
+  box-shadow: 0 14px 26px rgba(74, 189, 185, 0.45);
+}
+
+.doctor-search-clean__button:active {
+  transform: scale(0.98);
+}
+
+.doctor-search-clean__suggestions {
+  position: absolute;
+  top: calc(100% + 8px);
+  inset-inline-start: 0;
+  z-index: 20;
+  width: 100%;
+  margin: 0;
+  padding: 8px;
+  list-style: none;
+  border: 1px solid #d8e4ec;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 16px 28px rgba(15, 23, 42, 0.12);
+}
+
+.doctor-search-clean__suggestion-btn {
+  width: 100%;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #1f2937;
+  font-size: 14px;
+  text-align: start;
+  cursor: pointer;
+  padding: 10px 12px;
+  transition: background 0.2s ease;
+}
+
+.doctor-search-clean__suggestion-btn:hover {
+  background: #f3faf9;
+}
+
+@media (max-width: 1060px) {
+  .doctor-search-clean__bar {
+    grid-template-columns: 1fr 1fr;
+    padding: 12px;
+  }
+
+  .doctor-search-clean__button {
+    width: 100%;
+    border-radius: 14px;
+  }
+}
+
+@media (max-width: 700px) {
+  .doctor-search-clean {
+    padding: 64px 12px;
+  }
+
+  .doctor-search-clean__container {
+    border-radius: 22px;
+    padding: 28px 16px 20px;
+  }
+
+  .doctor-search-clean__bar {
+    margin-top: 20px;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}

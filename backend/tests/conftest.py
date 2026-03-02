@@ -14,10 +14,11 @@ os.environ.setdefault(
     ),
 )
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
-os.environ.setdefault("SEED_ADMIN_EMAIL", "admin@sabina.local")
+os.environ.setdefault("SEED_ADMIN_EMAIL", "admin@sabina.dev")
 os.environ.setdefault("SEED_ADMIN_PASSWORD", "Admin12345!")
 
 from app.db.base import Base  # noqa: E402
+from app.core.security import auth_rate_limiter  # noqa: E402
 from app.main import app  # noqa: E402
 
 
@@ -27,10 +28,12 @@ def client() -> Generator[TestClient, None, None]:
     engine = create_engine(database_url)
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
+    auth_rate_limiter.reset()
 
     with TestClient(app) as c:
         yield c
 
+    auth_rate_limiter.reset()
     Base.metadata.drop_all(bind=engine)
     engine.dispose()
 
@@ -54,4 +57,4 @@ def auth_headers(token: str) -> dict[str, str]:
 
 @pytest.fixture()
 def admin_token(client: TestClient) -> str:
-    return login(client, "admin@sabina.local", "Admin12345!")
+    return login(client, "admin@sabina.dev", "Admin12345!")

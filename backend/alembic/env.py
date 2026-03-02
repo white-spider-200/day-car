@@ -8,12 +8,24 @@ from app.db.base import Base
 from app.db.models import (  # noqa: F401
     AdminAction,
     Appointment,
+    DoctorProfileUpdateRequest,
     DoctorApplication,
     DoctorAvailabilityException,
     DoctorAvailabilityRule,
     DoctorDocument,
     DoctorProfile,
+    Message,
+    Notification,
+    PatientRecord,
+    Payment,
+    Post,
+    PostLike,
+    RecordDocument,
+    RecordEntry,
+    Referral,
+    TreatmentRequest,
     User,
+    WaitingListEntry,
 )
 
 config = context.config

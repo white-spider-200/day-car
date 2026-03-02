@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, Text, func
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -15,6 +15,13 @@ class AppointmentStatus(str, enum.Enum):
     CANCELLED = "CANCELLED"
     COMPLETED = "COMPLETED"
     NO_SHOW = "NO_SHOW"
+
+
+class AppointmentCallStatus(str, enum.Enum):
+    NOT_READY = "NOT_READY"
+    READY = "READY"
+    LIVE = "LIVE"
+    ENDED = "ENDED"
 
 
 class Appointment(Base):
@@ -43,6 +50,15 @@ class Appointment(Base):
         server_default=AppointmentStatus.REQUESTED.value,
     )
     meeting_link: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    call_provider: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    call_room_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    call_status: Mapped[AppointmentCallStatus] = mapped_column(
+        Enum(AppointmentCallStatus, name="appointment_call_status", native_enum=True),
+        nullable=False,
+        default=AppointmentCallStatus.NOT_READY,
+        server_default=AppointmentCallStatus.NOT_READY.value,
+    )
+    fee_paid: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

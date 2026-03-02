@@ -13,8 +13,12 @@ def _create_submitted_application(client, email: str):
             "display_name": "Dr Approved",
             "headline": "CBT specialist",
             "specialties": ["CBT"],
+            "concerns": ["Anxiety"],
+            "therapy_approaches": ["CBT"],
             "languages": ["Arabic"],
             "session_types": ["VIDEO"],
+            "gender_identity": "Female",
+            "insurance_providers": ["MedNet"],
             "pricing_per_session": "80.00",
         },
     )
@@ -26,7 +30,7 @@ def _create_submitted_application(client, email: str):
 
 
 def test_admin_can_list_and_approve_application(client, admin_token):
-    _, app_id, doctor_user_id = _create_submitted_application(client, "doctor4@test.local")
+    _, app_id, doctor_user_id = _create_submitted_application(client, "doctor4@testmail.dev")
 
     list_res = client.get("/admin/applications", headers=auth_headers(admin_token))
     assert list_res.status_code == 200, list_res.text
@@ -42,10 +46,13 @@ def test_admin_can_list_and_approve_application(client, admin_token):
     assert profile.status_code == 200, profile.text
     assert profile.json()["is_public"] is True
     assert "VERIFIED_DOCTOR" in (profile.json().get("verification_badges") or [])
+    assert "Anxiety" in (profile.json().get("concerns") or [])
+    assert "CBT" in (profile.json().get("therapy_approaches") or [])
+    assert "MedNet" in (profile.json().get("insurance_providers") or [])
 
 
 def test_admin_reject_and_request_changes(client, admin_token):
-    _, app_id, _ = _create_submitted_application(client, "doctor5@test.local")
+    _, app_id, _ = _create_submitted_application(client, "doctor5@testmail.dev")
 
     reject = client.post(
         f"/admin/applications/{app_id}/reject",
@@ -56,7 +63,7 @@ def test_admin_reject_and_request_changes(client, admin_token):
     assert reject.json()["status"] == "REJECTED"
     assert reject.json()["rejection_reason"] == "Missing documents"
 
-    _, app_id_2, _ = _create_submitted_application(client, "doctor6@test.local")
+    _, app_id_2, _ = _create_submitted_application(client, "doctor6@testmail.dev")
     needs_changes = client.post(
         f"/admin/applications/{app_id_2}/request-changes",
         headers=auth_headers(admin_token),
@@ -67,14 +74,14 @@ def test_admin_reject_and_request_changes(client, admin_token):
 
 
 def test_security_user_and_doctor_cannot_access_admin_endpoints(client, admin_token):
-    register(client, "user-sec@test.local", "UserPass123!", "USER")
+    register(client, "user-sec@testmail.dev", "UserPass123!", "USER")
     user_token = client.post(
-        "/auth/login", json={"email": "user-sec@test.local", "password": "UserPass123!"}
+        "/auth/login", json={"email": "user-sec@testmail.dev", "password": "UserPass123!"}
     ).json()["access_token"]
 
-    register(client, "doctor-sec@test.local", "DoctorPass123!", "DOCTOR")
+    register(client, "doctor-sec@testmail.dev", "DoctorPass123!", "DOCTOR")
     doctor_token = client.post(
-        "/auth/login", json={"email": "doctor-sec@test.local", "password": "DoctorPass123!"}
+        "/auth/login", json={"email": "doctor-sec@testmail.dev", "password": "DoctorPass123!"}
     ).json()["access_token"]
 
     user_forbidden = client.get("/admin/applications", headers=auth_headers(user_token))

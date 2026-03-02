@@ -34,7 +34,7 @@ def _setup_approved_doctor(client, admin_token, email: str):
 
 def test_availability_booking_conflict_and_cancellation(client, admin_token):
     doctor_token, doctor_user_id = _setup_approved_doctor(
-        client, admin_token, "doctor-booking@test.local"
+        client, admin_token, "doctor-booking@testmail.dev"
     )
 
     target_day = _next_weekday(date.today(), 0)
@@ -64,14 +64,14 @@ def test_availability_booking_conflict_and_cancellation(client, admin_token):
 
     slot_start = slots[0]["start_at"]
 
-    register(client, "book-user1@test.local", "UserPass123!", "USER")
+    register(client, "book-user1@testmail.dev", "UserPass123!", "USER")
     token_user_1 = client.post(
-        "/auth/login", json={"email": "book-user1@test.local", "password": "UserPass123!"}
+        "/auth/login", json={"email": "book-user1@testmail.dev", "password": "UserPass123!"}
     ).json()["access_token"]
 
-    register(client, "book-user2@test.local", "UserPass123!", "USER")
+    register(client, "book-user2@testmail.dev", "UserPass123!", "USER")
     token_user_2 = client.post(
-        "/auth/login", json={"email": "book-user2@test.local", "password": "UserPass123!"}
+        "/auth/login", json={"email": "book-user2@testmail.dev", "password": "UserPass123!"}
     ).json()["access_token"]
 
     req_1 = client.post(

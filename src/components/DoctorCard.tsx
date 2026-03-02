@@ -26,6 +26,8 @@ export default function DoctorCard({ doctor, index = 0 }: DoctorCardProps) {
   const location = isAr ? doctor.locationAr : doctor.location;
   const price = isAr ? doctor.priceAr : doctor.price;
   const tags = isAr ? doctor.tagsAr : doctor.tags;
+  const profilePath = doctor.slug ? `/doctors/${doctor.slug}` : '/profile';
+  const topDoctorLabel = isAr ? 'الأفضل حسب البحث' : 'Best Match';
 
   return (
     <motion.article 
@@ -34,8 +36,18 @@ export default function DoctorCard({ doctor, index = 0 }: DoctorCardProps) {
       viewport={{ once: true }}
       transition={{ duration: 0.4, delay: index * 0.05 }}
       whileHover={{ y: -5, transition: { duration: 0.2 } }}
-      className="rounded-card border border-borderGray bg-white p-5 shadow-card transition-colors duration-200 hover:border-primary/30 hover:shadow-soft"
+      className={`rounded-card border bg-white p-5 shadow-card transition-all duration-200 hover:border-primary/30 hover:shadow-soft ${
+        doctor.isTopDoctor
+          ? 'relative border-primary/50 bg-gradient-to-br from-primaryBg/70 to-white pt-9 shadow-[0_18px_40px_rgba(16,185,129,0.18)]'
+          : 'border-borderGray'
+      }`}
     >
+      {doctor.isTopDoctor && (
+        <span className="absolute left-4 top-3 rounded-full bg-primary px-3 py-1 text-[11px] font-bold text-white shadow-md">
+          {topDoctorLabel}
+        </span>
+      )}
+
       <div className="flex items-start gap-4">
         <div className="relative flex h-14 w-14 flex-none items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-primary/15 to-primary/30 text-lg font-bold text-primary">
           {doctor.photo ? (
@@ -47,12 +59,12 @@ export default function DoctorCard({ doctor, index = 0 }: DoctorCardProps) {
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-base font-bold text-textMain">{name}</h3>
+            <h3 className="max-w-full break-words text-base font-bold text-textMain">{name}</h3>
             {doctor.isVerified && (
               <span className="rounded-full bg-primaryBg px-2 py-0.5 text-xs font-semibold text-primary">{t('doctor.verified')}</span>
             )}
           </div>
-          <p className="mt-1 text-sm text-muted">
+          <p className="mt-1 line-clamp-2 break-all text-sm text-muted">
             {title} • {location}
           </p>
         </div>
@@ -60,7 +72,7 @@ export default function DoctorCard({ doctor, index = 0 }: DoctorCardProps) {
 
       <ul className="mt-4 flex flex-wrap gap-2" aria-label={`${name} specialties`}>
         {tags.map((tag) => (
-          <li key={tag} className="rounded-full border border-borderGray px-3 py-1 text-xs font-medium text-muted">
+          <li key={tag} className="max-w-full break-all rounded-full border border-borderGray px-3 py-1 text-xs font-medium text-muted">
             {tag}
           </li>
         ))}
@@ -78,10 +90,10 @@ export default function DoctorCard({ doctor, index = 0 }: DoctorCardProps) {
         </div>
 
         <a
-          href="/profile"
+          href={profilePath}
           onClick={(e) => {
             e.preventDefault();
-            window.history.pushState({}, '', '/profile');
+            window.history.pushState({}, '', profilePath);
             window.dispatchEvent(new PopStateEvent('popstate'));
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}

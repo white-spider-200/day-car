@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
-import { logout } from '../utils/auth';
+import { getStoredAuthRole, logout, roleHomePath, type AuthRole } from '../utils/auth';
+import { apiJson } from '../utils/api';
 import sabinaLogo from '../assets/sabina-logo.png';
 
 type HeaderNavItem = {
@@ -14,6 +15,14 @@ type HeaderProps = {
   signInHref?: string;
   signUpHref?: string;
   accent?: 'blue' | 'teal';
+};
+
+type NotificationItem = {
+  id: string;
+  title: string;
+  body: string;
+  is_read: boolean;
+  sent_at: string;
 };
 
 const defaultNavItems: HeaderNavItem[] = [
@@ -32,7 +41,10 @@ export default function Header({
 }: HeaderProps) {
   const { lang, setLang, t } = useLanguage();
   const [isScrolled, setIsScrolled] = useState(false);
-  const [authRole, setAuthRole] = useState<string | null>(() => localStorage.getItem('auth_role'));
+  const [authRole, setAuthRole] = useState<AuthRole | null>(() => getStoredAuthRole());
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
 
   const navigateTo = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
     e.preventDefault();
@@ -41,7 +53,19 @@ export default function Header({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const items = useMemo(() => navItems ?? defaultNavItems, [navItems]);
+  const items = useMemo(() => {
+    const baseItems = navItems ?? defaultNavItems;
+    if (!authRole) {
+      return baseItems;
+    }
+
+    const hasDashboardItem = baseItems.some((item) => item.labelKey === 'nav.dashboard');
+    if (hasDashboardItem) {
+      return baseItems;
+    }
+
+    return [{ labelKey: 'nav.dashboard', href: roleHomePath(authRole) }, ...baseItems];
+  }, [navItems, authRole]);
   const isTeal = accent === 'teal';
 
   useEffect(() => {
@@ -56,12 +80,46 @@ export default function Header({
 
   useEffect(() => {
     const onAuthChanged = () => {
-      setAuthRole(localStorage.getItem('auth_role'));
+      setAuthRole(getStoredAuthRole());
+    };
+    const onStorage = () => {
+      setAuthRole(getStoredAuthRole());
     };
 
     window.addEventListener('auth-changed', onAuthChanged);
-    return () => window.removeEventListener('auth-changed', onAuthChanged);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('auth-changed', onAuthChanged);
+      window.removeEventListener('storage', onStorage);
+    };
   }, []);
+
+  const loadNotifications = async () => {
+    if (!authRole) {
+      setNotifications([]);
+      return;
+    }
+    setIsLoadingNotifications(true);
+    try {
+      const payload = await apiJson<NotificationItem[]>(
+        '/notifications',
+        undefined,
+        true,
+        'Failed to load notifications'
+      );
+      setNotifications(payload);
+    } catch {
+      setNotifications([]);
+    } finally {
+      setIsLoadingNotifications(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadNotifications();
+  }, [authRole]);
+
+  const unreadCount = notifications.filter((item) => !item.is_read).length;
 
   return (
     <header
@@ -112,9 +170,50 @@ export default function Header({
 
           {authRole ? (
             <div className="flex items-center gap-2">
-              <span className="hidden rounded-full border border-borderGray bg-white px-3 py-1 text-xs font-semibold text-muted sm:inline-flex">
-                {authRole}
-              </span>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextOpen = !isNotificationsOpen;
+                    setIsNotificationsOpen(nextOpen);
+                    if (nextOpen) {
+                      void apiJson('/notifications/read', { method: 'POST' }, true, 'Failed to mark notifications');
+                      setNotifications((previous) => previous.map((item) => ({ ...item, is_read: true })));
+                    }
+                  }}
+                  className="focus-outline relative flex h-10 w-10 items-center justify-center rounded-xl border border-borderGray bg-white text-sm font-semibold text-textMain transition hover:border-primary/30 hover:text-primary"
+                  aria-label="Notifications"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M15 17h5l-1.4-1.4a2 2 0 0 1-.6-1.4V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M9 17a3 3 0 0 0 6 0" strokeLinecap="round" />
+                  </svg>
+                  {unreadCount > 0 && (
+                    <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+                {isNotificationsOpen && (
+                  <div className="absolute right-0 mt-2 w-80 rounded-xl border border-borderGray bg-white p-3 shadow-card">
+                    <p className="text-xs font-black uppercase tracking-wide text-muted">Notifications</p>
+                    {isLoadingNotifications ? (
+                      <p className="mt-2 text-xs text-muted">Loading...</p>
+                    ) : notifications.length === 0 ? (
+                      <p className="mt-2 text-xs text-muted">No notifications yet.</p>
+                    ) : (
+                      <ul className="mt-2 max-h-64 space-y-2 overflow-auto">
+                        {notifications.map((item) => (
+                          <li key={item.id} className="rounded-lg border border-borderGray bg-slate-50 p-2">
+                            <p className="text-xs font-semibold text-textMain">{item.title}</p>
+                            <p className="mt-0.5 text-xs text-muted">{item.body}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => logout('/login')}

@@ -21,3 +21,4 @@ env/
 .vscode/
 .idea/
 .DS_Store
+.blackboxcli/

@@ -4,6 +4,7 @@ export type Category = {
 };
 
 export type Doctor = {
+  slug?: string;
   name: string;
   nameAr: string;
   title: string;
@@ -17,6 +18,7 @@ export type Doctor = {
   tags: string[];
   tagsAr: string[];
   isVerified: boolean;
+  isTopDoctor?: boolean;
   photo?: string;
 };
 

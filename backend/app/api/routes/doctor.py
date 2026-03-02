@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import select
@@ -15,12 +15,15 @@ from app.db.models import (
     UserRole,
 )
 from app.db.session import get_db
-from app.schemas.appointment import AppointmentOut
+from app.schemas.appointment import AppointmentOut, AppointmentRescheduleIn
 from app.schemas.availability import (
+    AvailabilityBulkIn,
+    AvailabilityBulkOut,
     AvailabilityExceptionIn,
     AvailabilityExceptionOut,
     AvailabilityRuleIn,
     AvailabilityRuleOut,
+    AvailabilitySlotOut,
 )
 from app.schemas.doctor_application import (
     ApplicationOut,
@@ -28,8 +31,14 @@ from app.schemas.doctor_application import (
     SubmitApplicationResponse,
 )
 from app.schemas.doctor_document import DoctorDocumentOut
-from app.services.appointment_service import cancel_appointment, confirm_appointment, doctor_appointments
-from app.services.availability_service import replace_exceptions, replace_rules
+from app.services.appointment_service import (
+    cancel_appointment,
+    confirm_appointment,
+    doctor_appointments,
+    reschedule_appointment,
+)
+from app.services.availability_service import generate_slots, replace_exceptions, replace_rules
+from app.services.doctor_directory_service import filter_doctors
 from app.services.storage_service import save_document
 
 router = APIRouter(prefix="/doctor", tags=["doctor"])
@@ -184,6 +193,30 @@ def set_exceptions(
     return replace_exceptions(db, doctor_user_id=current_user.id, exceptions=payload)
 
 
+@router.post("/availability/bulk", response_model=AvailabilityBulkOut)
+def bulk_set_availability(
+    payload: AvailabilityBulkIn,
+    current_user: User = Depends(require_roles(UserRole.DOCTOR)),
+    db: Session = Depends(get_db),
+):
+    rules = replace_rules(db, doctor_user_id=current_user.id, rules=payload.rules)
+    exceptions = replace_exceptions(db, doctor_user_id=current_user.id, exceptions=payload.exceptions)
+    return AvailabilityBulkOut(
+        rules=[AvailabilityRuleOut.model_validate(item) for item in rules],
+        exceptions=[AvailabilityExceptionOut.model_validate(item) for item in exceptions],
+    )
+
+
+@router.get("/availability/calendar", response_model=list[AvailabilitySlotOut])
+def doctor_calendar_preview(
+    date_from: date,
+    date_to: date,
+    current_user: User = Depends(require_roles(UserRole.DOCTOR)),
+    db: Session = Depends(get_db),
+):
+    return generate_slots(db, doctor_user_id=current_user.id, date_from=date_from, date_to=date_to)
+
+
 @router.get("/appointments", response_model=list[AppointmentOut])
 def my_doctor_appointments(
     current_user: User = Depends(require_roles(UserRole.DOCTOR)),
@@ -210,3 +243,30 @@ def cancel_doctor_appointment(
     return cancel_appointment(
         db, appointment_id=appointment_id, actor_user_id=current_user.id, doctor_user_id=current_user.id
     )
+
+
+@router.post("/appointments/{appointment_id}/reschedule", response_model=AppointmentOut)
+def reschedule_doctor_appointment(
+    appointment_id: uuid.UUID,
+    payload: AppointmentRescheduleIn,
+    current_user: User = Depends(require_roles(UserRole.DOCTOR)),
+    db: Session = Depends(get_db),
+):
+    return reschedule_appointment(
+        db,
+        appointment_id=appointment_id,
+        actor_user_id=current_user.id,
+        doctor_user_id=current_user.id,
+        new_start_at=payload.start_at,
+        timezone=payload.timezone,
+    )
+
+
+@router.get("/referral-directory")
+def referral_directory(
+    specialty: str | None = None,
+    current_user: User = Depends(require_roles(UserRole.DOCTOR)),
+    db: Session = Depends(get_db),
+):
+    _ = current_user
+    return filter_doctors(db, specialty=specialty, public_only=True)

@@ -29,7 +29,7 @@ backend/
 
 ## Seeded Admin
 Seeded automatically on API startup:
-- email: `admin@sabina.local`
+- email: `admin@sabina.dev`
 - password: `Admin12345!`
 
 ## Run Locally (Docker)
@@ -107,11 +107,11 @@ make lint
 ```bash
 curl -X POST http://localhost:8000/auth/register \
   -H 'Content-Type: application/json' \
-  -d '{"email":"user@sabina.local","password":"User12345!","role":"USER"}'
+  -d '{"email":"user@sabina.dev","password":"User12345!","role":"USER"}'
 
 curl -X POST http://localhost:8000/auth/login \
   -H 'Content-Type: application/json' \
-  -d '{"email":"user@sabina.local","password":"User12345!"}'
+  -d '{"email":"user@sabina.dev","password":"User12345!"}'
 
 curl http://localhost:8000/auth/me -H "Authorization: Bearer $USER_TOKEN"
 ```
@@ -160,7 +160,7 @@ curl -X POST http://localhost:8000/doctor/appointments/$APPOINTMENT_ID/cancel \
 ```bash
 curl -X POST http://localhost:8000/auth/login \
   -H 'Content-Type: application/json' \
-  -d '{"email":"admin@sabina.local","password":"Admin12345!"}'
+  -d '{"email":"admin@sabina.dev","password":"Admin12345!"}'
 
 curl http://localhost:8000/admin/applications?status=SUBMITTED \
   -H "Authorization: Bearer $ADMIN_TOKEN"
@@ -204,6 +204,7 @@ curl -X POST http://localhost:8000/admin/doctors/$DOCTOR_USER_ID/update-pricing 
 ```bash
 curl http://localhost:8000/doctors
 curl "http://localhost:8000/doctors?specialty=CBT&min_price=50&max_price=100&city=Amman&session_type=VIDEO"
+curl "http://localhost:8000/doctors?concern=Anxiety&approach=CBT&gender=Female&insurance=MedNet&online_only=true&available_within_days=7"
 
 curl http://localhost:8000/doctors/$DOCTOR_USER_ID
 

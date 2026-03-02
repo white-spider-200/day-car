@@ -6,15 +6,22 @@
   "scripts": {
     "start": "vite",
     "dev": "vite",
+    "test": "npm run build && npm run test:backend",
+    "test:backend": "cd backend && make test-docker",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui",
     "build": "tsc -b && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
     "framer-motion": "^12.34.3",
+    "lucide-react": "^0.575.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.51.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.1",

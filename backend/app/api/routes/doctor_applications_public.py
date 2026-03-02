@@ -81,6 +81,10 @@ async def submit_public_doctor_application(
     specialty = required_text("specialty")
     languages = [item.strip() for item in form.getlist("languages") if isinstance(item, str) and item.strip()]
     location = required_text("location")
+    location_country = optional_text("location_country")
+    clinic_name = optional_text("clinic_name")
+    address_line = optional_text("address_line")
+    map_url = optional_text("map_url")
     online_available = required_bool("online_available")
     fee = required_float("fee")
     short_bio = required_text("short_bio")
@@ -91,6 +95,7 @@ async def submit_public_doctor_application(
     ]
     sub_specialties = sub_specialties_values or None
     photo = form.get("photo")
+    national_id_photo = form.get("national_id_photo")
     license_document = form.get("license_document")
     if not isinstance(license_document, UploadFile) and not (
         hasattr(license_document, "filename") and hasattr(license_document, "read")
@@ -100,6 +105,10 @@ async def submit_public_doctor_application(
         hasattr(photo, "filename") and hasattr(photo, "read")
     ):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="photo must be a file")
+    if national_id_photo is not None and not isinstance(national_id_photo, UploadFile) and not (
+        hasattr(national_id_photo, "filename") and hasattr(national_id_photo, "read")
+    ):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="national_id_photo must be a file")
 
     normalized_email = email.strip().lower()
     existing_application = db.scalar(
@@ -119,6 +128,10 @@ async def submit_public_doctor_application(
         "sub_specialties": sub_specialties,
         "languages": languages,
         "location": location,
+        "location_country": location_country,
+        "clinic_name": clinic_name,
+        "address_line": address_line,
+        "map_url": map_url,
         "online_available": online_available,
         "fee": fee,
         "short_bio": short_bio,
@@ -131,6 +144,7 @@ async def submit_public_doctor_application(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.errors()) from exc
 
     photo_url = await save_application_photo(photo) if photo is not None else None
+    national_id_photo_url = await save_application_photo(national_id_photo) if national_id_photo is not None else None
     license_document_url = await save_license_document(license_document)
     now = datetime.now(UTC)
     specialty_values = [payload.specialty]
@@ -145,7 +159,6 @@ async def submit_public_doctor_application(
         email=payload.email,
         phone=payload.phone,
         photo_url=photo_url,
-        national_id=payload.national_id,
         license_number=payload.license_number,
         headline=payload.short_bio[:255],
         specialty=payload.specialty,
@@ -156,6 +169,10 @@ async def submit_public_doctor_application(
         languages=payload.languages,
         specialties=specialty_values,
         location_city=payload.location,
+        location_country=payload.location_country,
+        clinic_name=payload.clinic_name,
+        address_line=payload.address_line,
+        map_url=payload.map_url,
         online_available=payload.online_available,
         session_types=["ONLINE"] if payload.online_available else ["IN_PERSON"],
         years_experience=payload.experience_years,
@@ -165,6 +182,7 @@ async def submit_public_doctor_application(
         pricing_currency="JOD",
         pricing_per_session=payload.fee,
         submitted_at=now,
+        national_id=national_id_photo_url or payload.national_id,
         rejection_reason=None,
         admin_note=None,
         internal_notes=None,

@@ -1,7 +1,7 @@
 from datetime import UTC, date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import and_, delete, or_, select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.orm import Session
 
 from app.db.models import (
@@ -9,6 +9,7 @@ from app.db.models import (
     AppointmentStatus,
     DoctorAvailabilityException,
     DoctorAvailabilityRule,
+    RecurrenceType,
 )
 from app.schemas.availability import AvailabilityExceptionIn, AvailabilityRuleIn, AvailabilitySlotOut
 
@@ -26,6 +27,9 @@ def replace_rules(db: Session, doctor_user_id, rules: list[AvailabilityRuleIn]) 
             timezone=rule.timezone,
             slot_duration_minutes=rule.slot_duration_minutes,
             buffer_minutes=rule.buffer_minutes,
+            is_blocked=rule.is_blocked,
+            effective_from=rule.effective_from,
+            effective_to=rule.effective_to,
         )
         for rule in rules
     ]
@@ -53,6 +57,12 @@ def replace_exceptions(
             doctor_user_id=doctor_user_id,
             date=item.date,
             is_unavailable=item.is_unavailable,
+            is_blocking=item.is_blocking,
+            is_recurring=item.is_recurring,
+            recurrence_type=item.recurrence_type,
+            recurrence_interval=item.recurrence_interval,
+            recurrence_until=item.recurrence_until,
+            weekday=item.weekday,
             start_time=item.start_time,
             end_time=item.end_time,
             note=item.note,
@@ -65,7 +75,7 @@ def replace_exceptions(
         db.scalars(
             select(DoctorAvailabilityException)
             .where(DoctorAvailabilityException.doctor_user_id == doctor_user_id)
-            .order_by(DoctorAvailabilityException.date)
+            .order_by(DoctorAvailabilityException.date, DoctorAvailabilityException.created_at)
         )
     )
 
@@ -74,21 +84,83 @@ def _slot_overlaps(start_1: datetime, end_1: datetime, start_2: datetime, end_2:
     return start_1 < end_2 and end_1 > start_2
 
 
+def _rule_active_on_day(rule: DoctorAvailabilityRule, day: date) -> bool:
+    if rule.effective_from and day < rule.effective_from:
+        return False
+    if rule.effective_to and day > rule.effective_to:
+        return False
+    return True
+
+
+def _exception_applies_on_day(item: DoctorAvailabilityException, target_day: date) -> bool:
+    if not item.is_recurring:
+        return item.date == target_day
+    if target_day < item.date:
+        return False
+    if item.recurrence_until and target_day > item.recurrence_until:
+        return False
+
+    recurrence_interval = max(1, int(item.recurrence_interval or 1))
+    recurrence_type = item.recurrence_type
+
+    if recurrence_type == RecurrenceType.WEEKLY:
+        expected_weekday = item.weekday if item.weekday is not None else item.date.weekday()
+        if target_day.weekday() != expected_weekday:
+            return False
+        weeks_delta = (target_day - item.date).days // 7
+        return weeks_delta % recurrence_interval == 0
+
+    if recurrence_type == RecurrenceType.MONTHLY:
+        if target_day.day != item.date.day:
+            return False
+        months_delta = (target_day.year - item.date.year) * 12 + (target_day.month - item.date.month)
+        return months_delta % recurrence_interval == 0
+
+    return False
+
+
 def _is_blocked_by_exception(
     day_exceptions: list[DoctorAvailabilityException],
     slot_start_local: datetime,
     slot_end_local: datetime,
 ) -> bool:
+    blocked = False
     for item in day_exceptions:
-        if not item.is_unavailable:
-            continue
-        if item.is_unavailable and item.start_time is None and item.end_time is None:
-            return True
-        if item.start_time and item.end_time:
+        if item.start_time is None and item.end_time is None:
+            overlaps = True
+        elif item.start_time and item.end_time:
             blocked_start = datetime.combine(slot_start_local.date(), item.start_time, slot_start_local.tzinfo)
             blocked_end = datetime.combine(slot_start_local.date(), item.end_time, slot_start_local.tzinfo)
-            if _slot_overlaps(slot_start_local, slot_end_local, blocked_start, blocked_end):
-                return True
+            overlaps = _slot_overlaps(slot_start_local, slot_end_local, blocked_start, blocked_end)
+        else:
+            overlaps = False
+
+        if not overlaps:
+            continue
+
+        if item.is_blocking and item.is_unavailable:
+            blocked = True
+            continue
+        if not item.is_blocking:
+            blocked = False
+    return blocked
+
+
+def _is_blocked_by_rules(
+    blocked_rules: list[DoctorAvailabilityRule],
+    *,
+    slot_start_utc: datetime,
+    slot_end_utc: datetime,
+    day: date,
+) -> bool:
+    for rule in blocked_rules:
+        if rule.day_of_week != day.weekday() or not _rule_active_on_day(rule, day):
+            continue
+        tz = ZoneInfo(rule.timezone)
+        block_start = datetime.combine(day, rule.start_time, tz).astimezone(UTC)
+        block_end = datetime.combine(day, rule.end_time, tz).astimezone(UTC)
+        if _slot_overlaps(slot_start_utc, slot_end_utc, block_start, block_end):
+            return True
     return False
 
 
@@ -110,15 +182,24 @@ def _get_exceptions_map(
             select(DoctorAvailabilityException)
             .where(
                 DoctorAvailabilityException.doctor_user_id == doctor_user_id,
-                DoctorAvailabilityException.date >= date_from,
                 DoctorAvailabilityException.date <= date_to,
+                or_(
+                    DoctorAvailabilityException.is_recurring.is_(False),
+                    DoctorAvailabilityException.recurrence_until.is_(None),
+                    DoctorAvailabilityException.recurrence_until >= date_from,
+                ),
             )
-            .order_by(DoctorAvailabilityException.date)
+            .order_by(DoctorAvailabilityException.date, DoctorAvailabilityException.created_at)
         )
     )
+
     by_date: dict[date, list[DoctorAvailabilityException]] = {}
-    for item in exceptions:
-        by_date.setdefault(item.date, []).append(item)
+    day = date_from
+    while day <= date_to:
+        for item in exceptions:
+            if _exception_applies_on_day(item, day):
+                by_date.setdefault(day, []).append(item)
+        day += timedelta(days=1)
     return by_date
 
 
@@ -140,9 +221,12 @@ def _get_confirmed_appointments(
 def generate_slots(
     db: Session, doctor_user_id, date_from: date, date_to: date
 ) -> list[AvailabilitySlotOut]:
-    rules = _get_rules(db, doctor_user_id)
-    if not rules:
+    all_rules = _get_rules(db, doctor_user_id)
+    if not all_rules:
         return []
+
+    blocked_rules = [rule for rule in all_rules if rule.is_blocked]
+    rules = [rule for rule in all_rules if not rule.is_blocked]
 
     exceptions_map = _get_exceptions_map(db, doctor_user_id, date_from, date_to)
     window_start_utc = datetime.combine(date_from, time.min, tzinfo=UTC)
@@ -156,8 +240,9 @@ def generate_slots(
         day_exceptions = exceptions_map.get(day, [])
 
         for rule in rules:
-            if rule.day_of_week != weekday:
+            if rule.day_of_week != weekday or not _rule_active_on_day(rule, day):
                 continue
+
             tz = ZoneInfo(rule.timezone)
             start_local = datetime.combine(day, rule.start_time, tz)
             end_local = datetime.combine(day, rule.end_time, tz)
@@ -174,6 +259,15 @@ def generate_slots(
                 slot_start_utc = slot_start_local.astimezone(UTC)
                 slot_end_utc = slot_end_local.astimezone(UTC)
 
+                if _is_blocked_by_rules(
+                    blocked_rules,
+                    slot_start_utc=slot_start_utc,
+                    slot_end_utc=slot_end_utc,
+                    day=day,
+                ):
+                    slot_start_local += step
+                    continue
+
                 is_overlapping_confirmed = any(
                     _slot_overlaps(slot_start_utc, slot_end_utc, appt.start_at, appt.end_at)
                     for appt in confirmed
@@ -186,7 +280,6 @@ def generate_slots(
                             timezone=rule.timezone,
                         )
                     )
-
                 slot_start_local += step
 
         day += timedelta(days=1)
@@ -205,9 +298,12 @@ def resolve_slot(
     Returns: (slot_end_at_utc, has_conflict_with_confirmed).
     If slot does not match rules/exceptions, slot_end_at_utc is None.
     """
-    rules = _get_rules(db, doctor_user_id)
-    if not rules:
+    all_rules = _get_rules(db, doctor_user_id)
+    if not all_rules:
         return None, False
+
+    blocked_rules = [rule for rule in all_rules if rule.is_blocked]
+    rules = [rule for rule in all_rules if not rule.is_blocked]
 
     for rule in rules:
         tz = ZoneInfo(rule.timezone)
@@ -216,6 +312,9 @@ def resolve_slot(
             continue
 
         local_day = local_start.date()
+        if not _rule_active_on_day(rule, local_day):
+            continue
+
         rule_start = datetime.combine(local_day, rule.start_time, tz)
         rule_end = datetime.combine(local_day, rule.end_time, tz)
         duration = timedelta(minutes=rule.slot_duration_minutes)
@@ -238,6 +337,13 @@ def resolve_slot(
             continue
 
         end_utc = local_end.astimezone(UTC)
+        if _is_blocked_by_rules(
+            blocked_rules,
+            slot_start_utc=requested_start_at_utc,
+            slot_end_utc=end_utc,
+            day=local_day,
+        ):
+            continue
 
         if check_confirmed_conflict:
             conflict_exists = db.scalar(

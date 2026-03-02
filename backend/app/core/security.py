@@ -34,6 +34,10 @@ class SimpleRateLimiter:
                 )
             queue.append(now)
 
+    def reset(self) -> None:
+        with self._lock:
+            self._events.clear()
+
 
 auth_rate_limiter = SimpleRateLimiter(
     max_requests=settings.auth_rate_limit_max_requests,

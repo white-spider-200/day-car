@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import Header from '../components/Header';
 import HeroSearch from '../components/HeroSearch';
 import DoctorSearchArabic, { type DoctorSearchFilters } from '../components/DoctorSearchArabic';
 import DoctorCard from '../components/DoctorCard';
@@ -7,7 +6,6 @@ import HowItWorks from '../components/HowItWorks';
 import VRTherapySection from '../components/VRTherapySection';
 import CTAForDoctors from '../components/CTAForDoctors';
 import Footer from '../components/Footer';
-import TimelineFeed from '../components/TimelineFeed';
 import { useLanguage } from '../context/LanguageContext';
 import type { Doctor } from '../data/homeData';
 import { fetchFirstReachable } from '../utils/api';
@@ -36,7 +34,25 @@ type ApiDoctor = {
   pricing_per_session: number | string | null;
   follow_up_price: number | string | null;
   verification_badges: string[] | null;
+  is_top_doctor?: boolean;
 };
+
+function resolveMediaUrl(url: string | null): string | undefined {
+  if (!url) return undefined;
+  const trimmed = url.trim();
+  if (!trimmed) return undefined;
+  if (/^(https?:)?\/\//i.test(trimmed) || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
+    return trimmed;
+  }
+
+  const path = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  const env = import.meta.env as Record<string, string | boolean | undefined>;
+  const envBase = typeof env.VITE_API_BASE_URL === 'string' ? env.VITE_API_BASE_URL.trim() : '';
+  const fallbackBase =
+    typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8000` : 'http://localhost:8000';
+  const base = (envBase && envBase !== '/api' ? envBase : fallbackBase).replace(/\/+$/, '').replace(/\/api$/, '');
+  return `${base}${path}`;
+}
 
 function collectTags(apiDoctor: ApiDoctor): string[] {
   const deduped = new Set<string>();
@@ -82,20 +98,153 @@ function toCardDoctor(apiDoctor: ApiDoctor): Doctor {
     tags,
     tagsAr: tags,
     isVerified: (apiDoctor.verification_badges ?? []).includes('VERIFIED_DOCTOR'),
-    photo: apiDoctor.photo_url ?? undefined
+    isTopDoctor: false,
+    photo: resolveMediaUrl(apiDoctor.photo_url)
   };
 }
 
+function sortByBestMatch(doctors: ApiDoctor[], filters?: DoctorSearchFilters): ApiDoctor[] {
+  const now = Date.now();
+  const normalize = (value: string) => value.trim().toLowerCase();
+  const includesText = (values: Array<string | null | undefined>, text: string) =>
+    values.some((value) => (value ?? '').toLowerCase().includes(text));
+  const normalizedSearch = normalize(filters?.mainSearch ?? '');
+
+  const toTime = (value: string | null) => {
+    if (!value) return Number.POSITIVE_INFINITY;
+    const parsed = Date.parse(value);
+    if (Number.isNaN(parsed) || parsed < now) return Number.POSITIVE_INFINITY;
+    return parsed;
+  };
+
+  const filterScore = (doctor: ApiDoctor) => {
+    if (!filters) return 0;
+
+    let score = 0;
+    if (normalizedSearch) {
+      const matchedSearch = includesText(
+        [
+          doctor.display_name,
+          doctor.headline,
+          doctor.location_city,
+          doctor.location_country,
+          doctor.gender_identity,
+          ...(doctor.specialties ?? []),
+          ...(doctor.concerns ?? []),
+          ...(doctor.therapy_approaches ?? []),
+          ...(doctor.languages ?? [])
+        ],
+        normalizedSearch
+      );
+      if (matchedSearch) score += 5;
+    }
+
+    if (filters.specialty && (doctor.specialties ?? []).includes(filters.specialty)) score += 4;
+    if (filters.concern && (doctor.concerns ?? []).includes(filters.concern)) score += 4;
+    if (filters.approach && (doctor.therapy_approaches ?? []).includes(filters.approach)) score += 4;
+    if (filters.language && (doctor.languages ?? []).includes(filters.language)) score += 3;
+    if (filters.sessionType && (doctor.session_types ?? []).some((item) => item.toUpperCase() === filters.sessionType.toUpperCase())) score += 3;
+    if (filters.location && includesText([doctor.location_city, doctor.location_country], normalize(filters.location))) score += 3;
+    if (filters.gender && (doctor.gender_identity ?? '').toLowerCase() === normalize(filters.gender)) score += 2;
+    if (filters.insurance && (doctor.insurance_providers ?? []).includes(filters.insurance)) score += 2;
+
+    return score;
+  };
+
+  return [...doctors].sort((a, b) => {
+    const aFilterScore = filterScore(a);
+    const bFilterScore = filterScore(b);
+    if (aFilterScore !== bFilterScore) {
+      return bFilterScore - aFilterScore;
+    }
+
+    const normalizeRating = (value: number | string | null) => {
+      if (value === null) return 0;
+      const parsed = Number(value);
+      if (Number.isNaN(parsed)) return 0;
+      return Math.max(0, Math.min(5, parsed));
+    };
+
+    const aRating = normalizeRating(a.rating);
+    const bRating = normalizeRating(b.rating);
+    if (aRating !== bRating) {
+      return bRating - aRating;
+    }
+
+    const aReviews = Number.isFinite(a.reviews_count) ? a.reviews_count : 0;
+    const bReviews = Number.isFinite(b.reviews_count) ? b.reviews_count : 0;
+    if (aReviews !== bReviews) {
+      return bReviews - aReviews;
+    }
+
+    const aTime = toTime(a.next_available_at);
+    const bTime = toTime(b.next_available_at);
+
+    if (aTime !== bTime) {
+      return aTime - bTime;
+    }
+    
+    return 0;
+  });
+}
+
+function placeBestInMiddle(doctors: ApiDoctor[], bestDoctorId: string): ApiDoctor[] {
+  if (doctors.length < 2) {
+    return doctors;
+  }
+
+  const bestIndex = doctors.findIndex((doctor) => doctor.doctor_user_id === bestDoctorId);
+  if (bestIndex === -1) {
+    return doctors;
+  }
+
+  const centerIndex = doctors.length >= 3 ? 1 : Math.floor(doctors.length / 2);
+  if (bestIndex === centerIndex) {
+    return doctors;
+  }
+
+  const reordered = [...doctors];
+  const [bestDoctor] = reordered.splice(bestIndex, 1);
+  reordered.splice(centerIndex, 0, bestDoctor);
+  return reordered;
+}
+
 export default function MainHomePage() {
-  const { t, lang } = useLanguage();
+  const { lang } = useLanguage();
   const [featuredDoctors, setFeaturedDoctors] = useState<Doctor[]>([]);
   const [doctorsError, setDoctorsError] = useState<string | null>(null);
   const [isLoadingDoctors, setIsLoadingDoctors] = useState(false);
+  const [isFilteredResults, setIsFilteredResults] = useState(false);
+  const [doctorNameSuggestions, setDoctorNameSuggestions] = useState<string[]>([]);
+
+  const hasActiveFilters = (filters?: DoctorSearchFilters) => {
+    if (!filters) {
+      return false;
+    }
+
+    return (
+      filters.consultationType !== 'all' ||
+      filters.mainSearch.trim() !== '' ||
+      filters.specialty !== '' ||
+      filters.concern !== '' ||
+      filters.approach !== '' ||
+      filters.language !== '' ||
+      filters.sessionType !== '' ||
+      filters.location !== '' ||
+      filters.gender !== '' ||
+      filters.insurance !== '' ||
+      filters.availabilityDays !== '' ||
+      filters.minPrice !== '' ||
+      filters.maxPrice !== ''
+    );
+  };
 
   const fetchDoctors = async (filters?: DoctorSearchFilters) => {
     setIsLoadingDoctors(true);
     try {
       setDoctorsError(null);
+      const isFiltering = hasActiveFilters(filters);
+      setIsFilteredResults(isFiltering);
       const query = new URLSearchParams();
 
       if (filters?.specialty) {
@@ -139,7 +288,8 @@ export default function MainHomePage() {
       }
 
       const queryString = query.toString();
-      const response = await fetchFirstReachable(queryString ? `/doctors?${queryString}` : '/doctors');
+      const endpoint = queryString ? `/doctors?${queryString}` : '/doctors';
+      const response = await fetchFirstReachable(endpoint);
 
       if (!response.ok) {
         const responseBody = await response.json().catch(() => null);
@@ -147,7 +297,22 @@ export default function MainHomePage() {
         throw new Error(detail ?? `Failed to load doctors (${response.status})`);
       }
 
-      let payload = (await response.json()) as ApiDoctor[];
+      const rawPayload = (await response.json()) as unknown;
+      let payload: ApiDoctor[] = [];
+
+      if (Array.isArray(rawPayload)) {
+        payload = rawPayload as ApiDoctor[];
+      } else if (rawPayload && typeof rawPayload === 'object') {
+        payload = [rawPayload as ApiDoctor];
+      }
+
+      if (!isFiltering) {
+        const names = Array.from(
+          new Set(payload.map((doctor) => doctor.display_name).filter((name) => Boolean(name && name.trim())))
+        );
+        setDoctorNameSuggestions(names);
+      }
+
       const searchTerm = filters?.mainSearch.trim().toLowerCase();
       if (searchTerm) {
         payload = payload.filter((doctor) => {
@@ -172,7 +337,19 @@ export default function MainHomePage() {
         return;
       }
 
-      setFeaturedDoctors(payload.map(toCardDoctor));
+      const isNameSearch = Boolean(filters?.mainSearch.trim());
+      const ranked = isNameSearch ? payload : sortByBestMatch(payload, filters);
+      const limited = isFiltering ? ranked : ranked.slice(0, 6);
+      const shouldPromoteBest = !isNameSearch;
+      const bestDoctorId = shouldPromoteBest ? limited[0]?.doctor_user_id : undefined;
+      const centered = bestDoctorId ? placeBestInMiddle(limited, bestDoctorId) : limited;
+
+      setFeaturedDoctors(
+        centered.map((doctor) => ({
+          ...toCardDoctor(doctor),
+          isTopDoctor: Boolean(bestDoctorId) && doctor.doctor_user_id === bestDoctorId
+        }))
+      );
     } catch (error) {
       setDoctorsError(error instanceof Error ? error.message : 'Failed to load doctors');
       setFeaturedDoctors([]);
@@ -191,26 +368,23 @@ export default function MainHomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary-50/40 via-white to-white text-textMain">
-      <Header
-        brandHref="/home"
-        navItems={[
-          { labelKey: 'nav.doctors', href: '#featured-doctors' },
-          { labelKey: 'nav.howItWorks', href: '#how-it-works' },
-          { labelKey: 'nav.forDoctors', href: '#for-doctors' },
-          { labelKey: 'nav.about', href: '/about' }
-        ]}
-      />
-
       <main>
         <HeroSearch />
-        <DoctorSearchArabic onSearch={handleArabicSearch} />
-        <HowItWorks />
-        <VRTherapySection />
+        <DoctorSearchArabic onSearch={handleArabicSearch} doctorNameSuggestions={doctorNameSuggestions} />
 
-        <section id="featured-doctors" className="section-shell py-12 sm:py-14" aria-labelledby="featured-title">
-          <h2 id="featured-title" className="section-title">
-            {t('home.featuredTitle')}
-          </h2>
+        <section
+          id="featured-doctors"
+          className="section-shell pt-6 pb-12 sm:pt-8 sm:pb-14"
+          aria-labelledby={isFilteredResults ? undefined : 'featured-title'}
+        >
+          {!isFilteredResults && (
+            <div className="flex flex-col items-center text-center">
+              <h2 id="featured-title" className="section-title text-center">
+                {lang === 'ar' ? 'أفضل الأطباء' : 'Top Doctors'}
+              </h2>
+              <div className="mt-2 h-1 w-20 rounded-full bg-gradient-to-r from-primary/30 via-primary to-primary/30" />
+            </div>
+          )}
 
           {doctorsError && (
             <p className="mt-4 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-700">
@@ -237,10 +411,8 @@ export default function MainHomePage() {
           </div>
         </section>
 
-        <div className="section-shell py-8">
-          <TimelineFeed title={lang === 'ar' ? 'الجدول الطبي الاجتماعي' : 'Social Medical Timeline'} />
-        </div>
-
+        <VRTherapySection />
+        <HowItWorks />
         <CTAForDoctors />
       </main>
 

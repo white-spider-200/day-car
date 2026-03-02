@@ -13,6 +13,7 @@ import FounderProfilePage from './pages/FounderProfilePage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import AdminFinancialReportsPage from './pages/AdminFinancialReportsPage';
+import DoctorSurveyPage from './pages/DoctorSurveyPage';
 import { getStoredAuthRole, navigateTo, roleHomePath, type AuthRole } from './utils/auth';
 
 type AppPage =
@@ -30,7 +31,8 @@ type AppPage =
   | 'about'
   | 'founder'
   | 'login'
-  | 'signup';
+  | 'signup'
+  | 'find-doctor';
 
 function pageFromPath(pathname: string): AppPage {
   if (pathname === '/home' || pathname === '/home/') {
@@ -71,6 +73,10 @@ function pageFromPath(pathname: string): AppPage {
 
   if (pathname === '/admin' || pathname === '/admin/') {
     return 'admin-applications';
+  }
+
+  if (pathname === '/find-doctor' || pathname === '/find-doctor/') {
+    return 'find-doctor';
   }
 
   if (pathname === '/about' || pathname === '/about/') {
@@ -200,6 +206,10 @@ export default function App() {
 
   if (page === 'admin' || page === 'admin-applications') {
     return <AdminPage />;
+  }
+
+  if (page === 'find-doctor') {
+    return <DoctorSurveyPage />;
   }
 
   if (page === 'about') {
