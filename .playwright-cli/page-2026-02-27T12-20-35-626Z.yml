@@ -1,0 +1,396 @@
+- main [ref=e348]:
+  - button "Logout" [ref=e350] [cursor=pointer]
+  - generic [ref=e351]:
+    - generic [ref=e352]:
+      - generic [ref=e353]:
+        - heading "Doctors" [level=1] [ref=e354]
+        - paragraph [ref=e355]: Review applications and decide who can be published.
+      - searchbox [ref=e357]
+    - generic [ref=e358]:
+      - generic [ref=e359]:
+        - generic [ref=e360]: Status
+        - generic [ref=e361]:
+          - button "All" [ref=e362] [cursor=pointer]
+          - button "Pending" [ref=e363] [cursor=pointer]
+          - button "Accepted" [ref=e364] [cursor=pointer]
+          - button "Closed" [ref=e365] [cursor=pointer]
+      - generic [ref=e366]:
+        - generic [ref=e367]: City
+        - combobox "City" [ref=e368]:
+          - option "All cities" [selected]
+          - option "Amman"
+          - option "Irbid"
+          - option "Salt"
+          - option "Zarqa"
+          - option "Aqaba"
+          - option "Madaba"
+      - generic [ref=e369]:
+        - generic [ref=e370]: Specialty
+        - combobox "Specialty" [ref=e371]:
+          - option "All specialties" [selected]
+          - option "Clinical Psychologist"
+          - option "Family Therapist"
+          - option "Child Psychologist"
+          - option "Perinatal Psychologist"
+          - option "Psychotherapist"
+          - option "Trauma Specialist"
+          - option "Counseling Psychologist"
+      - generic [ref=e372]:
+        - generic [ref=e373]: Submitted
+        - combobox "Submitted" [ref=e374]:
+          - option "Newest" [selected]
+          - option "Oldest"
+      - generic [ref=e375]:
+        - checkbox "Online only" [ref=e376]
+        - generic [ref=e377]: Online only
+  - table [ref=e380]:
+    - rowgroup [ref=e381]:
+      - row "Doctor Specialty City / Online Submitted Completeness Status Action" [ref=e382]:
+        - columnheader "Doctor" [ref=e383]
+        - columnheader "Specialty" [ref=e384]
+        - columnheader "City / Online" [ref=e385]
+        - columnheader "Submitted" [ref=e386]
+        - columnheader "Completeness" [ref=e387]
+        - columnheader "Status" [ref=e388]
+        - columnheader "Action" [ref=e389]
+    - rowgroup [ref=e390]:
+      - row "LH Dr. Leen Haddad Clinical Psychologist Amman Online Feb 24, 2026 Complete Pending Review Accept Close" [ref=e391]:
+        - cell "LH Dr. Leen Haddad" [ref=e392]:
+          - generic [ref=e393]:
+            - generic [ref=e394]: LH
+            - generic [ref=e395]: Dr. Leen Haddad
+        - cell "Clinical Psychologist" [ref=e396]
+        - cell "Amman Online" [ref=e397]:
+          - paragraph [ref=e398]: Amman
+          - generic [ref=e399]: Online
+        - cell "Feb 24, 2026" [ref=e400]
+        - cell "Complete" [ref=e401]:
+          - generic [ref=e402]: Complete
+        - cell "Pending" [ref=e403]:
+          - generic [ref=e404]: Pending
+        - cell "Review Accept Close" [ref=e405]:
+          - generic [ref=e406]:
+            - button "Review" [ref=e407] [cursor=pointer]
+            - generic [ref=e408]:
+              - button "Accept" [ref=e409] [cursor=pointer]
+              - button "Close" [ref=e410] [cursor=pointer]
+      - row "SK Dr. Sarah Khoury Family Therapist Amman In-person Feb 23, 2026 Complete Pending Review Accept Close" [ref=e411]:
+        - cell "SK Dr. Sarah Khoury" [ref=e412]:
+          - generic [ref=e413]:
+            - generic [ref=e414]: SK
+            - generic [ref=e415]: Dr. Sarah Khoury
+        - cell "Family Therapist" [ref=e416]
+        - cell "Amman In-person" [ref=e417]:
+          - paragraph [ref=e418]: Amman
+          - generic [ref=e419]: In-person
+        - cell "Feb 23, 2026" [ref=e420]
+        - cell "Complete" [ref=e421]:
+          - generic [ref=e422]: Complete
+        - cell "Pending" [ref=e423]:
+          - generic [ref=e424]: Pending
+        - cell "Review Accept Close" [ref=e425]:
+          - generic [ref=e426]:
+            - button "Review" [ref=e427] [cursor=pointer]
+            - generic [ref=e428]:
+              - button "Accept" [ref=e429] [cursor=pointer]
+              - button "Close" [ref=e430] [cursor=pointer]
+      - row "RA Dr. Rana Al-Zein Child Psychologist Amman Online Feb 22, 2026 Missing docs Pending Review Accept Close" [ref=e431]:
+        - cell "RA Dr. Rana Al-Zein" [ref=e432]:
+          - generic [ref=e433]:
+            - generic [ref=e434]: RA
+            - generic [ref=e435]: Dr. Rana Al-Zein
+        - cell "Child Psychologist" [ref=e436]
+        - cell "Amman Online" [ref=e437]:
+          - paragraph [ref=e438]: Amman
+          - generic [ref=e439]: Online
+        - cell "Feb 22, 2026" [ref=e440]
+        - cell "Missing docs" [ref=e441]:
+          - generic [ref=e442]: Missing docs
+        - cell "Pending" [ref=e443]:
+          - generic [ref=e444]: Pending
+        - cell "Review Accept Close" [ref=e445]:
+          - generic [ref=e446]:
+            - button "Review" [ref=e447] [cursor=pointer]
+            - generic [ref=e448]:
+              - button "Accept" [ref=e449] [cursor=pointer]
+              - button "Close" [ref=e450] [cursor=pointer]
+      - row "AN Dr. Aya Nabil Perinatal Psychologist Irbid Online Feb 21, 2026 Complete Pending Review Accept Close" [ref=e451]:
+        - cell "AN Dr. Aya Nabil" [ref=e452]:
+          - generic [ref=e453]:
+            - generic [ref=e454]: AN
+            - generic [ref=e455]: Dr. Aya Nabil
+        - cell "Perinatal Psychologist" [ref=e456]
+        - cell "Irbid Online" [ref=e457]:
+          - paragraph [ref=e458]: Irbid
+          - generic [ref=e459]: Online
+        - cell "Feb 21, 2026" [ref=e460]
+        - cell "Complete" [ref=e461]:
+          - generic [ref=e462]: Complete
+        - cell "Pending" [ref=e463]:
+          - generic [ref=e464]: Pending
+        - cell "Review Accept Close" [ref=e465]:
+          - generic [ref=e466]:
+            - button "Review" [ref=e467] [cursor=pointer]
+            - generic [ref=e468]:
+              - button "Accept" [ref=e469] [cursor=pointer]
+              - button "Close" [ref=e470] [cursor=pointer]
+      - row "HR Dr. Heba Rashed Psychotherapist Salt In-person Feb 20, 2026 Needs schedule Pending Review Accept Close" [ref=e471]:
+        - cell "HR Dr. Heba Rashed" [ref=e472]:
+          - generic [ref=e473]:
+            - generic [ref=e474]: HR
+            - generic [ref=e475]: Dr. Heba Rashed
+        - cell "Psychotherapist" [ref=e476]
+        - cell "Salt In-person" [ref=e477]:
+          - paragraph [ref=e478]: Salt
+          - generic [ref=e479]: In-person
+        - cell "Feb 20, 2026" [ref=e480]
+        - cell "Needs schedule" [ref=e481]:
+          - generic [ref=e482]: Needs schedule
+        - cell "Pending" [ref=e483]:
+          - generic [ref=e484]: Pending
+        - cell "Review Accept Close" [ref=e485]:
+          - generic [ref=e486]:
+            - button "Review" [ref=e487] [cursor=pointer]
+            - generic [ref=e488]:
+              - button "Accept" [ref=e489] [cursor=pointer]
+              - button "Close" [ref=e490] [cursor=pointer]
+      - row "LB Dr. Lina Batayneh Family Therapist Zarqa Online Feb 19, 2026 Complete Pending Review Accept Close" [ref=e491]:
+        - cell "LB Dr. Lina Batayneh" [ref=e492]:
+          - generic [ref=e493]:
+            - generic [ref=e494]: LB
+            - generic [ref=e495]: Dr. Lina Batayneh
+        - cell "Family Therapist" [ref=e496]
+        - cell "Zarqa Online" [ref=e497]:
+          - paragraph [ref=e498]: Zarqa
+          - generic [ref=e499]: Online
+        - cell "Feb 19, 2026" [ref=e500]
+        - cell "Complete" [ref=e501]:
+          - generic [ref=e502]: Complete
+        - cell "Pending" [ref=e503]:
+          - generic [ref=e504]: Pending
+        - cell "Review Accept Close" [ref=e505]:
+          - generic [ref=e506]:
+            - button "Review" [ref=e507] [cursor=pointer]
+            - generic [ref=e508]:
+              - button "Accept" [ref=e509] [cursor=pointer]
+              - button "Close" [ref=e510] [cursor=pointer]
+      - row "BH Dr. Bilal Hammad Trauma Specialist Aqaba In-person Feb 18, 2026 Complete Pending Review Accept Close" [ref=e511]:
+        - cell "BH Dr. Bilal Hammad" [ref=e512]:
+          - generic [ref=e513]:
+            - generic [ref=e514]: BH
+            - generic [ref=e515]: Dr. Bilal Hammad
+        - cell "Trauma Specialist" [ref=e516]
+        - cell "Aqaba In-person" [ref=e517]:
+          - paragraph [ref=e518]: Aqaba
+          - generic [ref=e519]: In-person
+        - cell "Feb 18, 2026" [ref=e520]
+        - cell "Complete" [ref=e521]:
+          - generic [ref=e522]: Complete
+        - cell "Pending" [ref=e523]:
+          - generic [ref=e524]: Pending
+        - cell "Review Accept Close" [ref=e525]:
+          - generic [ref=e526]:
+            - button "Review" [ref=e527] [cursor=pointer]
+            - generic [ref=e528]:
+              - button "Accept" [ref=e529] [cursor=pointer]
+              - button "Close" [ref=e530] [cursor=pointer]
+      - row "DA Dr. Dana Abu-Taleb Child Psychologist Madaba In-person Feb 17, 2026 Complete Pending Review Accept Close" [ref=e531]:
+        - cell "DA Dr. Dana Abu-Taleb" [ref=e532]:
+          - generic [ref=e533]:
+            - generic [ref=e534]: DA
+            - generic [ref=e535]: Dr. Dana Abu-Taleb
+        - cell "Child Psychologist" [ref=e536]
+        - cell "Madaba In-person" [ref=e537]:
+          - paragraph [ref=e538]: Madaba
+          - generic [ref=e539]: In-person
+        - cell "Feb 17, 2026" [ref=e540]
+        - cell "Complete" [ref=e541]:
+          - generic [ref=e542]: Complete
+        - cell "Pending" [ref=e543]:
+          - generic [ref=e544]: Pending
+        - cell "Review Accept Close" [ref=e545]:
+          - generic [ref=e546]:
+            - button "Review" [ref=e547] [cursor=pointer]
+            - generic [ref=e548]:
+              - button "Accept" [ref=e549] [cursor=pointer]
+              - button "Close" [ref=e550] [cursor=pointer]
+      - row "TM Dr. Tareq Mansour Psychotherapist Irbid Online Feb 16, 2026 Complete Accepted Review Close" [ref=e551]:
+        - cell "TM Dr. Tareq Mansour" [ref=e552]:
+          - generic [ref=e553]:
+            - generic [ref=e554]: TM
+            - generic [ref=e555]: Dr. Tareq Mansour
+        - cell "Psychotherapist" [ref=e556]
+        - cell "Irbid Online" [ref=e557]:
+          - paragraph [ref=e558]: Irbid
+          - generic [ref=e559]: Online
+        - cell "Feb 16, 2026" [ref=e560]
+        - cell "Complete" [ref=e561]:
+          - generic [ref=e562]: Complete
+        - cell "Accepted" [ref=e563]:
+          - generic [ref=e564]: Accepted
+        - cell "Review Close" [ref=e565]:
+          - generic [ref=e566]:
+            - button "Review" [ref=e567] [cursor=pointer]
+            - button "Close" [ref=e569] [cursor=pointer]
+      - row "YK Dr. Yousef Khalil Counseling Psychologist Aqaba Online Feb 15, 2026 Complete Accepted Review Close" [ref=e570]:
+        - cell "YK Dr. Yousef Khalil" [ref=e571]:
+          - generic [ref=e572]:
+            - generic [ref=e573]: YK
+            - generic [ref=e574]: Dr. Yousef Khalil
+        - cell "Counseling Psychologist" [ref=e575]
+        - cell "Aqaba Online" [ref=e576]:
+          - paragraph [ref=e577]: Aqaba
+          - generic [ref=e578]: Online
+        - cell "Feb 15, 2026" [ref=e579]
+        - cell "Complete" [ref=e580]:
+          - generic [ref=e581]: Complete
+        - cell "Accepted" [ref=e582]:
+          - generic [ref=e583]: Accepted
+        - cell "Review Close" [ref=e584]:
+          - generic [ref=e585]:
+            - button "Review" [ref=e586] [cursor=pointer]
+            - button "Close" [ref=e588] [cursor=pointer]
+      - row "SR Dr. Sami Rbehat Clinical Psychologist Madaba In-person Feb 14, 2026 Complete Accepted Review Close" [ref=e589]:
+        - cell "SR Dr. Sami Rbehat" [ref=e590]:
+          - generic [ref=e591]:
+            - generic [ref=e592]: SR
+            - generic [ref=e593]: Dr. Sami Rbehat
+        - cell "Clinical Psychologist" [ref=e594]
+        - cell "Madaba In-person" [ref=e595]:
+          - paragraph [ref=e596]: Madaba
+          - generic [ref=e597]: In-person
+        - cell "Feb 14, 2026" [ref=e598]
+        - cell "Complete" [ref=e599]:
+          - generic [ref=e600]: Complete
+        - cell "Accepted" [ref=e601]:
+          - generic [ref=e602]: Accepted
+        - cell "Review Close" [ref=e603]:
+          - generic [ref=e604]:
+            - button "Review" [ref=e605] [cursor=pointer]
+            - button "Close" [ref=e607] [cursor=pointer]
+      - row "MS Dr. Maha Sweis Counseling Psychologist Irbid Online Feb 13, 2026 Complete Accepted Review Close" [ref=e608]:
+        - cell "MS Dr. Maha Sweis" [ref=e609]:
+          - generic [ref=e610]:
+            - generic [ref=e611]: MS
+            - generic [ref=e612]: Dr. Maha Sweis
+        - cell "Counseling Psychologist" [ref=e613]
+        - cell "Irbid Online" [ref=e614]:
+          - paragraph [ref=e615]: Irbid
+          - generic [ref=e616]: Online
+        - cell "Feb 13, 2026" [ref=e617]
+        - cell "Complete" [ref=e618]:
+          - generic [ref=e619]: Complete
+        - cell "Accepted" [ref=e620]:
+          - generic [ref=e621]: Accepted
+        - cell "Review Close" [ref=e622]:
+          - generic [ref=e623]:
+            - button "Review" [ref=e624] [cursor=pointer]
+            - button "Close" [ref=e626] [cursor=pointer]
+      - row "ON Dr. Omar Nasser Trauma Specialist Zarqa Online Feb 12, 2026 Complete Closed Review Reopen" [ref=e627]:
+        - cell "ON Dr. Omar Nasser" [ref=e628]:
+          - generic [ref=e629]:
+            - generic [ref=e630]: "ON"
+            - generic [ref=e631]: Dr. Omar Nasser
+        - cell "Trauma Specialist" [ref=e632]
+        - cell "Zarqa Online" [ref=e633]:
+          - paragraph [ref=e634]: Zarqa
+          - generic [ref=e635]: Online
+        - cell "Feb 12, 2026" [ref=e636]
+        - cell "Complete" [ref=e637]:
+          - generic [ref=e638]: Complete
+        - cell "Closed" [ref=e639]:
+          - generic [ref=e640]: Closed
+        - cell "Review Reopen" [ref=e641]:
+          - generic [ref=e642]:
+            - button "Review" [ref=e643] [cursor=pointer]
+            - button "Reopen" [ref=e645] [cursor=pointer]
+      - row "FQ Dr. Fadi Qasem Psychotherapist Irbid Online Feb 11, 2026 Complete Closed Review Reopen" [ref=e646]:
+        - cell "FQ Dr. Fadi Qasem" [ref=e647]:
+          - generic [ref=e648]:
+            - generic [ref=e649]: FQ
+            - generic [ref=e650]: Dr. Fadi Qasem
+        - cell "Psychotherapist" [ref=e651]
+        - cell "Irbid Online" [ref=e652]:
+          - paragraph [ref=e653]: Irbid
+          - generic [ref=e654]: Online
+        - cell "Feb 11, 2026" [ref=e655]
+        - cell "Complete" [ref=e656]:
+          - generic [ref=e657]: Complete
+        - cell "Closed" [ref=e658]:
+          - generic [ref=e659]: Closed
+        - cell "Review Reopen" [ref=e660]:
+          - generic [ref=e661]:
+            - button "Review" [ref=e662] [cursor=pointer]
+            - button "Reopen" [ref=e664] [cursor=pointer]
+      - row "RA Dr. Rami Akel Psychotherapist Amman Online Feb 10, 2026 Complete Closed Review Reopen" [ref=e665]:
+        - cell "RA Dr. Rami Akel" [ref=e666]:
+          - generic [ref=e667]:
+            - generic [ref=e668]: RA
+            - generic [ref=e669]: Dr. Rami Akel
+        - cell "Psychotherapist" [ref=e670]
+        - cell "Amman Online" [ref=e671]:
+          - paragraph [ref=e672]: Amman
+          - generic [ref=e673]: Online
+        - cell "Feb 10, 2026" [ref=e674]
+        - cell "Complete" [ref=e675]:
+          - generic [ref=e676]: Complete
+        - cell "Closed" [ref=e677]:
+          - generic [ref=e678]: Closed
+        - cell "Review Reopen" [ref=e679]:
+          - generic [ref=e680]:
+            - button "Review" [ref=e681] [cursor=pointer]
+            - button "Reopen" [ref=e683] [cursor=pointer]
+      - row "NS Dr. Nada Saleh Clinical Psychologist Amman Online Feb 9, 2026 Complete Accepted Review Close" [ref=e684]:
+        - cell "NS Dr. Nada Saleh" [ref=e685]:
+          - generic [ref=e686]:
+            - generic [ref=e687]: NS
+            - generic [ref=e688]: Dr. Nada Saleh
+        - cell "Clinical Psychologist" [ref=e689]
+        - cell "Amman Online" [ref=e690]:
+          - paragraph [ref=e691]: Amman
+          - generic [ref=e692]: Online
+        - cell "Feb 9, 2026" [ref=e693]
+        - cell "Complete" [ref=e694]:
+          - generic [ref=e695]: Complete
+        - cell "Accepted" [ref=e696]:
+          - generic [ref=e697]: Accepted
+        - cell "Review Close" [ref=e698]:
+          - generic [ref=e699]:
+            - button "Review" [ref=e700] [cursor=pointer]
+            - button "Close" [ref=e702] [cursor=pointer]
+      - row "RZ Dr. Reem Zaid Family Therapist Zarqa In-person Feb 8, 2026 Complete Accepted Review Close" [ref=e703]:
+        - cell "RZ Dr. Reem Zaid" [ref=e704]:
+          - generic [ref=e705]:
+            - generic [ref=e706]: RZ
+            - generic [ref=e707]: Dr. Reem Zaid
+        - cell "Family Therapist" [ref=e708]
+        - cell "Zarqa In-person" [ref=e709]:
+          - paragraph [ref=e710]: Zarqa
+          - generic [ref=e711]: In-person
+        - cell "Feb 8, 2026" [ref=e712]
+        - cell "Complete" [ref=e713]:
+          - generic [ref=e714]: Complete
+        - cell "Accepted" [ref=e715]:
+          - generic [ref=e716]: Accepted
+        - cell "Review Close" [ref=e717]:
+          - generic [ref=e718]:
+            - button "Review" [ref=e719] [cursor=pointer]
+            - button "Close" [ref=e721] [cursor=pointer]
+      - row "KO Dr. Kareem Odeh Trauma Specialist Salt Online Feb 7, 2026 Complete Closed Review Reopen" [ref=e722]:
+        - cell "KO Dr. Kareem Odeh" [ref=e723]:
+          - generic [ref=e724]:
+            - generic [ref=e725]: KO
+            - generic [ref=e726]: Dr. Kareem Odeh
+        - cell "Trauma Specialist" [ref=e727]
+        - cell "Salt Online" [ref=e728]:
+          - paragraph [ref=e729]: Salt
+          - generic [ref=e730]: Online
+        - cell "Feb 7, 2026" [ref=e731]
+        - cell "Complete" [ref=e732]:
+          - generic [ref=e733]: Complete
+        - cell "Closed" [ref=e734]:
+          - generic [ref=e735]: Closed
+        - cell "Review Reopen" [ref=e736]:
+          - generic [ref=e737]:
+            - button "Review" [ref=e738] [cursor=pointer]
+            - button "Reopen" [ref=e740] [cursor=pointer]

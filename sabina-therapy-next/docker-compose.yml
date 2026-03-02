@@ -1,0 +1,18 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sabina-therapy-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sabina_therapy
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - sabina_pg_data:/var/lib/postgresql/data
+
+volumes:
+  sabina_pg_data:

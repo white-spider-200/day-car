@@ -5,11 +5,20 @@ from sqlalchemy import select
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from app.api.routes import (
+    admin_reports,
     admin,
     auth,
     doctor,
     doctor_applications_public,
+    ehr,
+    messages,
+    notifications,
+    payments,
+    posts,
+    profile_updates,
     public_doctors,
+    referrals,
+    treatment_requests,
     user_appointments,
 )
 from app.core.config import settings
@@ -35,6 +44,15 @@ app.include_router(doctor_applications_public.router)
 app.include_router(doctor.router)
 app.include_router(user_appointments.router)
 app.include_router(admin.router)
+app.include_router(payments.router)
+app.include_router(treatment_requests.router)
+app.include_router(ehr.router)
+app.include_router(referrals.router)
+app.include_router(posts.router)
+app.include_router(messages.router)
+app.include_router(notifications.router)
+app.include_router(admin_reports.router)
+app.include_router(profile_updates.router)
 
 ensure_upload_dir()
 app.mount(settings.upload_base_url, StaticFiles(directory=settings.upload_dir), name="uploads")

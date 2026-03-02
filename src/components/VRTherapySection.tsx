@@ -18,18 +18,19 @@ export default function VRTherapySection() {
   return (
     <section className="section-shell py-[100px]" aria-labelledby="vr-therapy-title" dir={isAr ? 'rtl' : 'ltr'}>
       <div className="mx-auto max-w-6xl">
-        <span className="inline-flex rounded-full bg-primary/10 px-4 py-1.5 text-xs font-black tracking-widest text-primary">
-          {isAr ? 'تقنيات علاجية متقدمة' : 'Advanced Therapeutic Technologies'}
-        </span>
-
-        <h2 id="vr-therapy-title" className="mt-4 text-3xl font-black tracking-tight text-textMain sm:text-4xl">
-          {isAr ? 'العلاج بالواقع الافتراضي (VR)' : 'Virtual Reality (VR) Therapy'}
-        </h2>
-        <p className="mt-4 max-w-3xl text-base leading-relaxed text-muted sm:text-lg">
-          {isAr
-            ? 'تقنيات حديثة لمساعدتك في مواجهة مخاوفك بطريقة آمنة وتدريجية'
-            : 'Modern techniques to help you face fears in a safe, gradual way.'}
-        </p>
+        <div className="mx-auto max-w-3xl text-center">
+          <h2
+            id="vr-therapy-title"
+            className="inline-block rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 px-5 py-3 text-3xl font-black tracking-tight text-textMain sm:text-4xl"
+          >
+            {isAr ? 'العلاج بالواقع الافتراضي (VR)' : 'Virtual Reality (VR) Therapy'}
+          </h2>
+          <p className="mt-5 text-base leading-relaxed text-muted sm:text-lg">
+            {isAr
+              ? 'تقنيات حديثة لمساعدتك في مواجهة مخاوفك بطريقة آمنة وتدريجية'
+              : 'Modern techniques to help you face fears in a safe, gradual way.'}
+          </p>
+        </div>
 
         <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           {vrExamples.map((example) => (

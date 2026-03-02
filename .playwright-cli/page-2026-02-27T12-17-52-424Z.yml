@@ -1,0 +1,301 @@
+- generic [ref=e4]:
+  - banner [ref=e5]:
+    - generic [ref=e6]:
+      - link "Sabina Therapy home" [ref=e7] [cursor=pointer]:
+        - /url: /home
+        - img "Sabina Logo" [ref=e9]
+        - generic [ref=e10]: Sabina
+      - navigation "Main navigation" [ref=e11]:
+        - link "الأطباء" [ref=e12] [cursor=pointer]:
+          - /url: /home#featured-doctors
+        - link "كيف يعمل" [ref=e13] [cursor=pointer]:
+          - /url: /home#how-it-works
+        - link "للأطباء" [ref=e14] [cursor=pointer]:
+          - /url: /home#for-doctors
+        - link "حول" [ref=e15] [cursor=pointer]:
+          - /url: /about
+      - generic [ref=e16]:
+        - button "EN" [ref=e17] [cursor=pointer]
+        - generic [ref=e18]:
+          - generic [ref=e19]: USER
+          - button "Logout" [ref=e20] [cursor=pointer]
+  - main [ref=e21]:
+    - region "Dr. Sara Al-Khaldi" [ref=e22]:
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - img "Dr. Sara Al-Khaldi" [ref=e26]
+          - generic [ref=e27]:
+            - generic [ref=e28]:
+              - heading "Dr. Sara Al-Khaldi" [level=1] [ref=e29]
+              - generic [ref=e30]:
+                - img [ref=e31]
+                - text: معتمد
+            - paragraph [ref=e33]: Clinical Psychologist
+            - generic [ref=e34]:
+              - generic [ref=e35]: 500+
+              - generic [ref=e36]:
+                - generic [ref=e37]: جلسة معتمدة
+                - generic [ref=e38]: MindCare
+            - list "Doctor details" [ref=e39]:
+              - listitem [ref=e40]: Amman • Online
+              - listitem [ref=e41]: •
+              - listitem [ref=e42]: Arabic, English
+              - listitem [ref=e43]: •
+              - listitem [ref=e44]: ⭐ 4.9 (210)
+            - paragraph [ref=e45]: غالباً ما يرد خلال ساعتين
+        - complementary [ref=e46]:
+          - paragraph [ref=e47]: السعر
+          - paragraph [ref=e48]: 30 JOD / session
+          - generic [ref=e49]:
+            - generic [ref=e50]:
+              - term [ref=e51]: مدة الجلسة
+              - definition [ref=e52]: 50 minutes
+            - generic [ref=e53]:
+              - term [ref=e54]: الموعد المتاح التالي
+              - definition [ref=e55]: Today 6:30 PM
+          - generic [ref=e56]:
+            - button "حجز موعد" [ref=e57] [cursor=pointer]
+            - button "مراسلة الطبيب" [ref=e58] [cursor=pointer]
+          - paragraph [ref=e59]: دفع آمن • إلغاء حتى 24 ساعة قبل الموعد
+    - navigation "Profile sections" [ref=e60]:
+      - generic [ref=e61]:
+        - button "حول" [ref=e62] [cursor=pointer]
+        - button "الخدمات" [ref=e63] [cursor=pointer]
+        - button "المواعيد" [ref=e64] [cursor=pointer]
+        - button "التقييمات" [ref=e65] [cursor=pointer]
+    - generic [ref=e66]:
+      - generic [ref=e67]:
+        - region "About section" [ref=e68]:
+          - generic [ref=e69]:
+            - region "حول Dr. Sara Al-Khaldi" [ref=e70]:
+              - heading "حول Dr. Sara Al-Khaldi" [level=2] [ref=e71]
+              - paragraph [ref=e72]: Dr. Sara Al-Khaldi is a dedicated clinical psychologist committed to providing a safe, non-judgmental space for healing. With a focus on adult mental health and couples therapy, she helps her patients navigate complex emotional landscapes using a blend of empathy and evidence-based clinical strategy. Her goal is to empower every individual to rediscover their inner strength and build a resilient future.
+              - generic [ref=e73]:
+                - generic [ref=e74]:
+                  - paragraph [ref=e75]: 8+
+                  - paragraph [ref=e76]: الخبرة المهنية
+                - generic [ref=e77]:
+                  - paragraph [ref=e78]: 500+
+                  - paragraph [ref=e79]: Patients
+                - generic [ref=e80]:
+                  - paragraph [ref=e81]: "4.9"
+                  - paragraph [ref=e82]: Avg Rating
+                - generic [ref=e83]:
+                  - paragraph [ref=e84]: 100%
+                  - paragraph [ref=e85]: Private
+            - generic [ref=e86]:
+              - img "Video introduction" [ref=e87]
+              - button "Play video introduction" [ref=e89] [cursor=pointer]:
+                - img [ref=e90]
+              - generic [ref=e92]: شاهد الفيديو التعريفي (1:24)
+            - generic [ref=e94]:
+              - generic [ref=e95]:
+                - img [ref=e97]
+                - heading "منهجيتي في العلاج" [level=3] [ref=e99]
+                - paragraph [ref=e100]: My therapeutic philosophy is grounded in the belief that every person has the capacity for growth. I utilize an integrative approach, primarily drawing from Cognitive Behavioral Therapy (CBT) and Mindfulness-Based Stress Reduction. Together, we will identify the root causes of your challenges and develop practical, sustainable tools to improve your daily wellbeing and long-term mental health.
+              - generic [ref=e101]:
+                - generic [ref=e102]:
+                  - heading "الخبرة المهنية" [level=3] [ref=e103]
+                  - paragraph [ref=e104]: Over 8 years of dedicated clinical practice. Previously served as a Senior Therapist at the Amman Mental Health Institute and has contributed to multiple research papers on trauma-focused therapy and emotional regulation.
+                - generic [ref=e105]:
+                  - heading "الخلفية الأكاديمية" [level=3] [ref=e106]
+                  - paragraph [ref=e107]: Master's in Clinical Psychology from the University of Jordan (High Honors). Certified Trauma Professional (CTP) and advanced training in Gottman Method for couples therapy.
+            - generic [ref=e109]:
+              - generic [ref=e110]:
+                - heading "التأمين والتغطية" [level=3] [ref=e111]
+                - paragraph [ref=e112]: د. سارة شريك معتمد مع كبرى شركات التأمين.
+              - generic [ref=e113]:
+                - generic [ref=e114]: MedNet
+                - generic [ref=e115]: NatHealth
+                - generic [ref=e116]: GIG
+                - generic [ref=e117]: MetLife
+            - generic [ref=e118]:
+              - heading "التخصصات السريرية" [level=3] [ref=e119]
+              - list "Specializations" [ref=e120]:
+                - listitem [ref=e121]: Anxiety
+                - listitem [ref=e123]: Depression
+                - listitem [ref=e125]: Couples Therapy
+                - listitem [ref=e127]: Trauma
+                - listitem [ref=e129]: ADHD
+                - listitem [ref=e131]: Burnout Recovery
+                - listitem [ref=e133]: Grief Counseling
+        - region "Services section" [ref=e135]:
+          - region "Services" [ref=e136]:
+            - heading "Services" [level=2] [ref=e137]
+            - generic [ref=e138]:
+              - article [ref=e139]:
+                - generic [ref=e140]:
+                  - heading "Individual Therapy" [level=3] [ref=e141]
+                  - paragraph [ref=e142]: 30 JOD • 50 min
+                - button "Book" [ref=e143] [cursor=pointer]
+              - article [ref=e144]:
+                - generic [ref=e145]:
+                  - heading "Couples Therapy" [level=3] [ref=e146]
+                  - paragraph [ref=e147]: 40 JOD • 60 min
+                - button "Book" [ref=e148] [cursor=pointer]
+              - article [ref=e149]:
+                - generic [ref=e150]:
+                  - heading "Online Session" [level=3] [ref=e151]
+                  - paragraph [ref=e152]: 25 JOD • 45 min
+                - button "Book" [ref=e153] [cursor=pointer]
+        - region "Availability section" [ref=e154]:
+          - region "Availability" [ref=e155]:
+            - generic [ref=e156]:
+              - heading "Availability" [level=2] [ref=e157]
+              - paragraph [ref=e158]: Times shown in Jordan (GMT+3)
+            - generic [ref=e160]:
+              - article [ref=e161]:
+                - heading "Mon" [level=3] [ref=e162]
+                - generic [ref=e163]:
+                  - button "09:00" [ref=e164] [cursor=pointer]
+                  - button "11:00" [ref=e165] [cursor=pointer]
+                  - button "14:00" [ref=e166] [cursor=pointer]
+                  - button "18:30" [ref=e167] [cursor=pointer]
+              - article [ref=e168]:
+                - heading "Tue" [level=3] [ref=e169]
+                - generic [ref=e170]:
+                  - button "10:00" [ref=e171] [cursor=pointer]
+                  - button "12:00" [ref=e172] [cursor=pointer]
+                  - button "15:30" [ref=e173] [cursor=pointer]
+                  - button "19:00" [ref=e174] [cursor=pointer]
+              - article [ref=e175]:
+                - heading "Wed" [level=3] [ref=e176]
+                - generic [ref=e177]:
+                  - button "09:30" [ref=e178] [cursor=pointer]
+                  - button "13:00" [ref=e179] [cursor=pointer]
+                  - button "16:30" [ref=e180] [cursor=pointer]
+              - article [ref=e181]:
+                - heading "Thu" [level=3] [ref=e182]
+                - generic [ref=e183]:
+                  - button "10:30" [ref=e184] [cursor=pointer]
+                  - button "14:30" [ref=e185] [cursor=pointer]
+                  - button "18:00" [ref=e186] [cursor=pointer]
+              - article [ref=e187]:
+                - heading "Fri" [level=3] [ref=e188]
+                - generic [ref=e189]:
+                  - button "09:00" [ref=e190] [cursor=pointer]
+                  - button "11:30" [ref=e191] [cursor=pointer]
+                  - button "17:30" [ref=e192] [cursor=pointer]
+              - article [ref=e193]:
+                - heading "Sat" [level=3] [ref=e194]
+                - generic [ref=e195]:
+                  - button "10:00" [ref=e196] [cursor=pointer]
+                  - button "12:30" [ref=e197] [cursor=pointer]
+              - article [ref=e198]:
+                - heading "Sun" [level=3] [ref=e199]
+                - generic [ref=e200]:
+                  - button "11:00" [ref=e201] [cursor=pointer]
+                  - button "15:00" [ref=e202] [cursor=pointer]
+                  - button "18:30" [ref=e203] [cursor=pointer]
+        - region "Reviews section" [ref=e204]:
+          - region "Reviews" [ref=e205]:
+            - generic [ref=e206]:
+              - heading "Reviews" [level=2] [ref=e207]
+              - generic [ref=e208]:
+                - text: Sort by
+                - combobox "Sort by" [ref=e209]:
+                  - option "Newest" [selected]
+                  - option "Highest rating"
+            - generic [ref=e210]:
+              - complementary [ref=e211]:
+                - paragraph [ref=e212]: 4.9/5
+                - paragraph [ref=e213]: Based on 210 reviews
+                - list "Rating distribution" [ref=e214]:
+                  - listitem [ref=e215]:
+                    - generic [ref=e216]: 5★
+                    - generic [ref=e219]: "182"
+                  - listitem [ref=e220]:
+                    - generic [ref=e221]: 4★
+                    - generic [ref=e224]: "20"
+                  - listitem [ref=e225]:
+                    - generic [ref=e226]: 3★
+                    - generic [ref=e229]: "6"
+                  - listitem [ref=e230]:
+                    - generic [ref=e231]: 2★
+                    - generic [ref=e234]: "1"
+                  - listitem [ref=e235]:
+                    - generic [ref=e236]: 1★
+                    - generic [ref=e239]: "1"
+              - generic [ref=e240]:
+                - article [ref=e241]:
+                  - generic [ref=e242]:
+                    - generic [ref=e243]: LM
+                    - generic [ref=e244]:
+                      - generic [ref=e245]:
+                        - generic [ref=e246]:
+                          - heading "Lina M." [level=3] [ref=e247]
+                          - paragraph [ref=e248]: Jan 12, 2026
+                        - paragraph [ref=e249]: ⭐ 5.0
+                      - paragraph [ref=e250]: Very thoughtful and structured sessions. I left each appointment with practical steps I could apply immediately.
+                - article [ref=e251]:
+                  - generic [ref=e252]:
+                    - generic [ref=e253]: A
+                    - generic [ref=e254]:
+                      - generic [ref=e255]:
+                        - generic [ref=e256]:
+                          - heading "Anonymous" [level=3] [ref=e257]
+                          - paragraph [ref=e258]: Dec 28, 2025
+                        - paragraph [ref=e259]: ⭐ 5.0
+                      - paragraph [ref=e260]: She made it easy to open up. The CBT exercises significantly reduced my anxiety after a few weeks.
+                - article [ref=e261]:
+                  - generic [ref=e262]:
+                    - generic [ref=e263]: OA
+                    - generic [ref=e264]:
+                      - generic [ref=e265]:
+                        - generic [ref=e266]:
+                          - heading "Omar A." [level=3] [ref=e267]
+                          - paragraph [ref=e268]: Dec 05, 2025
+                        - paragraph [ref=e269]: ⭐ 4.0
+                      - paragraph [ref=e270]: Professional and calm. Scheduling was easy and the online sessions felt private and secure.
+      - generic [ref=e271]:
+        - complementary "Quick booking" [ref=e272]:
+          - heading "حجز سريع" [level=2] [ref=e273]
+          - generic [ref=e274]:
+            - generic [ref=e275]:
+              - generic [ref=e276]: الخدمة
+              - combobox "الخدمة" [ref=e277]:
+                - option "Individual Therapy • 30 JOD" [selected]
+                - option "Couples Therapy • 40 JOD"
+                - option "Online Session • 25 JOD"
+            - generic [ref=e278]:
+              - generic [ref=e279]: التاريخ
+              - textbox "التاريخ" [ref=e280]: 2026-02-26
+            - group "المواعيد المتاحة" [ref=e281]:
+              - generic [ref=e282]: المواعيد المتاحة
+              - generic [ref=e283]:
+                - button "10:30" [ref=e284] [cursor=pointer]
+                - button "12:00" [ref=e285] [cursor=pointer]
+                - button "14:30" [active] [ref=e286] [cursor=pointer]
+                - button "18:00" [ref=e287] [cursor=pointer]
+            - button "المتابعة للحجز" [ref=e288] [cursor=pointer]
+            - generic [ref=e289]:
+              - generic [ref=e290]: Verified
+              - generic [ref=e291]: Secure
+              - generic [ref=e292]: Private
+        - complementary "Similar doctors" [ref=e293]:
+          - heading "أطباء مشابهون" [level=2] [ref=e294]
+          - list [ref=e295]:
+            - listitem [ref=e296]:
+              - link "Dr. Rania Suleiman Dr. Rania Suleiman Counseling Psychologist ⭐ 4.8" [ref=e297] [cursor=pointer]:
+                - /url: "#"
+                - img "Dr. Rania Suleiman" [ref=e298]
+                - generic [ref=e299]:
+                  - paragraph [ref=e300]: Dr. Rania Suleiman
+                  - paragraph [ref=e301]: Counseling Psychologist
+                  - paragraph [ref=e302]: ⭐ 4.8
+            - listitem [ref=e303]:
+              - link "Dr. Ahmad Naser Dr. Ahmad Naser CBT Specialist ⭐ 4.7" [ref=e304] [cursor=pointer]:
+                - /url: "#"
+                - img "Dr. Ahmad Naser" [ref=e305]
+                - generic [ref=e306]:
+                  - paragraph [ref=e307]: Dr. Ahmad Naser
+                  - paragraph [ref=e308]: CBT Specialist
+                  - paragraph [ref=e309]: ⭐ 4.7
+            - listitem [ref=e310]:
+              - link "Dr. Maya Qasem Dr. Maya Qasem Trauma Therapist ⭐ 4.9" [ref=e311] [cursor=pointer]:
+                - /url: "#"
+                - img "Dr. Maya Qasem" [ref=e312]
+                - generic [ref=e313]:
+                  - paragraph [ref=e314]: Dr. Maya Qasem
+                  - paragraph [ref=e315]: Trauma Therapist
+                  - paragraph [ref=e316]: ⭐ 4.9

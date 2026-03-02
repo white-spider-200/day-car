@@ -4,9 +4,9 @@ from tests.conftest import auth_headers, register
 
 
 def test_doctor_can_save_and_submit_and_save_blocked_after_submit(client, admin_token):
-    register(client, "doctor2@test.local", "DoctorPass123!", "DOCTOR")
+    register(client, "doctor2@testmail.dev", "DoctorPass123!", "DOCTOR")
     doctor_token = client.post(
-        "/auth/login", json={"email": "doctor2@test.local", "password": "DoctorPass123!"}
+        "/auth/login", json={"email": "doctor2@testmail.dev", "password": "DoctorPass123!"}
     ).json()["access_token"]
 
     save = client.post(
@@ -53,9 +53,9 @@ def test_doctor_can_save_and_submit_and_save_blocked_after_submit(client, admin_
 
 
 def test_document_upload_and_admin_set_status(client, admin_token):
-    register(client, "doctor3@test.local", "DoctorPass123!", "DOCTOR")
+    register(client, "doctor3@testmail.dev", "DoctorPass123!", "DOCTOR")
     doctor_login = client.post(
-        "/auth/login", json={"email": "doctor3@test.local", "password": "DoctorPass123!"}
+        "/auth/login", json={"email": "doctor3@testmail.dev", "password": "DoctorPass123!"}
     )
     doctor_token = doctor_login.json()["access_token"]
 

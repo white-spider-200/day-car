@@ -3,11 +3,16 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
-from app.db.models import AppointmentStatus
+from app.db.models import AppointmentCallStatus, AppointmentStatus
 
 
 class AppointmentRequestIn(BaseModel):
     doctor_user_id: uuid.UUID
+    start_at: datetime
+    timezone: str
+
+
+class AppointmentRescheduleIn(BaseModel):
     start_at: datetime
     timezone: str
 
@@ -23,5 +28,9 @@ class AppointmentOut(BaseModel):
     timezone: str
     status: AppointmentStatus
     meeting_link: str | None
+    call_provider: str | None
+    call_room_id: str | None
+    call_status: AppointmentCallStatus
+    fee_paid: bool
     notes: str | None
     created_at: datetime

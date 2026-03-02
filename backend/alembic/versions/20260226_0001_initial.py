@@ -16,15 +16,28 @@ branch_labels = None
 depends_on = None
 
 
-user_role = sa.Enum("ADMIN", "DOCTOR", "USER", name="user_role")
-user_status = sa.Enum("ACTIVE", "SUSPENDED", name="user_status")
-application_status = sa.Enum(
-    "DRAFT", "SUBMITTED", "IN_REVIEW", "APPROVED", "REJECTED", "NEEDS_CHANGES", name="application_status"
+user_role = postgresql.ENUM("ADMIN", "DOCTOR", "USER", name="user_role", create_type=False)
+user_status = postgresql.ENUM("ACTIVE", "SUSPENDED", name="user_status", create_type=False)
+application_status = postgresql.ENUM(
+    "DRAFT",
+    "SUBMITTED",
+    "IN_REVIEW",
+    "APPROVED",
+    "REJECTED",
+    "NEEDS_CHANGES",
+    name="application_status",
+    create_type=False,
 )
-document_type = sa.Enum("LICENSE", "ID", "DEGREE", "OTHER", name="document_type")
-document_status = sa.Enum("PENDING", "ACCEPTED", "REJECTED", name="document_status")
-appointment_status = sa.Enum(
-    "REQUESTED", "CONFIRMED", "CANCELLED", "COMPLETED", "NO_SHOW", name="appointment_status"
+document_type = postgresql.ENUM("LICENSE", "ID", "DEGREE", "OTHER", name="document_type", create_type=False)
+document_status = postgresql.ENUM("PENDING", "ACCEPTED", "REJECTED", name="document_status", create_type=False)
+appointment_status = postgresql.ENUM(
+    "REQUESTED",
+    "CONFIRMED",
+    "CANCELLED",
+    "COMPLETED",
+    "NO_SHOW",
+    name="appointment_status",
+    create_type=False,
 )
 
 

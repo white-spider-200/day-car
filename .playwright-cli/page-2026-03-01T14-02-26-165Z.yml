@@ -1,0 +1,19 @@
+- generic [ref=e6]:
+  - generic [ref=e7]:
+    - heading "تسجيل الدخول" [level=1] [ref=e8]
+    - paragraph [ref=e9]: سجّل الدخول إلى حسابك
+  - generic [ref=e10]:
+    - generic [ref=e11]:
+      - generic [ref=e12]: البريد الإلكتروني
+      - textbox "name@example.com" [ref=e13]
+    - generic [ref=e14]:
+      - generic [ref=e16]: كلمة المرور
+      - textbox "••••••••" [ref=e17]
+    - button "تسجيل الدخول" [ref=e18] [cursor=pointer]
+  - generic [ref=e19]: أو
+  - button "Google" [ref=e22] [cursor=pointer]:
+    - img [ref=e23]
+    - text: Google
+  - paragraph [ref=e28]:
+    - text: ليس لديك حساب؟
+    - button "سجل الآن" [ref=e29] [cursor=pointer]

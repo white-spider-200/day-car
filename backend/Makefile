@@ -1,4 +1,4 @@
-.PHONY: install run migrate test lint format db-up db-down db-reset seed-local run-local setup-local
+.PHONY: install run migrate test test-docker lint format db-up db-down db-reset seed-local run-local setup-local
 
 install:
 	pip install -r requirements.txt
@@ -34,7 +34,7 @@ setup-local:
 run-local:
 	DATABASE_URL=$${DATABASE_URL:-postgresql+psycopg://postgres:postgres@localhost:5432/doctrs} \
 	JWT_SECRET_KEY=$${JWT_SECRET_KEY:-super-secret-change-me} \
-	SEED_ADMIN_EMAIL=$${SEED_ADMIN_EMAIL:-admin@sabina.local} \
+	SEED_ADMIN_EMAIL=$${SEED_ADMIN_EMAIL:-admin@sabina.dev} \
 	SEED_ADMIN_PASSWORD=$${SEED_ADMIN_PASSWORD:-Admin12345!} \
 	. .venv/bin/activate && alembic upgrade head && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
@@ -47,10 +47,14 @@ makemigration:
 test:
 	TEST_DATABASE_URL=$${TEST_DATABASE_URL:-postgresql+psycopg://postgres:postgres@localhost:5433/doctrs_test} \
 	DATABASE_URL=$${TEST_DATABASE_URL} \
-	pytest -q
+	. .venv/bin/activate && python -m pytest -q
+
+test-docker:
+	docker compose up -d postgres_test
+	docker compose run --rm test_runner sh -lc "pip install --no-cache-dir -r requirements.txt && pytest -q"
 
 lint:
-	ruff check app tests
+	. .venv/bin/activate && python -m ruff check app tests
 
 format:
-	ruff check --fix app tests
+	. .venv/bin/activate && python -m ruff check --fix app tests

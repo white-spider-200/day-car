@@ -37,7 +37,7 @@ export function BaseFooter({ accent = 'teal' }: FooterProps) {
               <path d="M8.7 12h6.6" />
             </svg>
           </span>
-          <span className="text-base font-extrabold tracking-tight text-textMain">MindCare</span>
+          <span className="text-base font-extrabold tracking-tight text-textMain">Sabina Therapy</span>
         </div>
 
         <nav aria-label="Footer links" className="flex flex-wrap items-center gap-6">

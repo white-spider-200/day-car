@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import Header from '../components/Header';
 import { useLanguage } from '../context/LanguageContext';
 import { apiJson } from '../utils/api';
@@ -20,6 +20,10 @@ type DoctorApplication = {
   sub_specialties: string[] | null;
   languages: string[] | null;
   location_city: string | null;
+  location_country: string | null;
+  clinic_name: string | null;
+  address_line: string | null;
+  map_url: string | null;
   online_available: boolean | null;
   years_experience: number | null;
   consultation_fee: string | number | null;
@@ -55,6 +59,24 @@ function formatAmount(value: string | number | null): string {
   return Number.isNaN(parsed) ? String(value) : `${parsed} JOD`;
 }
 
+function resolveMediaUrl(url: string | null): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  if (/^(https?:)?\/\//i.test(trimmed) || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
+    return trimmed;
+  }
+
+  const path = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  const env = import.meta.env as Record<string, string | boolean | undefined>;
+  const envBase = typeof env.VITE_API_BASE_URL === 'string' ? env.VITE_API_BASE_URL.trim() : '';
+  const fallbackBase =
+    typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8000` : 'http://localhost:8000';
+  const base = (envBase && envBase !== '/api' ? envBase : fallbackBase).replace(/\/+$/, '').replace(/\/api$/, '');
+
+  return `${base}${path}`;
+}
+
 export default function AdminPage() {
   const { lang } = useLanguage();
   const isAr = lang === 'ar';
@@ -81,6 +103,9 @@ export default function AdminPage() {
             reject: 'رفض',
             rejectionReason: 'سبب الرفض',
             adminNote: 'ملاحظة داخلية',
+            deleteDoctor: 'حذف حساب الطبيب',
+            doctorDeleteRequiresApproved: 'يمكن حذف الحساب فقط بعد اعتماد الطبيب.',
+            deleteDoctorConfirm: 'هل أنت متأكد من حذف حساب الطبيب نهائيًا؟',
             profilePhoto: 'صورة الملف الشخصي',
             licenseDoc: 'وثيقة الترخيص',
             openFile: 'فتح الملف',
@@ -106,6 +131,9 @@ export default function AdminPage() {
             reject: 'Reject',
             rejectionReason: 'Rejection reason',
             adminNote: 'Internal admin note',
+            deleteDoctor: 'Delete Doctor Account',
+            doctorDeleteRequiresApproved: 'Doctor account can be deleted only after approval.',
+            deleteDoctorConfirm: 'Are you sure you want to permanently delete this doctor account?',
             profilePhoto: 'Profile photo',
             licenseDoc: 'License document',
             openFile: 'Open file',
@@ -264,9 +292,59 @@ export default function AdminPage() {
     }
   };
 
+  const deleteDoctorAccount = async () => {
+    if (!selectedApplication) return;
+    if (!selectedApplication.doctor_user_id) {
+      setErrorMessage(copy.doctorDeleteRequiresApproved);
+      return;
+    }
+    const doctorLabel = selectedApplication.full_name ?? selectedApplication.display_name ?? selectedApplication.email ?? selectedApplication.id;
+    const confirmed = window.confirm(`${copy.deleteDoctorConfirm}\n\n${doctorLabel}`);
+    if (!confirmed) return;
+
+    setBusyAction('delete_doctor');
+    setErrorMessage(null);
+    try {
+      await apiJson<{ message: string }>(
+        `/admin/doctors/${selectedApplication.doctor_user_id}`,
+        { method: 'DELETE' },
+        true,
+        isAr ? 'تعذر حذف حساب الطبيب' : 'Failed to delete doctor account'
+      );
+      await refreshSelected();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : isAr ? 'تعذر حذف حساب الطبيب' : 'Failed to delete doctor account');
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
   const canReview = selectedApplication && (selectedApplication.status === 'PENDING' || selectedApplication.status === 'IN_REVIEW');
-  const licenseFileUrl = selectedApplication?.license_document_url;
+  const licenseFileUrl = resolveMediaUrl(selectedApplication?.license_document_url ?? null);
+  const profilePhotoUrl = resolveMediaUrl(selectedApplication?.photo_url ?? null);
+  const nationalIdUrl = resolveMediaUrl(selectedApplication?.national_id ?? null);
   const isLicensePdf = Boolean(licenseFileUrl && /\.pdf(\?|$)/i.test(licenseFileUrl));
+  const isNationalIdImage = Boolean(nationalIdUrl && /\.(png|jpe?g|webp|gif)(\?|$)/i.test(nationalIdUrl));
+  const sectionTitleClass = 'text-sm font-bold text-textMain';
+
+  const InfoItem = ({
+    label,
+    value,
+    fullWidth = false,
+    breakAll = false
+  }: {
+    label: string;
+    value: ReactNode;
+    fullWidth?: boolean;
+    breakAll?: boolean;
+  }) => (
+    <div className={fullWidth ? 'sm:col-span-2' : undefined}>
+      <p className="text-[11px] font-bold text-muted">{label}</p>
+      <div className={`mt-1 rounded-lg border border-borderGray bg-white px-3 py-2 text-sm text-textMain ${breakAll ? 'break-all' : 'break-words'}`}>
+        {value}
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-cyan-50/40 via-white to-white text-textMain">
@@ -288,6 +366,12 @@ export default function AdminPage() {
             </div>
 
             <div className="flex items-center gap-2">
+              <a
+                href="/admin/financial-reports"
+                className="rounded-lg border border-borderGray px-3 py-2 text-xs font-semibold text-textMain transition hover:border-primary/40 hover:text-primary"
+              >
+                Financial Reports
+              </a>
               <label className="text-xs font-semibold text-muted" htmlFor="status-filter">
                 {copy.filter}
               </label>
@@ -339,7 +423,7 @@ export default function AdminPage() {
         </section>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-          <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card">
+          <section className="min-w-0 rounded-hero border border-borderGray bg-white p-6 shadow-card">
             <h2 className="text-xl font-black text-textMain">{copy.applications}</h2>
 
             {isLoading ? (
@@ -355,7 +439,7 @@ export default function AdminPage() {
                       key={application.id}
                       type="button"
                       onClick={() => setSelectedApplicationId(application.id)}
-                      className={`w-full rounded-2xl border p-4 text-left transition ${
+                      className={`w-full min-w-0 rounded-2xl border p-4 text-left transition ${
                         selectedApplicationId === application.id
                           ? 'border-primary bg-primary-50/30'
                           : 'border-borderGray bg-slate-50 hover:border-primary/30'
@@ -367,8 +451,8 @@ export default function AdminPage() {
                           {application.status}
                         </span>
                       </div>
-                      <p className="mt-1 text-xs text-muted">{application.email ?? 'N/A'}</p>
-                      <p className="mt-1 text-xs text-muted">
+                      <p className="mt-1 break-all text-xs text-muted">{application.email ?? 'N/A'}</p>
+                      <p className="mt-1 break-words text-xs text-muted">
                         {application.specialty ?? 'N/A'} · {application.location_city ?? 'N/A'}
                       </p>
                       <p className="mt-1 text-xs text-muted">{formatDateTime(application.created_at)}</p>
@@ -379,45 +463,90 @@ export default function AdminPage() {
             )}
           </section>
 
-          <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card">
+          <section className="min-w-0 rounded-hero border border-borderGray bg-white p-6 shadow-card">
             <h2 className="text-xl font-black text-textMain">{copy.details}</h2>
 
             {!selectedApplication ? (
               <p className="mt-4 text-sm text-muted">{copy.selectHint}</p>
             ) : (
               <div className="mt-4 space-y-4">
-                <article className="rounded-xl border border-borderGray bg-slate-50 px-4 py-3">
-                  <p className="text-xs font-black uppercase tracking-wide text-muted">Profile</p>
-                  <p className="mt-1 text-sm font-semibold text-textMain">{selectedApplication.full_name ?? selectedApplication.display_name ?? 'N/A'}</p>
-                  <p className="mt-1 text-xs text-muted">{selectedApplication.email ?? 'N/A'} · {selectedApplication.phone ?? 'N/A'}</p>
-                  <p className="mt-1 text-xs text-muted">{selectedApplication.specialty ?? 'N/A'}</p>
-                  <p className="mt-1 text-xs text-muted">{selectedApplication.short_bio ?? 'N/A'}</p>
+                <article className="min-w-0 rounded-xl border border-borderGray bg-slate-50 p-4">
+                  <p className={sectionTitleClass}>{isAr ? 'الملف الشخصي' : 'Profile'}</p>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <InfoItem
+                      label={isAr ? 'الاسم' : 'Name'}
+                      value={selectedApplication.full_name ?? selectedApplication.display_name ?? 'N/A'}
+                    />
+                    <InfoItem label={isAr ? 'التخصص' : 'Specialty'} value={selectedApplication.specialty ?? 'N/A'} />
+                    <InfoItem label={isAr ? 'البريد الإلكتروني' : 'Email'} value={selectedApplication.email ?? 'N/A'} breakAll />
+                    <InfoItem label={isAr ? 'رقم الهاتف' : 'Phone'} value={selectedApplication.phone ?? 'N/A'} breakAll />
+                    <InfoItem
+                      label={isAr ? 'نبذة مختصرة' : 'Short Bio'}
+                      value={selectedApplication.short_bio ?? 'N/A'}
+                      fullWidth
+                    />
+                  </div>
                 </article>
 
-                <article className="rounded-xl border border-borderGray bg-slate-50 px-4 py-3">
-                  <p className="text-xs font-black uppercase tracking-wide text-muted">Professional</p>
-                  <p className="mt-1 text-xs text-muted">License: {selectedApplication.license_number ?? 'N/A'}</p>
-                  <p className="mt-1 text-xs text-muted">Experience: {selectedApplication.years_experience ?? 'N/A'}</p>
-                  <p className="mt-1 text-xs text-muted">Fee: {formatAmount(selectedApplication.consultation_fee)}</p>
-                  <p className="mt-1 text-xs text-muted">Online: {selectedApplication.online_available ? copy.yes : copy.no}</p>
-                  <p className="mt-1 text-xs text-muted">Languages: {(selectedApplication.languages ?? []).join(' • ') || 'N/A'}</p>
-                  <p className="mt-1 text-xs text-muted">Sub-specialties: {(selectedApplication.sub_specialties ?? []).join(' • ') || 'N/A'}</p>
-                  <p className="mt-1 text-xs text-muted">Location: {selectedApplication.location_city ?? 'N/A'}</p>
+                <article className="min-w-0 rounded-xl border border-borderGray bg-slate-50 p-4">
+                  <p className={sectionTitleClass}>{isAr ? 'المعلومات المهنية' : 'Professional'}</p>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <InfoItem label={isAr ? 'رقم الترخيص' : 'License Number'} value={selectedApplication.license_number ?? 'N/A'} />
+                    <InfoItem
+                      label={isAr ? 'سنوات الخبرة' : 'Experience Years'}
+                      value={selectedApplication.years_experience ?? 'N/A'}
+                    />
+                    <InfoItem label={isAr ? 'الرسوم' : 'Fee'} value={formatAmount(selectedApplication.consultation_fee)} />
+                    <InfoItem label={isAr ? 'متاح أونلاين' : 'Online'} value={selectedApplication.online_available ? copy.yes : copy.no} />
+                    <InfoItem
+                      label={isAr ? 'اللغات' : 'Languages'}
+                      value={(selectedApplication.languages ?? []).join(' • ') || 'N/A'}
+                      fullWidth
+                    />
+                    <InfoItem
+                      label={isAr ? 'التخصصات الفرعية' : 'Sub-specialties'}
+                      value={(selectedApplication.sub_specialties ?? []).join(' • ') || 'N/A'}
+                      fullWidth
+                    />
+                    <InfoItem label={isAr ? 'المدينة' : 'City'} value={selectedApplication.location_city ?? 'N/A'} />
+                    <InfoItem label={isAr ? 'الدولة' : 'Country'} value={selectedApplication.location_country ?? 'N/A'} />
+                    <InfoItem label={isAr ? 'اسم العيادة' : 'Clinic'} value={selectedApplication.clinic_name ?? 'N/A'} />
+                    <InfoItem label={isAr ? 'العنوان' : 'Address'} value={selectedApplication.address_line ?? 'N/A'} />
+                    <InfoItem
+                      label={isAr ? 'رابط الخريطة' : 'Map URL'}
+                      value={
+                        selectedApplication.map_url ? (
+                          <a href={selectedApplication.map_url} target="_blank" rel="noreferrer" className="font-semibold text-primary hover:text-primaryDark">
+                            {selectedApplication.map_url}
+                          </a>
+                        ) : (
+                          'N/A'
+                        )
+                      }
+                      breakAll
+                      fullWidth
+                    />
+                  </div>
                 </article>
 
-                <article className="rounded-xl border border-borderGray bg-slate-50 px-4 py-3">
-                  <p className="text-xs font-black uppercase tracking-wide text-muted">About</p>
-                  <p className="mt-1 text-sm text-textMain whitespace-pre-line">{selectedApplication.about ?? 'N/A'}</p>
+                <article className="min-w-0 rounded-xl border border-borderGray bg-slate-50 p-4">
+                  <p className={sectionTitleClass}>{isAr ? 'نبذة تفصيلية' : 'About'}</p>
+                  <div className="mt-3 rounded-lg border border-borderGray bg-white px-3 py-2 text-sm text-textMain whitespace-pre-wrap break-words">
+                    {selectedApplication.about ?? 'N/A'}
+                  </div>
                 </article>
 
-                <article className="rounded-xl border border-borderGray bg-slate-50 px-4 py-3">
-                  <p className="text-xs font-black uppercase tracking-wide text-muted">Schedule</p>
+                <article className="rounded-xl border border-borderGray bg-slate-50 p-4">
+                  <p className={sectionTitleClass}>{isAr ? 'جدول التوفر' : 'Schedule'}</p>
                   {(selectedApplication.schedule ?? []).length === 0 ? (
-                    <p className="mt-1 text-sm text-muted">N/A</p>
+                    <p className="mt-2 rounded-lg border border-borderGray bg-white px-3 py-2 text-sm text-muted">N/A</p>
                   ) : (
-                    <ul className="mt-1 space-y-1 text-xs text-muted">
+                    <ul className="mt-3 space-y-2">
                       {(selectedApplication.schedule ?? []).map((slot, index) => (
-                        <li key={`${slot.day}-${slot.start}-${slot.end}-${index}`}>
+                        <li
+                          key={`${slot.day}-${slot.start}-${slot.end}-${index}`}
+                          className="rounded-lg border border-borderGray bg-white px-3 py-2 text-sm text-textMain"
+                        >
                           {slot.day}: {slot.start} - {slot.end}
                         </li>
                       ))}
@@ -425,12 +554,12 @@ export default function AdminPage() {
                   )}
                 </article>
 
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 lg:grid-cols-3">
                   <article className="rounded-xl border border-borderGray bg-slate-50 px-4 py-3">
-                    <p className="text-xs font-black uppercase tracking-wide text-muted">{copy.profilePhoto}</p>
-                    {selectedApplication.photo_url ? (
-                      <a href={selectedApplication.photo_url} target="_blank" rel="noreferrer" className="mt-2 block">
-                        <img src={selectedApplication.photo_url} alt="profile" className="h-36 w-full rounded-lg object-cover" />
+                    <p className={sectionTitleClass}>{copy.profilePhoto}</p>
+                    {profilePhotoUrl ? (
+                      <a href={profilePhotoUrl} target="_blank" rel="noreferrer" className="mt-2 block">
+                        <img src={profilePhotoUrl} alt="profile" className="h-36 w-full rounded-lg object-cover" />
                       </a>
                     ) : (
                       <p className="mt-2 text-xs text-muted">N/A</p>
@@ -438,7 +567,7 @@ export default function AdminPage() {
                   </article>
 
                   <article className="rounded-xl border border-borderGray bg-slate-50 px-4 py-3">
-                    <p className="text-xs font-black uppercase tracking-wide text-muted">{copy.licenseDoc}</p>
+                    <p className={sectionTitleClass}>{copy.licenseDoc}</p>
                     {licenseFileUrl ? (
                       <div className="mt-2">
                         {isLicensePdf ? (
@@ -460,19 +589,42 @@ export default function AdminPage() {
                       <p className="mt-2 text-xs text-muted">N/A</p>
                     )}
                   </article>
+
+                  <article className="rounded-xl border border-borderGray bg-slate-50 px-4 py-3">
+                    <p className={sectionTitleClass}>{isAr ? 'الهوية الوطنية' : 'National ID'}</p>
+                    {nationalIdUrl ? (
+                      <div className="mt-2">
+                        {isNationalIdImage ? (
+                          <a href={nationalIdUrl} target="_blank" rel="noreferrer" className="block">
+                            <img src={nationalIdUrl} alt="national-id" className="h-36 w-full rounded-lg object-cover" />
+                          </a>
+                        ) : (
+                          <a href={nationalIdUrl} target="_blank" rel="noreferrer" className="text-xs font-semibold text-primary hover:text-primaryDark">
+                            {copy.openFile}
+                          </a>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-xs text-muted">N/A</p>
+                    )}
+                  </article>
                 </div>
 
-                <article className="rounded-xl border border-borderGray bg-slate-50 px-4 py-3">
-                  <p className="text-xs font-black uppercase tracking-wide text-muted">Timeline</p>
-                  <p className="mt-1 text-xs text-muted">Created: {formatDateTime(selectedApplication.created_at)}</p>
-                  <p className="mt-1 text-xs text-muted">Reviewed: {formatDateTime(selectedApplication.reviewed_at)}</p>
+                <article className="min-w-0 rounded-xl border border-borderGray bg-slate-50 px-4 py-3">
+                  <p className={sectionTitleClass}>{isAr ? 'التسلسل الزمني' : 'Timeline'}</p>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <InfoItem label={isAr ? 'تاريخ الإنشاء' : 'Created'} value={formatDateTime(selectedApplication.created_at)} />
+                    <InfoItem label={isAr ? 'تاريخ المراجعة' : 'Reviewed'} value={formatDateTime(selectedApplication.reviewed_at)} />
+                  </div>
                   {selectedApplication.rejection_reason && (
-                    <p className="mt-2 text-xs text-rose-700">{copy.rejectionReason}: {selectedApplication.rejection_reason}</p>
+                    <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                      {copy.rejectionReason}: {selectedApplication.rejection_reason}
+                    </p>
                   )}
                 </article>
 
                 <div className="rounded-xl border border-borderGray bg-white p-4">
-                  <label className="text-xs font-black uppercase tracking-wide text-muted">{copy.adminNote}</label>
+                  <label className="text-sm font-bold text-textMain">{copy.adminNote}</label>
                   <textarea
                     value={adminNoteDraft}
                     onChange={(event) => setAdminNoteDraft(event.target.value)}
@@ -480,7 +632,7 @@ export default function AdminPage() {
                     className="mt-2 w-full rounded-lg border border-borderGray px-3 py-2 text-sm"
                   />
 
-                  <label className="mt-3 block text-xs font-black uppercase tracking-wide text-muted">{copy.rejectionReason}</label>
+                  <label className="mt-3 block text-sm font-bold text-textMain">{copy.rejectionReason}</label>
                   <input
                     value={rejectionReason}
                     onChange={(event) => setRejectionReason(event.target.value)}
@@ -514,7 +666,25 @@ export default function AdminPage() {
                     >
                       {busyAction === 'reject' ? '...' : copy.reject}
                     </button>
+
                   </div>
+
+                  {!selectedApplication.doctor_user_id && (
+                    <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                      {copy.doctorDeleteRequiresApproved}
+                    </p>
+                  )}
+
+                  {selectedApplication.doctor_user_id && (
+                    <button
+                      type="button"
+                      onClick={() => void deleteDoctorAccount()}
+                      disabled={busyAction === 'delete_doctor'}
+                      className="mt-3 inline-flex w-full items-center justify-center rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm font-bold text-rose-700 transition hover:bg-rose-100 disabled:opacity-60"
+                    >
+                      {busyAction === 'delete_doctor' ? '...' : copy.deleteDoctor}
+                    </button>
+                  )}
                 </div>
               </div>
             )}

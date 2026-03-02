@@ -198,6 +198,24 @@ def update_pricing(
     return profile
 
 
+@router.delete("/doctors/{doctor_user_id}")
+def delete_doctor_account(
+    doctor_user_id: uuid.UUID,
+    current_user: User = Depends(require_roles(UserRole.ADMIN)),
+    db: Session = Depends(get_db),
+):
+    doctor_user = db.scalar(select(User).where(User.id == doctor_user_id))
+    if not doctor_user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Doctor user not found")
+    if doctor_user.role != UserRole.DOCTOR:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Target user is not a doctor")
+
+    db.delete(doctor_user)
+    db.commit()
+
+    return {"message": "Doctor account deleted", "doctor_user_id": str(doctor_user_id), "deleted_by": str(current_user.id)}
+
+
 @router.get("/users", response_model=list[AdminUserListItem])
 def list_users(
     search: str | None = Query(default=None, min_length=1, max_length=255),
@@ -345,3 +363,19 @@ def get_user_details(
         last_appointment_at=appointments[0].start_at if appointments else None,
         appointments=appointments,
     )
+
+
+@router.delete("/users/{user_id}")
+def delete_user_account(
+    user_id: uuid.UUID,
+    current_user: User = Depends(require_roles(UserRole.ADMIN)),
+    db: Session = Depends(get_db),
+):
+    user = db.scalar(select(User).where(User.id == user_id, User.role == UserRole.USER))
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    db.delete(user)
+    db.commit()
+
+    return {"message": "User account deleted", "user_id": str(user_id), "deleted_by": str(current_user.id)}

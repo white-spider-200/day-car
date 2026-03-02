@@ -1,0 +1,24 @@
+- generic [ref=e319]:
+  - generic [ref=e320]:
+    - heading "تسجيل الدخول" [level=1] [ref=e321]
+    - paragraph [ref=e322]: اختر طريقة تسجيل الدخول المفضلة لديك
+  - generic [ref=e323]:
+    - button "البريد الإلكتروني" [ref=e324] [cursor=pointer]
+    - button "رقم الهاتف" [ref=e325] [cursor=pointer]
+  - generic [ref=e326]:
+    - generic [ref=e327]:
+      - generic [ref=e328]: البريد الإلكتروني
+      - textbox "name@example.com" [ref=e329]
+    - generic [ref=e330]:
+      - generic [ref=e331]:
+        - generic [ref=e332]: كلمة المرور
+        - button "نسيت كلمة المرور؟" [ref=e333] [cursor=pointer]
+      - textbox "••••••••" [ref=e334]
+    - button "تسجيل الدخول" [ref=e335] [cursor=pointer]
+  - generic [ref=e336]: أو
+  - button "Google" [ref=e339] [cursor=pointer]:
+    - img [ref=e340]
+    - text: Google
+  - paragraph [ref=e345]:
+    - text: ليس لديك حساب؟
+    - button "سجل الآن" [ref=e346] [cursor=pointer]

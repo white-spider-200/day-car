@@ -32,6 +32,10 @@ class PublicDoctorApplicationCreate(BaseModel):
     sub_specialties: list[str] | None = None
     languages: list[str] = Field(min_length=1)
     location: str = Field(min_length=2, max_length=120)
+    location_country: str | None = Field(default=None, max_length=120)
+    clinic_name: str | None = Field(default=None, max_length=255)
+    address_line: str | None = Field(default=None, max_length=255)
+    map_url: str | None = Field(default=None, max_length=1000)
     online_available: bool
     fee: Decimal = Field(ge=0)
     short_bio: str = Field(min_length=10, max_length=400)

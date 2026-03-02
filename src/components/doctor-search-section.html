@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Doctor Search - Arabic</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./DoctorSearchArabic.css" />
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: 'Noto Sans Arabic', sans-serif;
+        background: #eef4f8;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="doctor-search-ar">
+      <div class="doctor-search-ar__shell">
+        <form id="doctor-search-form" class="doctor-search-ar__form">
+          <div class="doctor-search-ar__main-row">
+            <div class="doctor-search-ar__compact-dropdown">
+              <label for="consultation-type" class="doctor-search-ar__sr-only">نوع الاستشارة</label>
+              <select id="consultation-type" name="consultationType" class="doctor-search-ar__compact-select">
+                <option>استشارة عيادة</option>
+                <option>استشارة أونلاين</option>
+                <option>زيارة منزلية</option>
+              </select>
+              <span class="doctor-search-ar__caret doctor-search-ar__caret--compact" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </div>
+
+            <div class="doctor-search-ar__main-input-wrap">
+              <label for="main-search" class="doctor-search-ar__sr-only">البحث الرئيسي</label>
+              <input id="main-search" name="mainSearch" type="search" placeholder="ما الذي تبحث عنه؟" class="doctor-search-ar__main-input" />
+            </div>
+
+            <button class="doctor-search-ar__search-btn" type="submit" aria-label="بحث">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                <circle cx="11" cy="11" r="7" />
+                <path stroke-linecap="round" d="m20 20-4.2-4.2" />
+              </svg>
+            </button>
+          </div>
+
+          <div class="doctor-search-ar__filters-row">
+            <div class="doctor-search-ar__dropdown">
+              <span class="doctor-search-ar__field-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 20a8 8 0 0 1 16 0" />
+                </svg>
+              </span>
+              <label for="doctor-name-filter" class="doctor-search-ar__sr-only">ابحث باسم الدكتور</label>
+              <select id="doctor-name-filter" name="doctorName" class="doctor-search-ar__select">
+                <option value="" selected disabled hidden>ابحث باسم الدكتور...</option>
+                <option>د. فاطمة العتيبي</option>
+                <option>د. محمد القحطاني</option>
+                <option>د. سارة الغامدي</option>
+                <option>د. عبدالله السبيعي</option>
+              </select>
+              <span class="doctor-search-ar__caret" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </div>
+
+            <div class="doctor-search-ar__dropdown">
+              <span class="doctor-search-ar__field-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m9 12 2 2 4-4" />
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M12 3.5c2.6 1.7 5.3 2.7 8 2.9v4.8a11 11 0 0 1-8 9.3 11 11 0 0 1-8-9.3V6.4c2.7-.2 5.4-1.2 8-2.9Z"
+                  />
+                </svg>
+              </span>
+              <label for="insurance-filter" class="doctor-search-ar__sr-only">ابحث عن التأمين</label>
+              <select id="insurance-filter" name="insurance" class="doctor-search-ar__select">
+                <option value="" selected disabled hidden>ابحث عن التأمين...</option>
+                <option>بوبا (Bupa)</option>
+                <option>التعاونية (Tawuniya)</option>
+                <option>ميدغلف (Medgulf)</option>
+                <option>أكسا (AXA)</option>
+              </select>
+              <span class="doctor-search-ar__caret" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </div>
+
+            <div class="doctor-search-ar__dropdown">
+              <span class="doctor-search-ar__field-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11Z" />
+                  <circle cx="12" cy="10" r="2.5" />
+                </svg>
+              </span>
+              <label for="location-filter" class="doctor-search-ar__sr-only">ابحث عن المنطقة</label>
+              <select id="location-filter" name="location" class="doctor-search-ar__select">
+                <option value="" selected disabled hidden>ابحث عن المنطقة...</option>
+                <option>الرياض</option>
+                <option>جدة</option>
+                <option>الدمام</option>
+                <option>مكة المكرمة</option>
+                <option>المدينة المنورة</option>
+              </select>
+              <span class="doctor-search-ar__caret" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </div>
+
+            <div class="doctor-search-ar__dropdown">
+              <span class="doctor-search-ar__field-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 5h8M9 3h6v4H9zM6 9h12v11H6z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M10 13h4M10 16h4" />
+                </svg>
+              </span>
+              <label for="specialty-filter" class="doctor-search-ar__sr-only">ابحث عن التخصص، العلاجات، الحالات</label>
+              <select id="specialty-filter" name="specialty" class="doctor-search-ar__select">
+                <option value="" selected disabled hidden>ابحث عن التخصص، العلاجات، الحالات...</option>
+                <option>طب الأسنان</option>
+                <option>طب العيون</option>
+                <option>الجلدية</option>
+                <option>القلب</option>
+                <option>طب الأطفال</option>
+              </select>
+              <span class="doctor-search-ar__caret" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </div>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <script>
+      const form = document.getElementById('doctor-search-form');
+      const selects = form.querySelectorAll('.doctor-search-ar__select');
+
+      selects.forEach((select) => {
+        select.addEventListener('change', () => {
+          if (select.value) {
+            select.classList.add('doctor-search-ar__select--filled');
+          }
+        });
+      });
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const payload = Object.fromEntries(new FormData(form).entries());
+        console.log('Doctor Search Payload:', payload);
+      });
+    </script>
+  </body>
+</html>

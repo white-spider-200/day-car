@@ -56,6 +56,9 @@ class ApplicationOut(BaseModel):
     insurance_providers: list[str] | None
     location_country: str | None
     location_city: str | None
+    clinic_name: str | None
+    address_line: str | None
+    map_url: str | None
     online_available: bool | None
     years_experience: int | None
     consultation_fee: Decimal | None
