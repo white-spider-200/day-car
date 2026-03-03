@@ -1,3 +1,5 @@
+import type { AvailabilitySlot } from '../components/profile/AvailabilitySection';
+
 export type ProfileDoctor = {
   name: string;
   title: string;
@@ -60,7 +62,7 @@ export const doctorProfile: ProfileDoctor = {
   experience: 'Over 8 years of dedicated clinical practice. Previously served as a Senior Therapist at the Amman Mental Health Institute and has contributed to multiple research papers on trauma-focused therapy and emotional regulation.',
   education: "Master's in Clinical Psychology from the University of Jordan (High Honors). Certified Trauma Professional (CTP) and advanced training in Gottman Method for couples therapy.",
   treats: ['Anxiety', 'Depression', 'Couples Therapy', 'Trauma', 'ADHD', 'Burnout Recovery', 'Grief Counseling'],
-  photo: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&q=80&w=800&h=800',
+  photo: 'https://img.freepik.com/free-photo/doctor-home-visiting-patient_23-2148962254.jpg?semt=ais_hybrid&w=740',
   videoThumbnail: 'https://images.unsplash.com/photo-1527137342181-19aab11a8ee1?auto=format&fit=crop&q=80&w=1200'
 };
 
@@ -70,14 +72,49 @@ export const services: ServiceItem[] = [
   { id: 'online', name: 'Online Session', price: '25 JOD', duration: '45 min' }
 ];
 
-export const weeklyAvailability: Record<string, string[]> = {
-  Mon: ['09:00', '11:00', '14:00', '18:30'],
-  Tue: ['10:00', '12:00', '15:30', '19:00'],
-  Wed: ['09:30', '13:00', '16:30'],
-  Thu: ['10:30', '14:30', '18:00'],
-  Fri: ['09:00', '11:30', '17:30'],
-  Sat: ['10:00', '12:30'],
-  Sun: ['11:00', '15:00', '18:30']
+export const weeklyAvailability: Record<string, AvailabilitySlot[]> = {
+  Mon: [
+    { time: '09:00', status: 'available' },
+    { time: '11:00', status: 'booked' },
+    { time: '14:00', status: 'available' },
+    { time: '18:30', status: 'available' }
+  ],
+  Tue: [
+    { time: '10:00', status: 'booked' },
+    { time: '12:00', status: 'available' },
+    { time: '15:30', status: 'available' },
+    { time: '19:00', status: 'booked' }
+  ],
+  Wed: [
+    { time: '09:30', status: 'available' },
+    { time: '13:00', status: 'booked' },
+    { time: '16:30', status: 'available' },
+    { time: '--:--', status: 'unavailable' }
+  ],
+  Thu: [
+    { time: '10:30', status: 'booked' },
+    { time: '14:30', status: 'available' },
+    { time: '18:00', status: 'available' },
+    { time: '--:--', status: 'unavailable' }
+  ],
+  Fri: [
+    { time: '09:00', status: 'available' },
+    { time: '11:30', status: 'available' },
+    { time: '17:30', status: 'booked' },
+    { time: '--:--', status: 'unavailable' }
+  ],
+  Sat: [
+    { time: '10:00', status: 'booked' },
+    { time: '12:30', status: 'available' },
+    { time: '--:--', status: 'unavailable' },
+    { time: '--:--', status: 'unavailable' }
+  ],
+  Sun: [
+    { time: '11:00', status: 'available' },
+    { time: '15:00', status: 'booked' },
+    { time: '18:30', status: 'available' },
+    { time: '--:--', status: 'unavailable' }
+  ]
 };
 
 export const ratingDistribution = [
@@ -120,7 +157,7 @@ export const similarDoctors: SimilarDoctor[] = [
     title: 'Counseling Psychologist',
     location: 'Amman • Online',
     rating: 4.8,
-    photo: 'https://images.unsplash.com/photo-1594824476967-48c8b964273f?auto=format&fit=crop&q=80&w=200&h=200'
+    photo: 'https://img.freepik.com/free-photo/medium-shot-doctor-with-crossed-arms_23-2148868313.jpg'
   },
   {
     id: 'sd2',
@@ -128,7 +165,7 @@ export const similarDoctors: SimilarDoctor[] = [
     title: 'CBT Specialist',
     location: 'Irbid • Online',
     rating: 4.7,
-    photo: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=200&h=200'
+    photo: 'https://img.freepik.com/free-photo/medium-shot-doctor-with-crossed-arms_23-2148868313.jpg'
   },
   {
     id: 'sd3',
@@ -136,6 +173,6 @@ export const similarDoctors: SimilarDoctor[] = [
     title: 'Trauma Therapist',
     location: 'Amman • In-person',
     rating: 4.9,
-    photo: 'https://images.unsplash.com/photo-1559839734-2b71f1536783?auto=format&fit=crop&q=80&w=200&h=200'
+    photo: 'https://img.freepik.com/free-photo/medium-shot-doctor-with-crossed-arms_23-2148868313.jpg'
   }
 ];

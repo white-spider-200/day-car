@@ -100,6 +100,9 @@ function resolveMediaUrl(url: string | null): string | null {
   }
 
   const path = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  if (typeof window !== 'undefined' && path.startsWith('/images/')) {
+    return `${window.location.origin}${path}`;
+  }
   const env = import.meta.env as Record<string, string | boolean | undefined>;
   const envBase = typeof env.VITE_API_BASE_URL === 'string' ? env.VITE_API_BASE_URL.trim() : '';
   const fallbackBase =
@@ -404,270 +407,284 @@ export default function DoctorDetailsPage() {
 
         {!isLoading && !isNotFound && doctor && (
           <div className="space-y-6">
-            <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card">
-              <div className="grid gap-5 md:grid-cols-[220px_minmax(0,1fr)]">
-                <div className="overflow-hidden rounded-[28px] border border-borderGray bg-slate-50">
+            <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card sm:p-7">
+              <div className="grid gap-5 md:grid-cols-[220px_minmax(0,1fr)] md:items-start">
+                <div className="overflow-hidden rounded-[28px] border border-borderGray bg-slate-50 shadow-soft">
                   {doctorPhotoUrl ? (
-                    <img src={doctorPhotoUrl} alt={doctor.display_name} className="aspect-square w-full object-cover" />
+                    <img src={doctorPhotoUrl} alt={doctor.display_name} className="aspect-[4/5] w-full object-cover" />
                   ) : (
-                    <div className="flex aspect-square w-full items-center justify-center text-sm text-muted">No image</div>
+                    <div className="flex aspect-[4/5] w-full items-center justify-center text-sm text-muted">No image</div>
                   )}
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <h1 className="text-3xl font-black tracking-tight text-textMain">{doctor.display_name}</h1>
+                    <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-black tracking-wide text-primary">Doctor Profile</span>
                     {(doctor.verification_badges ?? []).includes('VERIFIED_DOCTOR') && (
                       <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
                         Verified
                       </span>
                     )}
                   </div>
+                  <h1 className="mt-2 text-3xl font-black tracking-tight text-textMain">{doctor.display_name}</h1>
                   <p className="mt-2 text-base font-semibold text-primary break-words [overflow-wrap:anywhere]">
                     {doctor.headline ?? 'Therapist'}
                   </p>
-                  <p className="mt-3 text-sm text-muted">
-                    Rating: {doctor.rating ?? 'N/A'} ({doctor.reviews_count} reviews)
-                  </p>
-                  <p className="mt-1 text-sm text-muted">Experience: {doctor.years_experience ?? 'N/A'} years</p>
+
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    {[
+                      { label: 'Rating', value: `${doctor.rating ?? 'N/A'} / 5` },
+                      { label: 'Reviews', value: `${doctor.reviews_count}` },
+                      { label: 'Experience', value: `${doctor.years_experience ?? 'N/A'} years` },
+                      {
+                        label: 'Next Available',
+                        value: doctor.next_available_at ? formatDateTime(doctor.next_available_at) : 'Not listed',
+                      },
+                    ].map((item) => (
+                      <article key={item.label} className="rounded-xl border border-borderGray bg-primaryBg/60 px-3 py-2.5">
+                        <p className="text-[11px] font-black uppercase tracking-wide text-primary/70">{item.label}</p>
+                        <p className="mt-1 text-sm font-semibold text-textMain">{item.value}</p>
+                      </article>
+                    ))}
+                  </div>
                 </div>
               </div>
             </section>
 
-            <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card">
-              <h2 className="text-xl font-black text-textMain">Quick Info</h2>
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
-                <article className="rounded-xl border border-borderGray bg-slate-50 px-4 py-3">
-                  <p className="text-xs font-black uppercase tracking-wide text-muted">Location</p>
-                  <p className="mt-1 text-sm text-textMain break-words [overflow-wrap:anywhere]">
-                    {[doctor.clinic_name, doctor.address_line, doctor.location_city, doctor.location_country].filter(Boolean).join(' • ') ||
-                      'Not specified'}
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)] lg:items-start">
+              <div className="space-y-6">
+                <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card">
+                  <h2 className="text-xl font-black text-textMain">About</h2>
+                  <p className="mt-3 text-sm leading-7 text-muted break-words [overflow-wrap:anywhere]">
+                    {doctor.bio ?? 'No biography provided yet.'}
                   </p>
-                  {doctor.map_url && (
-                    <a className="mt-2 inline-block text-xs font-semibold text-primary hover:text-primaryDark" href={doctor.map_url} target="_blank" rel="noreferrer">
-                      Open map
-                    </a>
+                </section>
+
+                <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card">
+                  <h2 className="text-xl font-black text-textMain">Therapy Approach</h2>
+                  <p className="mt-3 text-sm leading-7 text-muted break-words [overflow-wrap:anywhere]">
+                    {doctor.approach_text ?? 'No approach details provided yet.'}
+                  </p>
+                </section>
+
+                <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card">
+                  <h2 className="text-xl font-black text-textMain">Specialties</h2>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {(specialties.length > 0 ? specialties : ['Not specified']).map((item) => (
+                      <span key={item} className="rounded-full bg-primaryBg px-3 py-1 text-xs font-semibold text-primary">
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card">
+                  <h2 className="text-xl font-black text-textMain">Education & Certifications</h2>
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <article>
+                      <h3 className="text-sm font-bold text-textMain">Education</h3>
+                      <ul className="mt-2 space-y-2">
+                        {(educationLines.length > 0 ? educationLines : ['No education entries provided']).map((item) => (
+                          <li key={item} className="rounded-lg border border-borderGray bg-slate-50 px-3 py-2 text-sm text-muted">
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </article>
+                    <article>
+                      <h3 className="text-sm font-bold text-textMain">Certifications</h3>
+                      <ul className="mt-2 space-y-2">
+                        {(certifications.length > 0 ? certifications : ['No certifications provided']).map((item) => (
+                          <li key={item} className="rounded-lg border border-borderGray bg-slate-50 px-3 py-2 text-sm text-muted">
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </article>
+                  </div>
+                </section>
+
+                <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card">
+                  <h2 className="text-xl font-black text-textMain">Availability Preview</h2>
+                  <p className="mt-2 text-sm text-muted">
+                    Timezone: {doctor.availability_timezone ?? 'Not specified'}
+                  </p>
+                  <ul className="mt-3 space-y-2">
+                    {(availabilitySlots.length > 0 ? availabilitySlots : ['No upcoming slots']).map((slot) => (
+                      <li key={slot} className="rounded-lg border border-borderGray bg-slate-50 px-3 py-2 text-sm text-muted">
+                        {slot.includes('T') ? formatDateTime(slot) : slot}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              </div>
+
+              <aside className="space-y-6 lg:sticky lg:top-24">
+                <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card">
+                  <h2 className="text-xl font-black text-textMain">Quick Info</h2>
+                  <div className="mt-4 grid gap-3">
+                    <article className="rounded-xl border border-borderGray bg-slate-50 px-4 py-3">
+                      <p className="text-xs font-black uppercase tracking-wide text-muted">Location</p>
+                      <p className="mt-1 text-sm text-textMain break-words [overflow-wrap:anywhere]">
+                        {[doctor.clinic_name, doctor.address_line, doctor.location_city, doctor.location_country].filter(Boolean).join(' • ') ||
+                          'Not specified'}
+                      </p>
+                      {doctor.map_url && (
+                        <a className="mt-2 inline-block text-xs font-semibold text-primary hover:text-primaryDark" href={doctor.map_url} target="_blank" rel="noreferrer">
+                          Open map
+                        </a>
+                      )}
+                    </article>
+
+                    <article className="rounded-xl border border-borderGray bg-slate-50 px-4 py-3">
+                      <p className="text-xs font-black uppercase tracking-wide text-muted">Languages</p>
+                      <p className="mt-1 text-sm text-textMain">{languages.length > 0 ? languages.join(' • ') : 'Not specified'}</p>
+                    </article>
+
+                    <article className="rounded-xl border border-borderGray bg-slate-50 px-4 py-3">
+                      <p className="text-xs font-black uppercase tracking-wide text-muted">Session Types</p>
+                      <p className="mt-1 text-sm text-textMain">{sessionTypes.length > 0 ? sessionTypes.join(' • ') : 'Not specified'}</p>
+                    </article>
+
+                    <article className="rounded-xl border border-borderGray bg-slate-50 px-4 py-3">
+                      <p className="text-xs font-black uppercase tracking-wide text-muted">Pricing</p>
+                      <p className="mt-1 text-sm text-textMain">Session: {formatAmount(doctor.pricing_per_session, doctor.pricing_currency)}</p>
+                      <p className="mt-1 text-sm text-textMain">Follow-up: {formatAmount(doctor.follow_up_price, doctor.pricing_currency)}</p>
+                    </article>
+                  </div>
+                </section>
+
+                <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card">
+                  <h2 className="text-xl font-black text-textMain">Book Appointment</h2>
+                  <p className="mt-2 text-sm text-muted">
+                    Select your preferred session time. If a slot is full, you can join the waiting list.
+                  </p>
+                  <div className="mt-4 grid gap-3">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-muted">
+                      Start At
+                      <input
+                        type="datetime-local"
+                        value={selectedStartAt}
+                        onChange={(event) => setSelectedStartAt(event.target.value)}
+                        className="mt-1 h-11 w-full rounded-xl border border-borderGray bg-white px-3 text-sm text-textMain"
+                      />
+                    </label>
+                    {authRole === 'USER' ? (
+                      <button
+                        type="button"
+                        onClick={() => void createBooking()}
+                        disabled={bookingBusy}
+                        className="focus-outline inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-semibold text-white transition hover:bg-primaryDark disabled:opacity-60"
+                      >
+                        {bookingBusy ? 'Submitting...' : 'Request Appointment'}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => navigateTo('/login')}
+                        className="focus-outline inline-flex h-11 items-center justify-center rounded-xl border border-borderGray px-5 text-sm font-semibold text-textMain transition hover:border-primary/40 hover:text-primary"
+                      >
+                        Sign In to Book
+                      </button>
+                    )}
+                  </div>
+
+                  {conflictingAppointmentId && authRole === 'USER' && (
+                    <button
+                      type="button"
+                      onClick={() => void joinWaitingList()}
+                      disabled={bookingBusy}
+                      className="mt-3 rounded-xl border border-primary/30 bg-primary-50 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary-100 disabled:opacity-60"
+                    >
+                      {bookingBusy ? 'Joining...' : 'Join Waiting List'}
+                    </button>
                   )}
-                </article>
 
-                <article className="rounded-xl border border-borderGray bg-slate-50 px-4 py-3">
-                  <p className="text-xs font-black uppercase tracking-wide text-muted">Languages</p>
-                  <p className="mt-1 text-sm text-textMain">{languages.length > 0 ? languages.join(' • ') : 'Not specified'}</p>
-                </article>
+                  {waitingListPosition !== null && (
+                    <p className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                      Your waiting list position is {waitingListPosition}.
+                    </p>
+                  )}
+                  {bookingMessage && (
+                    <p className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                      {bookingMessage}
+                    </p>
+                  )}
+                  {bookingError && (
+                    <p className="mt-3 rounded-lg border border-rose-100 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                      {bookingError}
+                    </p>
+                  )}
+                </section>
 
-                <article className="rounded-xl border border-borderGray bg-slate-50 px-4 py-3">
-                  <p className="text-xs font-black uppercase tracking-wide text-muted">Session Types</p>
-                  <p className="mt-1 text-sm text-textMain">{sessionTypes.length > 0 ? sessionTypes.join(' • ') : 'Not specified'}</p>
-                </article>
-
-                <article className="rounded-xl border border-borderGray bg-slate-50 px-4 py-3">
-                  <p className="text-xs font-black uppercase tracking-wide text-muted">Pricing</p>
-                  <p className="mt-1 text-sm text-textMain">Session: {formatAmount(doctor.pricing_per_session, doctor.pricing_currency)}</p>
-                  <p className="mt-1 text-sm text-textMain">Follow-up: {formatAmount(doctor.follow_up_price, doctor.pricing_currency)}</p>
-                </article>
-              </div>
-            </section>
-
-            <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card">
-              <h2 className="text-xl font-black text-textMain">About</h2>
-              <p className="mt-3 text-sm leading-7 text-muted break-words [overflow-wrap:anywhere]">
-                {doctor.bio ?? 'No biography provided yet.'}
-              </p>
-            </section>
-
-            <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card">
-              <h2 className="text-xl font-black text-textMain">Therapy Approach</h2>
-              <p className="mt-3 text-sm leading-7 text-muted break-words [overflow-wrap:anywhere]">
-                {doctor.approach_text ?? 'No approach details provided yet.'}
-              </p>
-            </section>
-
-            <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card">
-              <h2 className="text-xl font-black text-textMain">Specialties</h2>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {(specialties.length > 0 ? specialties : ['Not specified']).map((item) => (
-                  <span key={item} className="rounded-full border border-borderGray bg-slate-50 px-3 py-1 text-xs font-semibold text-muted">
-                    {item}
-                  </span>
-                ))}
-              </div>
-            </section>
-
-            <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card">
-              <h2 className="text-xl font-black text-textMain">Education & Certifications</h2>
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <article>
-                  <h3 className="text-sm font-bold text-textMain">Education</h3>
-                  <ul className="mt-2 space-y-2">
-                    {(educationLines.length > 0 ? educationLines : ['No education entries provided']).map((item) => (
-                      <li key={item} className="rounded-lg border border-borderGray bg-slate-50 px-3 py-2 text-sm text-muted">
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </article>
-                <article>
-                  <h3 className="text-sm font-bold text-textMain">Certifications</h3>
-                  <ul className="mt-2 space-y-2">
-                    {(certifications.length > 0 ? certifications : ['No certifications provided']).map((item) => (
-                      <li key={item} className="rounded-lg border border-borderGray bg-slate-50 px-3 py-2 text-sm text-muted">
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </article>
-              </div>
-            </section>
-
-            <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card">
-              <h2 className="text-xl font-black text-textMain">Availability Preview</h2>
-              <p className="mt-2 text-sm text-muted">
-                Timezone: {doctor.availability_timezone ?? 'Not specified'}
-              </p>
-              <ul className="mt-3 space-y-2">
-                {(availabilitySlots.length > 0 ? availabilitySlots : ['No upcoming slots']).map((slot) => (
-                  <li key={slot} className="rounded-lg border border-borderGray bg-slate-50 px-3 py-2 text-sm text-muted">
-                    {slot.includes('T') ? formatDateTime(slot) : slot}
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card">
-              <h2 className="text-xl font-black text-textMain">Book Appointment</h2>
-              <p className="mt-2 text-sm text-muted">
-                Select your preferred session time. If a slot is full, you can join the waiting list.
-              </p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-                <label className="text-xs font-semibold uppercase tracking-wide text-muted">
-                  Start At
-                  <input
-                    type="datetime-local"
-                    value={selectedStartAt}
-                    onChange={(event) => setSelectedStartAt(event.target.value)}
-                    className="mt-1 h-11 w-full rounded-xl border border-borderGray bg-white px-3 text-sm text-textMain"
+                <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card">
+                  <h2 className="text-xl font-black text-textMain">Treatment Request</h2>
+                  <textarea
+                    rows={4}
+                    value={treatmentMessage}
+                    onChange={(event) => setTreatmentMessage(event.target.value)}
+                    placeholder="Briefly describe your treatment goals..."
+                    className="mt-3 w-full rounded-xl border border-borderGray bg-white px-3 py-2 text-sm text-textMain"
                   />
-                </label>
-                {authRole === 'USER' ? (
-                  <button
-                    type="button"
-                    onClick={() => void createBooking()}
-                    disabled={bookingBusy}
-                    className="focus-outline inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-semibold text-white transition hover:bg-primaryDark disabled:opacity-60"
-                  >
-                    {bookingBusy ? 'Submitting...' : 'Request Appointment'}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => navigateTo('/login')}
-                    className="focus-outline inline-flex h-11 items-center justify-center rounded-xl border border-borderGray px-5 text-sm font-semibold text-textMain transition hover:border-primary/40 hover:text-primary"
-                  >
-                    Sign In to Book
-                  </button>
-                )}
-              </div>
+                  {authRole === 'USER' ? (
+                    <button
+                      type="button"
+                      onClick={() => void submitTreatmentRequest()}
+                      disabled={treatmentBusy}
+                      className="mt-3 w-full rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primaryDark disabled:opacity-60"
+                    >
+                      {treatmentBusy ? 'Sending...' : 'Send Treatment Request'}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => navigateTo('/login')}
+                      className="mt-3 w-full rounded-xl border border-borderGray px-4 py-2 text-sm font-semibold text-textMain transition hover:border-primary/40 hover:text-primary"
+                    >
+                      Sign In as User
+                    </button>
+                  )}
+                  {treatmentStatus && (
+                    <p className="mt-3 rounded-lg border border-borderGray bg-slate-50 px-3 py-2 text-sm text-textMain">
+                      {treatmentStatus}
+                    </p>
+                  )}
+                </section>
 
-              {conflictingAppointmentId && authRole === 'USER' && (
-                <button
-                  type="button"
-                  onClick={() => void joinWaitingList()}
-                  disabled={bookingBusy}
-                  className="mt-3 rounded-xl border border-primary/30 bg-primary-50 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary-100 disabled:opacity-60"
-                >
-                  {bookingBusy ? 'Joining...' : 'Join Waiting List'}
-                </button>
-              )}
-
-              {waitingListPosition !== null && (
-                <p className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-                  Your waiting list position is {waitingListPosition}.
-                </p>
-              )}
-              {bookingMessage && (
-                <p className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-                  {bookingMessage}
-                </p>
-              )}
-              {bookingError && (
-                <p className="mt-3 rounded-lg border border-rose-100 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-                  {bookingError}
-                </p>
-              )}
-            </section>
-
-            <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card">
-              <h2 className="text-xl font-black text-textMain">Treatment Request</h2>
-              <p className="mt-2 text-sm text-muted">
-                Send a direct treatment request. The doctor can accept or decline from their dashboard.
-              </p>
-              <textarea
-                rows={4}
-                value={treatmentMessage}
-                onChange={(event) => setTreatmentMessage(event.target.value)}
-                placeholder="Briefly describe your treatment goals..."
-                className="mt-3 w-full rounded-xl border border-borderGray bg-white px-3 py-2 text-sm text-textMain"
-              />
-              {authRole === 'USER' ? (
-                <button
-                  type="button"
-                  onClick={() => void submitTreatmentRequest()}
-                  disabled={treatmentBusy}
-                  className="mt-3 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primaryDark disabled:opacity-60"
-                >
-                  {treatmentBusy ? 'Sending...' : 'Send Treatment Request'}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => navigateTo('/login')}
-                  className="mt-3 rounded-xl border border-borderGray px-4 py-2 text-sm font-semibold text-textMain transition hover:border-primary/40 hover:text-primary"
-                >
-                  Sign In as User
-                </button>
-              )}
-              {treatmentStatus && (
-                <p className="mt-3 rounded-lg border border-borderGray bg-slate-50 px-3 py-2 text-sm text-textMain">
-                  {treatmentStatus}
-                </p>
-              )}
-            </section>
-
-            <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card">
-              <h2 className="text-xl font-black text-textMain">Message Doctor</h2>
-              <p className="mt-2 text-sm text-muted">
-                Send a direct message to this doctor from their profile page.
-              </p>
-              <textarea
-                rows={4}
-                value={directMessageBody}
-                onChange={(event) => setDirectMessageBody(event.target.value)}
-                placeholder="Write your message..."
-                className="mt-3 w-full rounded-xl border border-borderGray bg-white px-3 py-2 text-sm text-textMain"
-              />
-              {authRole === 'USER' ? (
-                <button
-                  type="button"
-                  onClick={() => void sendDirectMessage()}
-                  disabled={directMessageBusy}
-                  className="mt-3 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primaryDark disabled:opacity-60"
-                >
-                  {directMessageBusy ? 'Sending...' : 'Send Message'}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => navigateTo('/login')}
-                  className="mt-3 rounded-xl border border-borderGray px-4 py-2 text-sm font-semibold text-textMain transition hover:border-primary/40 hover:text-primary"
-                >
-                  Sign In as User
-                </button>
-              )}
-              {directMessageStatus && (
-                <p className="mt-3 rounded-lg border border-borderGray bg-slate-50 px-3 py-2 text-sm text-textMain">
-                  {directMessageStatus}
-                </p>
-              )}
-            </section>
+                <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card">
+                  <h2 className="text-xl font-black text-textMain">Message Doctor</h2>
+                  <textarea
+                    rows={4}
+                    value={directMessageBody}
+                    onChange={(event) => setDirectMessageBody(event.target.value)}
+                    placeholder="Write your message..."
+                    className="mt-3 w-full rounded-xl border border-borderGray bg-white px-3 py-2 text-sm text-textMain"
+                  />
+                  {authRole === 'USER' ? (
+                    <button
+                      type="button"
+                      onClick={() => void sendDirectMessage()}
+                      disabled={directMessageBusy}
+                      className="mt-3 w-full rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primaryDark disabled:opacity-60"
+                    >
+                      {directMessageBusy ? 'Sending...' : 'Send Message'}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => navigateTo('/login')}
+                      className="mt-3 w-full rounded-xl border border-borderGray px-4 py-2 text-sm font-semibold text-textMain transition hover:border-primary/40 hover:text-primary"
+                    >
+                      Sign In as User
+                    </button>
+                  )}
+                  {directMessageStatus && (
+                    <p className="mt-3 rounded-lg border border-borderGray bg-slate-50 px-3 py-2 text-sm text-textMain">
+                      {directMessageStatus}
+                    </p>
+                  )}
+                </section>
+              </aside>
+            </div>
           </div>
         )}
       </main>

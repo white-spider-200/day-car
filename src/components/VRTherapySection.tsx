@@ -30,6 +30,12 @@ export default function VRTherapySection() {
               ? 'تقنيات حديثة لمساعدتك في مواجهة مخاوفك بطريقة آمنة وتدريجية'
               : 'Modern techniques to help you face fears in a safe, gradual way.'}
           </p>
+          <a
+            href="/vr-demo"
+            className="mt-5 inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-white px-4 py-2 text-sm font-bold text-primary transition hover:-translate-y-0.5 hover:bg-primaryBg"
+          >
+            {isAr ? 'فتح صفحة التجربة الكاملة' : 'Open Full VR Demo Page'}
+          </a>
         </div>
 
         <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
@@ -55,14 +61,14 @@ export default function VRTherapySection() {
 
                 <div className="mt-5">
                   <div className="relative h-44 w-full overflow-hidden rounded-xl border border-borderGray bg-black shadow-soft">
-                    <iframe
-                      className="absolute inset-0 h-full w-full"
-                      src={example.videoUrl}
+                    <video
+                      className="absolute inset-0 h-full w-full object-cover"
+                      src={example.videoSrc}
                       title={isAr ? example.titleAr : example.titleEn}
-                      frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowFullScreen
-                    ></iframe>
+                      controls
+                      muted
+                      preload="metadata"
+                    />
                   </div>
                 </div>
               </div>

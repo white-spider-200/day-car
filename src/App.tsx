@@ -14,6 +14,8 @@ import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import AdminFinancialReportsPage from './pages/AdminFinancialReportsPage';
 import DoctorSurveyPage from './pages/DoctorSurveyPage';
+import DoctorChatsPage from './pages/DoctorChatsPage';
+import VRDemoPage from './pages/VRDemoPage';
 import { getStoredAuthRole, navigateTo, roleHomePath, type AuthRole } from './utils/auth';
 
 type AppPage =
@@ -23,6 +25,7 @@ type AppPage =
   | 'main'
   | 'dashboard'
   | 'doctor-dashboard'
+  | 'doctor-chats'
   | 'admin'
   | 'admin-applications'
   | 'admin-users'
@@ -32,7 +35,8 @@ type AppPage =
   | 'founder'
   | 'login'
   | 'signup'
-  | 'find-doctor';
+  | 'find-doctor'
+  | 'vr-demo';
 
 function pageFromPath(pathname: string): AppPage {
   if (pathname === '/home' || pathname === '/home/') {
@@ -53,6 +57,9 @@ function pageFromPath(pathname: string): AppPage {
 
   if (pathname === '/doctor-dashboard' || pathname === '/doctor-dashboard/') {
     return 'doctor-dashboard';
+  }
+  if (pathname === '/doctor-chats' || pathname === '/doctor-chats/') {
+    return 'doctor-chats';
   }
 
   if (pathname === '/dashboard' || pathname === '/dashboard/') {
@@ -83,6 +90,10 @@ function pageFromPath(pathname: string): AppPage {
     return 'about';
   }
 
+  if (pathname === '/vr-demo' || pathname === '/vr-demo/') {
+    return 'vr-demo';
+  }
+
   if (pathname === '/founder' || pathname === '/founder/') {
     return 'founder';
   }
@@ -106,6 +117,7 @@ function isProtectedPage(page: AppPage): boolean {
   return (
     page === 'dashboard' ||
     page === 'doctor-dashboard' ||
+    page === 'doctor-chats' ||
     page === 'admin' ||
     page === 'admin-applications' ||
     page === 'admin-users' ||
@@ -118,6 +130,9 @@ function hasAccess(role: AuthRole | null, page: AppPage): boolean {
     return role === 'USER';
   }
   if (page === 'doctor-dashboard') {
+    return role === 'DOCTOR';
+  }
+  if (page === 'doctor-chats') {
     return role === 'DOCTOR';
   }
   if (
@@ -195,6 +210,9 @@ export default function App() {
   if (page === 'doctor-dashboard') {
     return <DoctorDashboardPage />;
   }
+  if (page === 'doctor-chats') {
+    return <DoctorChatsPage />;
+  }
 
   if (page === 'admin-users') {
     return <AdminUserProfilePage />;
@@ -218,6 +236,10 @@ export default function App() {
 
   if (page === 'founder') {
     return <FounderProfilePage />;
+  }
+
+  if (page === 'vr-demo') {
+    return <VRDemoPage />;
   }
 
   if (page === 'therapist-profile') {

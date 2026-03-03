@@ -1,13 +1,41 @@
 import { useMemo, useState } from 'react';
 
+export type AvailabilitySlotStatus = 'available' | 'booked' | 'unavailable';
+
+export type AvailabilitySlot = {
+  time: string;
+  status: AvailabilitySlotStatus;
+};
+
+type AvailabilityInputSlot = string | AvailabilitySlot;
+
 type AvailabilitySectionProps = {
-  weeklyAvailability: Record<string, string[]>;
+  weeklyAvailability: Record<string, AvailabilityInputSlot[]>;
 };
 
 export default function AvailabilitySection({ weeklyAvailability }: AvailabilitySectionProps) {
   const [selectedSlot, setSelectedSlot] = useState('Thu-18:00');
 
-  const dayEntries = useMemo(() => Object.entries(weeklyAvailability), [weeklyAvailability]);
+  const dayEntries = useMemo(() => {
+    const normalized = Object.entries(weeklyAvailability).map(([day, slots]) => {
+      const mapped = slots.map((slot) => {
+        if (typeof slot === 'string') {
+          return { time: slot, status: 'available' as const };
+        }
+        return slot;
+      });
+      return [day, mapped] as const;
+    });
+
+    const maxSlots = Math.max(0, ...normalized.map(([, slots]) => slots.length));
+    return normalized.map(([day, slots]) => {
+      const padded: AvailabilitySlot[] = [...slots];
+      while (padded.length < maxSlots) {
+        padded.push({ time: '--:--', status: 'unavailable' });
+      }
+      return [day, padded] as const;
+    });
+  }, [weeklyAvailability]);
 
   return (
     <section className="rounded-card border border-borderGray bg-white p-5 shadow-card sm:p-6" aria-labelledby="availability-heading">
@@ -25,21 +53,31 @@ export default function AvailabilitySection({ weeklyAvailability }: Availability
               <h3 className="text-sm font-semibold text-textMain">{day}</h3>
               <div className="mt-3 space-y-2">
                 {slots.map((slot) => {
-                  const slotKey = `${day}-${slot}`;
+                  const slotKey = `${day}-${slot.time}`;
                   const isSelected = selectedSlot === slotKey;
+                  const isUnavailable = slot.status === 'unavailable';
+                  const isBooked = slot.status === 'booked';
+                  const isAvailable = slot.status === 'available';
 
                   return (
                     <button
                       key={slotKey}
                       type="button"
-                      onClick={() => setSelectedSlot(slotKey)}
+                      onClick={() => !isUnavailable && !isBooked && setSelectedSlot(slotKey)}
+                      disabled={isUnavailable || isBooked}
                       className={`focus-outline w-full rounded-xl border px-2 py-1.5 text-xs font-semibold transition ${
-                        isSelected
-                          ? 'border-primary bg-primary text-white'
-                          : 'border-borderGray bg-white text-muted hover:border-primary/30 hover:text-primary'
+                        isUnavailable
+                          ? 'cursor-not-allowed border-slate-300 bg-slate-200 text-slate-500'
+                          : isBooked
+                            ? 'cursor-not-allowed border-rose-400 bg-rose-500 text-white'
+                            : isSelected
+                              ? 'border-emerald-600 bg-emerald-500 text-white'
+                              : isAvailable
+                                ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                : 'border-borderGray bg-white text-muted'
                       }`}
                     >
-                      {slot}
+                      {slot.time}
                     </button>
                   );
                 })}
