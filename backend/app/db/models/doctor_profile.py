@@ -6,7 +6,9 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Numeric, String, Te
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.professional_roles import ProfessionalType, badge_payload_for_professional_type, can_prescribe_medication
 from app.db.base import Base, TimestampMixin
+from app.db.models.professional_type_enum import ProfessionalTypeDBEnum
 
 
 class DoctorProfile(Base, TimestampMixin):
@@ -18,6 +20,7 @@ class DoctorProfile(Base, TimestampMixin):
         Index("ix_doctor_profiles_therapy_approaches_gin", "therapy_approaches", postgresql_using="gin"),
         Index("ix_doctor_profiles_insurance_providers_gin", "insurance_providers", postgresql_using="gin"),
         Index("ix_doctor_profiles_gender_identity", "gender_identity"),
+        Index("ix_doctor_profiles_type_code", "doctor_type_code"),
         Index("ix_doctor_profiles_next_available_at", "next_available_at"),
     )
 
@@ -37,6 +40,10 @@ class DoctorProfile(Base, TimestampMixin):
     therapy_approaches: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
     session_types: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
     gender_identity: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    professional_type: Mapped[ProfessionalType | None] = mapped_column(
+        ProfessionalTypeDBEnum, nullable=True
+    )
+    doctor_type_code: Mapped[str | None] = mapped_column(String(3), nullable=True)
     insurance_providers: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
     location_country: Mapped[str | None] = mapped_column(String(120), nullable=True)
     location_city: Mapped[str | None] = mapped_column(String(120), nullable=True)
@@ -60,3 +67,25 @@ class DoctorProfile(Base, TimestampMixin):
     is_top_doctor: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     is_public: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    @property
+    def can_prescribe_medication(self) -> bool:
+        if isinstance(self.professional_type, str):
+            try:
+                normalized = ProfessionalType(self.professional_type)
+            except ValueError:
+                normalized = None
+        else:
+            normalized = self.professional_type
+        return can_prescribe_medication(normalized)
+
+    @property
+    def role_badge(self) -> dict:
+        if isinstance(self.professional_type, str):
+            try:
+                normalized = ProfessionalType(self.professional_type)
+            except ValueError:
+                normalized = None
+        else:
+            normalized = self.professional_type
+        return badge_payload_for_professional_type(normalized)

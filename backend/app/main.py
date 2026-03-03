@@ -11,6 +11,7 @@ from app.api.routes import (
     doctor,
     doctor_applications_public,
     ehr,
+    matching,
     messages,
     notifications,
     payments,
@@ -40,6 +41,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(public_doctors.router)
+app.include_router(matching.router)
 app.include_router(doctor_applications_public.router)
 app.include_router(doctor.router)
 app.include_router(user_appointments.router)

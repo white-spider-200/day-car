@@ -3,7 +3,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.models import ApplicationStatus, DoctorApplication, DoctorProfile, User, UserStatus
+from app.db.models import APPROVED_APPLICATION_STATUSES, DoctorApplication, DoctorProfile, User, UserStatus
 
 
 def _public_profile_query():
@@ -14,7 +14,7 @@ def _public_profile_query():
         .where(
             DoctorProfile.is_public.is_(True),
             User.status == UserStatus.ACTIVE,
-            DoctorApplication.status == ApplicationStatus.APPROVED,
+            DoctorApplication.status.in_(APPROVED_APPLICATION_STATUSES),
         )
     )
 

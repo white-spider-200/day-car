@@ -4,6 +4,20 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict
 
+from app.core.professional_roles import ProfessionalType
+
+
+class RoleBadgeOut(BaseModel):
+    professional_type: str
+    title: str
+    icon: str
+    color: str
+    tooltip: str
+    clarification_note: str
+    capabilities: list[str]
+    medication_authority_warning: str
+    can_prescribe_medication: bool
+
 
 class DoctorProfileOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -21,6 +35,8 @@ class DoctorProfileOut(BaseModel):
     therapy_approaches: list[str] | None
     session_types: list[str] | None
     gender_identity: str | None
+    professional_type: ProfessionalType | None
+    doctor_type_code: str | None
     insurance_providers: list[str] | None
     location_country: str | None
     location_city: str | None
@@ -40,6 +56,8 @@ class DoctorProfileOut(BaseModel):
     pricing_per_session: Decimal | None
     follow_up_price: Decimal | None
     pricing_notes: str | None
+    can_prescribe_medication: bool
+    role_badge: RoleBadgeOut
     verification_badges: list[str] | None
     is_top_doctor: bool
     is_public: bool
@@ -60,6 +78,8 @@ class DoctorProfileListItem(BaseModel):
     therapy_approaches: list[str] | None
     session_types: list[str] | None
     gender_identity: str | None
+    professional_type: ProfessionalType | None
+    doctor_type_code: str | None
     insurance_providers: list[str] | None
     location_city: str | None
     location_country: str | None
@@ -71,5 +91,7 @@ class DoctorProfileListItem(BaseModel):
     pricing_currency: str
     pricing_per_session: Decimal | None
     follow_up_price: Decimal | None
+    can_prescribe_medication: bool
+    role_badge: RoleBadgeOut
     verification_badges: list[str] | None
     is_top_doctor: bool

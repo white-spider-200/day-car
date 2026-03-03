@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 
-from tests.conftest import auth_headers, register
+from tests.conftest import auth_headers, register, submit_psychiatrist_application
 
 
 def _next_weekday(start: date, weekday: int) -> date:
@@ -13,10 +13,10 @@ def _setup_approved_doctor(client, admin_token, email: str):
     doctor_token = client.post("/auth/login", json={"email": email, "password": "DoctorPass123!"}).json()[
         "access_token"
     ]
-    save = client.post(
-        "/doctor/application/save",
-        headers=auth_headers(doctor_token),
-        json={
+    app = submit_psychiatrist_application(
+        client,
+        doctor_token,
+        save_overrides={
             "display_name": "Bookable Doctor",
             "headline": "Availability test",
             "specialties": ["Stress"],
@@ -25,9 +25,6 @@ def _setup_approved_doctor(client, admin_token, email: str):
             "pricing_per_session": "60.00",
         },
     )
-    assert save.status_code == 200, save.text
-    client.post("/doctor/application/submit", headers=auth_headers(doctor_token))
-    app = client.get("/doctor/application", headers=auth_headers(doctor_token)).json()
     client.post(f"/admin/applications/{app['id']}/approve", headers=auth_headers(admin_token))
     return doctor_token, app["doctor_user_id"]
 
@@ -86,21 +83,15 @@ def test_availability_booking_conflict_and_cancellation(client, admin_token):
         headers=auth_headers(token_user_2),
         json={"doctor_user_id": doctor_user_id, "start_at": slot_start, "timezone": "Asia/Amman"},
     )
-    assert req_2.status_code == 200, req_2.text
+    assert req_2.status_code == 409, req_2.text
 
     appointment_1 = req_1.json()["id"]
-    appointment_2 = req_2.json()["id"]
 
     confirm_1 = client.post(
         f"/doctor/appointments/{appointment_1}/confirm", headers=auth_headers(doctor_token)
     )
     assert confirm_1.status_code == 200, confirm_1.text
     assert confirm_1.json()["status"] == "CONFIRMED"
-
-    confirm_2 = client.post(
-        f"/doctor/appointments/{appointment_2}/confirm", headers=auth_headers(doctor_token)
-    )
-    assert confirm_2.status_code == 409, confirm_2.text
 
     cancel_by_user = client.post(
         f"/appointments/{appointment_1}/cancel", headers=auth_headers(token_user_1)

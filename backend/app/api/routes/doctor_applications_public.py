@@ -6,7 +6,9 @@ from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.professional_roles import ProfessionalType
 from app.db.models import ApplicationStatus, DoctorApplication
+from app.db.models.doctor_document import DoctorDocument, DocumentType
 from app.db.session import get_db
 from app.schemas.public_doctor_application import (
     PublicDoctorApplicationCreate,
@@ -25,6 +27,52 @@ def _parse_schedule(schedule_raw: str) -> list[dict]:
     if not isinstance(parsed, list):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Schedule must be a list")
     return parsed
+
+
+@router.get("/doctor-applications/meta")
+def doctor_application_meta():
+    return {
+        "professional_types": [
+            {
+                "value": "PSYCHIATRIST",
+                "label_ar": "طبيب نفسي (يمكنه وصف أدوية)",
+                "badge_color": "blue",
+                "icon": "🩺",
+                "can_prescribe_medication": True,
+                "tooltip": "هذا المختص مخول قانونياً بوصف الأدوية النفسية حسب الأنظمة المعتمدة.",
+                "required_fields": [
+                    "license_number",
+                    "license_issuing_authority",
+                    "license_expiry_date",
+                    "legal_prescription_declaration",
+                    "psychiatrist_prescription_ack",
+                ],
+                "required_documents": [
+                    "MEDICAL_DEGREE",
+                    "PSYCHIATRY_SPECIALIZATION",
+                    "ACTIVE_PRACTICE_PROOF",
+                ],
+            },
+            {
+                "value": "THERAPIST",
+                "label_ar": "معالج نفسي (لا يمكنه وصف أدوية)",
+                "badge_color": "green",
+                "icon": "🧠",
+                "can_prescribe_medication": False,
+                "tooltip": "هذا المختص يقدم جلسات علاج نفسي فقط ولا يملك صلاحية وصف الأدوية.",
+                "required_fields": [
+                    "accreditation_body",
+                    "years_experience",
+                    "no_prescription_declaration",
+                    "therapist_no_prescription_ack",
+                ],
+                "required_documents": [
+                    "THERAPY_SPECIALIZATION",
+                    "SPECIALIZATION_CERTIFICATE",
+                ],
+            },
+        ]
+    }
 
 
 @router.post(
@@ -66,17 +114,38 @@ async def submit_public_doctor_application(
 
     def required_bool(key: str) -> bool:
         value = required_text(key).lower()
-        if value in {"true", "1", "yes"}:
+        if value in {"true", "1", "yes", "on"}:
             return True
         if value in {"false", "0", "no"}:
             return False
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"{key} must be true or false")
 
     full_name = required_text("full_name")
+    professional_type_raw = required_text("professional_type")
+    try:
+        professional_type = ProfessionalType(professional_type_raw.strip().upper())
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="professional_type must be PSYCHIATRIST or THERAPIST",
+        ) from exc
     email = required_text("email")
+    normalized_email = email.strip().lower()
+    existing_application = db.scalar(
+        select(DoctorApplication).where(func.lower(DoctorApplication.email) == normalized_email)
+    )
+    if existing_application:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An application with this email already exists")
     phone = required_text("phone")
     national_id = optional_text("national_id")
-    license_number = required_text("license_number")
+    license_number = optional_text("license_number")
+    license_issuing_authority = optional_text("license_issuing_authority")
+    license_expiry_date = optional_text("license_expiry_date")
+    accreditation_body = optional_text("accreditation_body")
+    legal_prescription_declaration = optional_text("legal_prescription_declaration")
+    no_prescription_declaration = optional_text("no_prescription_declaration")
+    psychiatrist_prescription_ack = required_bool("psychiatrist_prescription_ack") if form.get("psychiatrist_prescription_ack") is not None else None
+    therapist_no_prescription_ack = required_bool("therapist_no_prescription_ack") if form.get("therapist_no_prescription_ack") is not None else None
     experience_years = required_int("experience_years")
     specialty = required_text("specialty")
     languages = [item.strip() for item in form.getlist("languages") if isinstance(item, str) and item.strip()]
@@ -97,10 +166,36 @@ async def submit_public_doctor_application(
     photo = form.get("photo")
     national_id_photo = form.get("national_id_photo")
     license_document = form.get("license_document")
-    if not isinstance(license_document, UploadFile) and not (
-        hasattr(license_document, "filename") and hasattr(license_document, "read")
-    ):
+    medical_degree_certificate = form.get("medical_degree_certificate")
+    psychiatry_specialization_certificate = form.get("psychiatry_specialization_certificate")
+    active_practice_proof = form.get("active_practice_proof")
+    therapy_specialization_certificate = form.get("therapy_specialization_certificate")
+    specialization_certificate = form.get("specialization_certificate")
+
+    def _is_file(value) -> bool:
+        return isinstance(value, UploadFile) or (hasattr(value, "filename") and hasattr(value, "read"))
+
+    if professional_type == ProfessionalType.PSYCHIATRIST:
+        if not _is_file(psychiatry_specialization_certificate):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="psychiatry_specialization_certificate is required",
+            )
+    else:
+        if not _is_file(therapy_specialization_certificate):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="therapy_specialization_certificate is required",
+            )
+        if not _is_file(specialization_certificate):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="specialization_certificate is required",
+            )
+    if not _is_file(license_document):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="license_document is required")
+    if not _is_file(national_id_photo):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="national_id_photo is required")
     if photo is not None and not isinstance(photo, UploadFile) and not (
         hasattr(photo, "filename") and hasattr(photo, "read")
     ):
@@ -110,19 +205,20 @@ async def submit_public_doctor_application(
     ):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="national_id_photo must be a file")
 
-    normalized_email = email.strip().lower()
-    existing_application = db.scalar(
-        select(DoctorApplication).where(func.lower(DoctorApplication.email) == normalized_email)
-    )
-    if existing_application:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An application with this email already exists")
-
     payload_data = {
+        "professional_type": professional_type,
         "full_name": full_name,
         "email": normalized_email,
         "phone": phone,
         "national_id": national_id,
         "license_number": license_number,
+        "license_issuing_authority": license_issuing_authority,
+        "license_expiry_date": license_expiry_date,
+        "accreditation_body": accreditation_body,
+        "legal_prescription_declaration": legal_prescription_declaration,
+        "no_prescription_declaration": no_prescription_declaration,
+        "psychiatrist_prescription_ack": psychiatrist_prescription_ack,
+        "therapist_no_prescription_ack": therapist_no_prescription_ack,
         "experience_years": experience_years,
         "specialty": specialty,
         "sub_specialties": sub_specialties,
@@ -145,14 +241,33 @@ async def submit_public_doctor_application(
 
     photo_url = await save_application_photo(photo) if photo is not None else None
     national_id_photo_url = await save_application_photo(national_id_photo) if national_id_photo is not None else None
-    license_document_url = await save_license_document(license_document)
+    license_document_url = await save_license_document(license_document) if _is_file(license_document) else None
+    medical_degree_url = (
+        await save_license_document(medical_degree_certificate) if _is_file(medical_degree_certificate) else None
+    )
+    psychiatry_specialization_url = (
+        await save_license_document(psychiatry_specialization_certificate)
+        if _is_file(psychiatry_specialization_certificate)
+        else None
+    )
+    active_practice_proof_url = (
+        await save_license_document(active_practice_proof) if _is_file(active_practice_proof) else None
+    )
+    therapy_specialization_url = (
+        await save_license_document(therapy_specialization_certificate)
+        if _is_file(therapy_specialization_certificate)
+        else None
+    )
+    specialization_certificate_url = (
+        await save_license_document(specialization_certificate) if _is_file(specialization_certificate) else None
+    )
     now = datetime.now(UTC)
     specialty_values = [payload.specialty]
     if payload.sub_specialties:
         specialty_values.extend(payload.sub_specialties)
 
     application = DoctorApplication(
-        status=ApplicationStatus.PENDING,
+        status=ApplicationStatus.SUBMITTED,
         doctor_user_id=None,
         display_name=payload.full_name,
         full_name=payload.full_name,
@@ -183,11 +298,60 @@ async def submit_public_doctor_application(
         pricing_per_session=payload.fee,
         submitted_at=now,
         national_id=national_id_photo_url or payload.national_id,
+        professional_type=payload.professional_type,
+        license_issuing_authority=payload.license_issuing_authority,
+        license_expiry_date=payload.license_expiry_date,
+        accreditation_body=payload.accreditation_body,
+        legal_prescription_declaration=payload.legal_prescription_declaration,
+        no_prescription_declaration=payload.no_prescription_declaration,
+        psychiatrist_prescription_ack=payload.psychiatrist_prescription_ack,
+        therapist_no_prescription_ack=payload.therapist_no_prescription_ack,
         rejection_reason=None,
         admin_note=None,
         internal_notes=None,
     )
     db.add(application)
+    db.flush()
+
+    document_rows: list[DoctorDocument] = []
+    if license_document_url:
+        document_rows.append(
+            DoctorDocument(application_id=application.id, type=DocumentType.LICENSE, file_url=license_document_url)
+        )
+    if medical_degree_url:
+        document_rows.append(
+            DoctorDocument(application_id=application.id, type=DocumentType.MEDICAL_DEGREE, file_url=medical_degree_url)
+        )
+    if psychiatry_specialization_url:
+        document_rows.append(
+            DoctorDocument(
+                application_id=application.id,
+                type=DocumentType.PSYCHIATRY_SPECIALIZATION,
+                file_url=psychiatry_specialization_url,
+            )
+        )
+    if active_practice_proof_url:
+        document_rows.append(
+            DoctorDocument(
+                application_id=application.id, type=DocumentType.ACTIVE_PRACTICE_PROOF, file_url=active_practice_proof_url
+            )
+        )
+    if therapy_specialization_url:
+        document_rows.append(
+            DoctorDocument(
+                application_id=application.id, type=DocumentType.THERAPY_SPECIALIZATION, file_url=therapy_specialization_url
+            )
+        )
+    if specialization_certificate_url:
+        document_rows.append(
+            DoctorDocument(
+                application_id=application.id,
+                type=DocumentType.SPECIALIZATION_CERTIFICATE,
+                file_url=specialization_certificate_url,
+            )
+        )
+    if document_rows:
+        db.add_all(document_rows)
     db.commit()
     db.refresh(application)
 

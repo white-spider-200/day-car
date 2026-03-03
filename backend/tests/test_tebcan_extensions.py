@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from io import BytesIO
 
 from tests.conftest import auth_headers, register
 
@@ -17,7 +18,13 @@ def _setup_approved_doctor(client, admin_token, email: str):
         "/doctor/application/save",
         headers=auth_headers(doctor_token),
         json={
+            "professional_type": "PSYCHIATRIST",
             "display_name": "Bookable Doctor",
+            "license_number": "PSY-EXT-1",
+            "license_issuing_authority": "Jordan Medical Council",
+            "license_expiry_date": "2028-12-31",
+            "legal_prescription_declaration": "Authorized psychiatrist for medication management.",
+            "psychiatrist_prescription_ack": True,
             "headline": "Extensions test",
             "specialties": ["Stress"],
             "languages": ["English"],
@@ -26,6 +33,14 @@ def _setup_approved_doctor(client, admin_token, email: str):
         },
     )
     assert save.status_code == 200, save.text
+    for doc_type in ["MEDICAL_DEGREE", "PSYCHIATRY_SPECIALIZATION", "ACTIVE_PRACTICE_PROOF"]:
+        upload = client.post(
+            "/doctor/documents/upload",
+            headers=auth_headers(doctor_token),
+            data={"type": doc_type},
+            files={"file": ("proof.pdf", BytesIO(b"%PDF-1.4 test"), "application/pdf")},
+        )
+        assert upload.status_code == 201, upload.text
     client.post("/doctor/application/submit", headers=auth_headers(doctor_token))
     app = client.get("/doctor/application", headers=auth_headers(doctor_token)).json()
     client.post(f"/admin/applications/{app['id']}/approve", headers=auth_headers(admin_token))

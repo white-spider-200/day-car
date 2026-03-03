@@ -36,7 +36,7 @@ export const founderProfile: FounderProfile = {
   title_ar: 'استشاري الطب النفسي ومعالجة الإدمان',
   title_en: 'Consultant Psychiatrist & Addiction Specialist',
   location: 'Amman, Jordan',
-  image: '/images/founder.jpg',
+  image: '/images/founder.png',
   shortBio_ar:
     'استشاري طب نفسي بخبرة تتجاوز 30 عامًا، يركز على الطب النفسي للبالغين والمراهقين وعلاج الإدمان ضمن نهج علاجي متوازن قائم على الأدلة.',
   shortBio_en:

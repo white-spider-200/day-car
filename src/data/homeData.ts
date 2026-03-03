@@ -46,7 +46,7 @@ export const featuredDoctors: Doctor[] = [
     tags: ['Anxiety', 'CBT', 'Adults'],
     tagsAr: ['القلق', 'العلاج المعرفي السلوكي', 'البالغين'],
     isVerified: true,
-    photo: 'https://images.unsplash.com/photo-1559839734-2b71f1536783?auto=format&fit=crop&q=80&w=400&h=400'
+    photo: 'https://img.freepik.com/free-photo/medium-shot-doctor-with-crossed-arms_23-2148868313.jpg'
   },
   {
     name: 'Dr. Tareq Mansour',
@@ -62,7 +62,7 @@ export const featuredDoctors: Doctor[] = [
     tags: ['Depression', 'Mood', 'Teens'],
     tagsAr: ['الاكتئاب', 'المزاج', 'المراهقين'],
     isVerified: true,
-    photo: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=400&h=400'
+    photo: 'https://img.freepik.com/free-photo/medium-shot-doctor-with-crossed-arms_23-2148868313.jpg'
   },
   {
     name: 'Dr. Sarah Khoury',
@@ -78,7 +78,7 @@ export const featuredDoctors: Doctor[] = [
     tags: ['Couples', 'Communication', 'Marriage'],
     tagsAr: ['الأزواج', 'التواصل', 'الزواج'],
     isVerified: true,
-    photo: 'https://images.unsplash.com/photo-1594824476967-48c8b964273f?auto=format&fit=crop&q=80&w=400&h=400'
+    photo: 'https://img.freepik.com/free-photo/medium-shot-doctor-with-crossed-arms_23-2148868313.jpg'
   },
   {
     name: 'Dr. Omar Nasser',
@@ -94,7 +94,7 @@ export const featuredDoctors: Doctor[] = [
     tags: ['Trauma', 'PTSD', 'EMDR'],
     tagsAr: ['الصدمات', 'اضطراب ما بعد الصدمة', 'EMDR'],
     isVerified: true,
-    photo: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=400&h=400'
+    photo: 'https://img.freepik.com/free-photo/medium-shot-doctor-with-crossed-arms_23-2148868313.jpg'
   },
   {
     name: 'Dr. Rana Al-Zein',
@@ -110,7 +110,7 @@ export const featuredDoctors: Doctor[] = [
     tags: ['ADHD', 'Focus', 'Parenting'],
     tagsAr: ['تشتت الانتباه', 'التركيز', 'تربية الأطفال'],
     isVerified: true,
-    photo: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&q=80&w=400&h=400'
+    photo: 'https://img.freepik.com/free-photo/medium-shot-doctor-with-crossed-arms_23-2148868313.jpg'
   },
   {
     name: 'Dr. Yousef Khalil',
@@ -126,7 +126,7 @@ export const featuredDoctors: Doctor[] = [
     tags: ['Stress', 'Burnout', 'Work'],
     tagsAr: ['الضغوط', 'الاحتراق النفسي', 'العمل'],
     isVerified: true,
-    photo: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&q=80&w=400&h=400'
+    photo: 'https://img.freepik.com/free-photo/medium-shot-doctor-with-crossed-arms_23-2148868313.jpg'
   },
   {
     name: 'Dr. Test Doctor',
@@ -142,6 +142,6 @@ export const featuredDoctors: Doctor[] = [
     tags: ['Test', 'CBT', 'Demo'],
     tagsAr: ['تجريبي', 'العلاج المعرفي السلوكي', 'عرض'],
     isVerified: true,
-    photo: 'https://images.unsplash.com/photo-1612277795421-9bc7706a4a41?auto=format&fit=crop&q=80&w=400&h=400'
+    photo: 'https://img.freepik.com/free-photo/medium-shot-doctor-with-crossed-arms_23-2148868313.jpg'
   }
 ];

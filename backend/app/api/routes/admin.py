@@ -37,9 +37,24 @@ from app.schemas.doctor_application import ApplicationOut
 from app.schemas.doctor_document import DoctorDocumentOut
 from app.schemas.doctor_profile import DoctorProfileOut
 from app.schemas.users import UserOut
+from app.services.professional_type_service import get_application_verification_status
 from app.services.approval_service import approve_application, reject_application, request_changes
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+def _to_application_out(db: Session, app: DoctorApplication) -> ApplicationOut:
+    documents = list(
+        db.scalars(
+            select(DoctorDocument)
+            .where(DoctorDocument.application_id == app.id)
+            .order_by(DoctorDocument.uploaded_at.desc())
+        )
+    )
+    payload = ApplicationOut.model_validate(app).model_dump()
+    payload["documents"] = [DoctorDocumentOut.model_validate(doc).model_dump() for doc in documents]
+    payload["verification_status"] = get_application_verification_status(db, application_id=app.id)
+    return ApplicationOut.model_validate(payload)
 
 
 @router.get("/applications", response_model=list[ApplicationOut])
@@ -52,7 +67,7 @@ def list_applications(
     query = select(DoctorApplication).order_by(DoctorApplication.created_at.desc())
     if status_filter is not None:
         query = query.where(DoctorApplication.status == status_filter)
-    return list(db.scalars(query))
+    return [_to_application_out(db, app) for app in db.scalars(query)]
 
 
 @router.get("/applications/{application_id}", response_model=ApplicationOut)
@@ -65,7 +80,7 @@ def application_details(
     app = db.scalar(select(DoctorApplication).where(DoctorApplication.id == application_id))
     if not app:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
-    return app
+    return _to_application_out(db, app)
 
 
 @router.post("/applications/{application_id}/review-start", response_model=ApplicationOut)
@@ -77,12 +92,12 @@ def review_start(
     app = db.scalar(select(DoctorApplication).where(DoctorApplication.id == application_id))
     if not app:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
-    app.status = ApplicationStatus.IN_REVIEW
+    app.status = ApplicationStatus.UNDER_REVIEW
     app.reviewer_admin_id = current_user.id
     app.reviewed_at = datetime.now(UTC)
     db.commit()
     db.refresh(app)
-    return app
+    return _to_application_out(db, app)
 
 
 @router.post("/applications/{application_id}/approve", response_model=ApplicationOut)
@@ -95,7 +110,8 @@ def approve(
     app = db.scalar(select(DoctorApplication).where(DoctorApplication.id == application_id))
     if not app:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
-    return approve_application(db, app, admin=current_user, note=payload.note if payload else None)
+    approved = approve_application(db, app, admin=current_user, note=payload.note if payload else None)
+    return _to_application_out(db, approved)
 
 
 @router.post("/applications/{application_id}/reject", response_model=ApplicationOut)
@@ -108,7 +124,8 @@ def reject(
     app = db.scalar(select(DoctorApplication).where(DoctorApplication.id == application_id))
     if not app:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
-    return reject_application(db, app, admin=current_user, reason=payload.reason, note=payload.note)
+    rejected = reject_application(db, app, admin=current_user, reason=payload.reason, note=payload.note)
+    return _to_application_out(db, rejected)
 
 
 @router.post("/applications/{application_id}/note", response_model=ApplicationOut)
@@ -126,7 +143,7 @@ def add_admin_note(
     app.internal_notes = payload.admin_note
     db.commit()
     db.refresh(app)
-    return app
+    return _to_application_out(db, app)
 
 
 @router.post("/applications/{application_id}/request-changes", response_model=ApplicationOut)
@@ -139,7 +156,8 @@ def mark_needs_changes(
     app = db.scalar(select(DoctorApplication).where(DoctorApplication.id == application_id))
     if not app:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
-    return request_changes(db, app, admin=current_user, notes=payload.notes)
+    updated = request_changes(db, app, admin=current_user, notes=payload.notes)
+    return _to_application_out(db, updated)
 
 
 @router.post("/documents/{doc_id}/set-status", response_model=DoctorDocumentOut)

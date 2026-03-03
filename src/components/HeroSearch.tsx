@@ -7,6 +7,7 @@ import therapyOnlineLaptopVideo from '../assets/media/therapy-online-laptop.mp4'
 import therapyPregnantWomanVideo from '../assets/media/therapy-pregnant-woman.mp4';
 import therapyStressConceptVideo from '../assets/media/therapy-stress-concept.mp4';
 import therapyWomanMentalHealthVideo from '../assets/media/therapy-woman-mental-health.mp4';
+import sabinaLogo from '../assets/sabina-logo.png';
 import { useLanguage } from '../context/LanguageContext';
 
 const HERO_VIDEOS = [
@@ -72,14 +73,12 @@ export default function HeroSearch() {
       <div className="sticky top-0 z-40 border-b border-[#e5edf2] bg-white/95 shadow-[0_2px_12px_rgba(13,31,60,0.06)] backdrop-blur">
         <div className="section-shell">
           <div className="relative flex items-center justify-between py-4">
-            <a href="/home" className="flex items-center gap-2">
-              <span className="text-3xl font-black tracking-tight text-[#0D1F3C]">SABINA</span>
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#00B8A0]/10 text-[#00B8A0]">
-                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
-                  <path d="M12 3l7 3v5c0 4.2-2.6 7.7-7 10-4.4-2.3-7-5.8-7-10V6l7-3Z" />
-                  <path d="m8.5 12 2.2 2.2 4.8-4.8" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
+            <a href="/home" className="flex items-center">
+              <img
+                src={sabinaLogo}
+                alt="Sabina Therapy"
+                className="h-16 w-auto max-w-[320px] object-contain"
+              />
             </a>
 
             <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-10 text-[19px] font-semibold text-[#2f425d] md:flex">
@@ -156,12 +155,6 @@ export default function HeroSearch() {
                 className="focus-outline inline-flex h-14 items-center rounded-2xl bg-[#00B8A0] px-8 text-base font-extrabold text-white shadow-[0_12px_24px_rgba(0,184,160,0.2)] transition hover:-translate-y-1 hover:bg-[#00a18c]"
               >
                 {t('hero.findSupport')}
-              </a>
-              <a
-                href="#how-it-works"
-                className="focus-outline inline-flex h-14 items-center rounded-2xl border border-[#cad8e2] bg-white px-8 text-base font-extrabold text-[#0D1F3C] transition hover:-translate-y-1 hover:shadow-[0_10px_20px_rgba(13,31,60,0.08)]"
-              >
-                {t('hero.howProtect')}
               </a>
             </div>
           </div>

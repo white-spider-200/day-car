@@ -1,13 +1,16 @@
 import enum
 import uuid
 from datetime import datetime
+from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, Numeric, String, Text
+from sqlalchemy import Date, DateTime, Enum, ForeignKey, Index, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin
+from app.db.models.professional_type_enum import ProfessionalTypeDBEnum
+from app.core.professional_roles import ProfessionalType
 
 
 class ApplicationStatus(str, enum.Enum):
@@ -15,9 +18,20 @@ class ApplicationStatus(str, enum.Enum):
     DRAFT = "DRAFT"
     SUBMITTED = "SUBMITTED"
     IN_REVIEW = "IN_REVIEW"
+    UNDER_REVIEW = "UNDER_REVIEW"
     APPROVED = "APPROVED"
+    APPROVED_MD = "APPROVED_MD"
+    APPROVED_THERAPIST = "APPROVED_THERAPIST"
     REJECTED = "REJECTED"
     NEEDS_CHANGES = "NEEDS_CHANGES"
+    NEEDS_MORE_INFO = "NEEDS_MORE_INFO"
+
+
+APPROVED_APPLICATION_STATUSES = (
+    ApplicationStatus.APPROVED,
+    ApplicationStatus.APPROVED_MD,
+    ApplicationStatus.APPROVED_THERAPIST,
+)
 
 
 class DoctorApplication(Base, TimestampMixin):
@@ -42,7 +56,17 @@ class DoctorApplication(Base, TimestampMixin):
     phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
     photo_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     national_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    professional_type: Mapped[ProfessionalType | None] = mapped_column(
+        ProfessionalTypeDBEnum, nullable=True
+    )
     license_number: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    license_issuing_authority: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    license_expiry_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    accreditation_body: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    legal_prescription_declaration: Mapped[str | None] = mapped_column(Text, nullable=True)
+    no_prescription_declaration: Mapped[str | None] = mapped_column(Text, nullable=True)
+    psychiatrist_prescription_ack: Mapped[bool | None] = mapped_column(nullable=True)
+    therapist_no_prescription_ack: Mapped[bool | None] = mapped_column(nullable=True)
     headline: Mapped[str | None] = mapped_column(String(255), nullable=True)
     specialty: Mapped[str | None] = mapped_column(String(120), nullable=True)
     sub_specialties: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)

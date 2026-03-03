@@ -4,7 +4,7 @@ from sqlalchemy import select
 
 from app.db.models import DoctorProfile
 from app.db.session import SessionLocal
-from tests.conftest import auth_headers, register
+from tests.conftest import auth_headers, register, submit_psychiatrist_application
 
 
 def _create_and_approve_doctor(client, admin_token, email: str, display_name: str) -> str:
@@ -13,10 +13,10 @@ def _create_and_approve_doctor(client, admin_token, email: str, display_name: st
         "access_token"
     ]
 
-    save = client.post(
-        "/doctor/application/save",
-        headers=auth_headers(doctor_token),
-        json={
+    app = submit_psychiatrist_application(
+        client,
+        doctor_token,
+        save_overrides={
             "display_name": display_name,
             "headline": "Clinical Psychologist (CBT/ACT)",
             "specialties": ["Anxiety", "Depression"],
@@ -30,10 +30,6 @@ def _create_and_approve_doctor(client, admin_token, email: str, display_name: st
             "pricing_per_session": "35.00",
         },
     )
-    assert save.status_code == 200, save.text
-    submit = client.post("/doctor/application/submit", headers=auth_headers(doctor_token))
-    assert submit.status_code == 200, submit.text
-    app = client.get("/doctor/application", headers=auth_headers(doctor_token)).json()
     app_id = app["id"]
 
     approve = client.post(f"/admin/applications/{app_id}/approve", headers=auth_headers(admin_token))

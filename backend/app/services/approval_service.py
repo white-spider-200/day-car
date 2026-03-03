@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time
 import re
 import secrets
 
@@ -9,12 +9,15 @@ from app.core.security import hash_password
 from app.db.models import (
     AdminAction,
     ApplicationStatus,
+    DoctorAvailabilityRule,
     DoctorApplication,
     DoctorProfile,
     User,
     UserRole,
     UserStatus,
 )
+from app.services.professional_type_service import validate_application_by_professional_type
+from app.core.professional_roles import ProfessionalType
 
 
 def _sanitize_licenses_public(licenses: list[dict] | None) -> list[dict] | None:
@@ -49,6 +52,74 @@ def _build_unique_slug(db: Session, preferred_value: str, doctor_user_id) -> str
             return slug
         slug = f"{base}-{suffix}"
         suffix += 1
+
+
+def _schedule_day_to_weekday(day: str | None) -> int | None:
+    if not day:
+        return None
+    mapping = {
+        "MONDAY": 0,
+        "TUESDAY": 1,
+        "WEDNESDAY": 2,
+        "THURSDAY": 3,
+        "FRIDAY": 4,
+        "SATURDAY": 5,
+        "SUNDAY": 6,
+    }
+    return mapping.get(day.strip().upper())
+
+
+def _normalize_time_value(value: str | None) -> str | None:
+    if not value:
+        return None
+    trimmed = value.strip()
+    if re.fullmatch(r"\d{2}:\d{2}", trimmed):
+        return f"{trimmed}:00"
+    if re.fullmatch(r"\d{2}:\d{2}:\d{2}", trimmed):
+        return trimmed
+    return None
+
+
+def _parse_time_value(value: str) -> time:
+    return time.fromisoformat(value)
+
+
+def _seed_availability_from_application_schedule(
+    db: Session, *, doctor_user_id, schedule: list[dict] | None
+) -> None:
+    if not schedule:
+        return
+
+    existing_rule = db.scalars(
+        select(DoctorAvailabilityRule).where(DoctorAvailabilityRule.doctor_user_id == doctor_user_id)
+    ).first()
+    if existing_rule:
+        return
+
+    parsed_rules: list[DoctorAvailabilityRule] = []
+    for slot in schedule:
+        if not isinstance(slot, dict):
+            continue
+        day_of_week = _schedule_day_to_weekday(slot.get("day"))
+        start_time = _normalize_time_value(slot.get("start"))
+        end_time = _normalize_time_value(slot.get("end"))
+        if day_of_week is None or not start_time or not end_time or end_time <= start_time:
+            continue
+        parsed_rules.append(
+            DoctorAvailabilityRule(
+                doctor_user_id=doctor_user_id,
+                day_of_week=day_of_week,
+                start_time=_parse_time_value(start_time),
+                end_time=_parse_time_value(end_time),
+                timezone="Asia/Amman",
+                slot_duration_minutes=50,
+                buffer_minutes=10,
+                is_blocked=False,
+            )
+        )
+
+    if parsed_rules:
+        db.add_all(parsed_rules)
 
 
 def log_admin_action(
@@ -99,9 +170,13 @@ def _resolve_or_create_doctor_user(db: Session, application: DoctorApplication) 
 def approve_application(
     db: Session, application: DoctorApplication, admin: User, note: str | None = None
 ) -> DoctorApplication:
+    validate_application_by_professional_type(db, application)
     now = datetime.now(UTC)
     doctor_user = _resolve_or_create_doctor_user(db, application)
-    application.status = ApplicationStatus.APPROVED
+    if application.professional_type == ProfessionalType.PSYCHIATRIST:
+        application.status = ApplicationStatus.APPROVED_MD
+    else:
+        application.status = ApplicationStatus.APPROVED_THERAPIST
     application.reviewed_at = now
     application.reviewer_admin_id = admin.id
     application.rejection_reason = None
@@ -138,6 +213,7 @@ def approve_application(
         ["ONLINE"] if application.online_available else ["IN_PERSON"]
     )
     profile.gender_identity = application.gender_identity
+    profile.professional_type = application.professional_type
     profile.insurance_providers = application.insurance_providers
     profile.location_country = application.location_country
     profile.location_city = application.location_city
@@ -157,6 +233,10 @@ def approve_application(
     profile.is_public = True
     if profile.published_at is None:
         profile.published_at = now
+
+    _seed_availability_from_application_schedule(
+        db, doctor_user_id=doctor_user.id, schedule=application.schedule
+    )
 
     log_admin_action(
         db,
@@ -198,7 +278,7 @@ def reject_application(
 def request_changes(
     db: Session, application: DoctorApplication, admin: User, notes: str
 ) -> DoctorApplication:
-    application.status = ApplicationStatus.NEEDS_CHANGES
+    application.status = ApplicationStatus.NEEDS_MORE_INFO
     application.reviewer_admin_id = admin.id
     application.reviewed_at = datetime.now(UTC)
     application.admin_note = notes

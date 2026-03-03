@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
-import Header from '../components/Header';
+import { useMemo, useState } from 'react';
 import Footer from '../components/Footer';
+import Header from '../components/Header';
 import { useLanguage } from '../context/LanguageContext';
 import { ApiError, apiJson } from '../utils/api';
+
+type RoleType = 'PSYCHIATRIST' | 'THERAPIST';
 
 type SubmitResponse = {
   id: string;
@@ -10,349 +12,327 @@ type SubmitResponse = {
   message: string;
 };
 
-type DayKey = 'SUNDAY' | 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY';
-
-type DaySlot = {
-  day: DayKey;
-  enabled: boolean;
-  start: string;
-  end: string;
-};
-
-const SPECIALTIES = ['Psychiatrist', 'Therapist', 'Counselor', 'Psychologist', 'Family Therapist', 'Child Therapist'];
-const PHONE_PREFIX = '+962';
-const COUNTRY_OPTIONS_AR = [
-  'الأردن',
-  'السعودية',
-  'الإمارات',
-  'قطر',
-  'الكويت',
-  'البحرين',
-  'عُمان',
-  'مصر',
-  'لبنان',
-  'فلسطين',
-  'العراق',
-  'سوريا',
-  'المملكة المتحدة',
-  'الولايات المتحدة',
-  'كندا',
-  'ألمانيا',
-  'فرنسا',
-  'تركيا'
-];
-
-const COUNTRY_OPTIONS_EN = [
-  'Jordan',
-  'Saudi Arabia',
-  'United Arab Emirates',
-  'Qatar',
-  'Kuwait',
-  'Bahrain',
-  'Oman',
-  'Egypt',
-  'Lebanon',
-  'Palestine',
-  'Iraq',
-  'Syria',
-  'United Kingdom',
-  'United States',
-  'Canada',
-  'Germany',
-  'France',
-  'Turkey'
-];
-const SUB_SPECIALTY_SUGGESTIONS = [
-  'CBT',
-  'ACT',
-  'DBT',
-  'EMDR',
-  'Trauma Therapy',
-  'Anxiety',
-  'Depression',
-  'Stress Management',
-  'Couples Therapy',
-  'Family Counseling',
-  'Child Therapy',
-  'ADHD'
-];
-const DAY_ORDER: Array<{ day: DayKey; en: string; ar: string }> = [
-  { day: 'SUNDAY', en: 'Sunday', ar: 'الأحد' },
-  { day: 'MONDAY', en: 'Monday', ar: 'الاثنين' },
-  { day: 'TUESDAY', en: 'Tuesday', ar: 'الثلاثاء' },
-  { day: 'WEDNESDAY', en: 'Wednesday', ar: 'الأربعاء' },
-  { day: 'THURSDAY', en: 'Thursday', ar: 'الخميس' },
-  { day: 'FRIDAY', en: 'Friday', ar: 'الجمعة' },
-  { day: 'SATURDAY', en: 'Saturday', ar: 'السبت' }
-];
-
-function splitCSV(input: string): string[] {
-  return input
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
+const COUNTRY_OPTIONS = ['Jordan', 'Saudi Arabia', 'UAE', 'Egypt', 'Qatar', 'Kuwait', 'Bahrain', 'Oman', 'Lebanon'];
+const DEFAULT_SCHEDULE = JSON.stringify([
+  { day: 'SUNDAY', start: '09:00', end: '17:00' },
+  { day: 'MONDAY', start: '09:00', end: '17:00' },
+  { day: 'TUESDAY', start: '09:00', end: '17:00' },
+  { day: 'WEDNESDAY', start: '09:00', end: '17:00' },
+  { day: 'THURSDAY', start: '09:00', end: '17:00' }
+]);
 
 export default function ApplyDoctorPage() {
   const { lang } = useLanguage();
   const isAr = lang === 'ar';
 
-  const [form, setForm] = useState({
-    fullName: '',
-    email: '',
-    phone: PHONE_PREFIX,
-    licenseNumber: '',
-    experienceYears: '',
-    specialty: SPECIALTIES[0],
-    subSpecialties: [] as string[],
-    languages: isAr ? 'العربية, English' : 'Arabic, English',
-    country: isAr ? 'الأردن' : 'Jordan',
-    location: '',
-    clinicName: '',
-    addressLine: '',
-    mapUrl: '',
-    onlineAvailable: true,
-    fee: '',
-    shortBio: '',
-    about: ''
-  });
-  const [days, setDays] = useState<DaySlot[]>(
-    DAY_ORDER.map((item) => ({
-      day: item.day,
-      enabled: item.day !== 'FRIDAY',
-      start: '09:00',
-      end: '17:00'
-    }))
-  );
-  const [nationalIdPhoto, setNationalIdPhoto] = useState<File | null>(null);
-  const [nationalIdPhotoPreviewUrl, setNationalIdPhotoPreviewUrl] = useState<string | null>(null);
-  const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
-  const [profilePhotoPreviewUrl, setProfilePhotoPreviewUrl] = useState<string | null>(null);
-  const [licenseDocument, setLicenseDocument] = useState<File | null>(null);
+  const [role, setRole] = useState<RoleType | null>(null);
+  const [wizardStep, setWizardStep] = useState(0);
+
+  const [fullNameAr, setFullNameAr] = useState('');
+  const [fullNameEn, setFullNameEn] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('+962');
+  const [country, setCountry] = useState('Jordan');
+  const [city, setCity] = useState('');
+  const [languages, setLanguages] = useState('Arabic, English');
+  const [yearsExperience, setYearsExperience] = useState('');
+  const [focusAreas, setFocusAreas] = useState('');
+  const [bio, setBio] = useState('');
+  const [sessionFee, setSessionFee] = useState('35');
+
+  const [medicalDegreeDetails, setMedicalDegreeDetails] = useState('');
+  const [psychiatrySpecialization, setPsychiatrySpecialization] = useState('');
+  const [medicalCouncilNumber, setMedicalCouncilNumber] = useState('');
+
+  const [therapistDegree, setTherapistDegree] = useState('');
+  const [therapyMethods, setTherapyMethods] = useState('');
+  const [membershipNumber, setMembershipNumber] = useState('');
+
+  const [governmentIdFile, setGovernmentIdFile] = useState<File | null>(null);
+  const [professionalLicenseFile, setProfessionalLicenseFile] = useState<File | null>(null);
+  const [medicalDegreeFile, setMedicalDegreeFile] = useState<File | null>(null);
+  const [psychiatryCertFile, setPsychiatryCertFile] = useState<File | null>(null);
+  const [highestDegreeFile, setHighestDegreeFile] = useState<File | null>(null);
+  const [therapistLicenseProofFile, setTherapistLicenseProofFile] = useState<File | null>(null);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [subSpecialtyInput, setSubSpecialtyInput] = useState('');
 
-  const copy = useMemo(
-    () =>
-      isAr
-        ? {
-            title: 'التقديم كطبيب',
-            subtitle: 'املأ البيانات التالية وسيتواصل فريق صابينا معك بعد مراجعة الطلب.',
-            submit: 'إرسال الطلب',
-            sending: 'جاري الإرسال...',
-            personalInfo: 'المعلومات الشخصية',
-            professionalInfo: 'المعلومات المهنية',
-            scheduleInfo: 'جدول التوفر الأسبوعي',
-            fullName: 'الاسم الكامل',
-            email: 'البريد الإلكتروني',
-            phone: 'رقم الهاتف',
-            phoneHint: 'الصيغة المطلوبة: +962 ثم 8 أرقام على الأقل',
-            nationalIdPhoto: 'صورة الهوية الوطنية',
-            profilePhoto: 'صورة الملف الشخصي (ستظهر على الموقع)',
-            licenseNumber: 'رقم الترخيص الطبي',
-            experienceYears: 'سنوات الخبرة',
-            specialty: 'التخصص',
-            subSpecialties: 'التخصصات الفرعية',
-            addTagHint: 'اكتب تخصصًا ثم أضفه كوسم (يمكنك كتابة تخصص غير موجود بالقائمة)',
-            addTag: 'إضافة',
-            languages: 'اللغات (مفصولة بفاصلة)',
-            country: 'الدولة (ابحث واختر)',
-            location: 'مدينة العيادة',
-            clinicName: 'اسم العيادة',
-            addressLine: 'عنوان العيادة التفصيلي',
-            mapUrl: 'رابط خرائط Google (اختياري)',
-            onlineAvailable: 'متاح أونلاين؟',
-            consultationFee: 'رسوم الاستشارة',
-            shortBio: 'نبذة مختصرة',
-            about: 'حول الطبيب (تفاصيل)',
-            licenseDocument: 'وثيقة الترخيص (PDF أو صورة)',
-            yes: 'نعم',
-            no: 'لا',
-            requiredSchedule: 'اختر يوم توفر واحد على الأقل.',
-            requiredLicenseFile: 'وثيقة الترخيص مطلوبة.',
-            requiredNationalIdPhoto: 'صورة الهوية الوطنية مطلوبة.',
-            requiredProfilePhoto: 'صورة الملف الشخصي مطلوبة.',
-            invalidPhone: 'رقم الهاتف يجب أن يكون بالصيغة +962 ويتبعه 8 أرقام على الأقل.',
-            successFallback: 'تم إرسال طلبك بنجاح. طلبك قيد المراجعة.'
-          }
-        : {
-            title: 'Apply as a Doctor',
-            subtitle: 'Submit your details below. The Sabina team will review your application.',
-            submit: 'Submit Application',
-            sending: 'Submitting...',
-            personalInfo: 'Personal Information',
-            professionalInfo: 'Professional Information',
-            scheduleInfo: 'Weekly Availability',
-            fullName: 'Full Name',
-            email: 'Email',
-            phone: 'Phone Number',
-            phoneHint: 'Required format: +962 followed by at least 8 digits',
-            nationalIdPhoto: 'National ID Photo',
-            profilePhoto: 'Profile Photo (shown on website)',
-            licenseNumber: 'Medical License Number',
-            experienceYears: 'Years of Experience',
-            specialty: 'Specialty',
-            subSpecialties: 'Sub-specialties',
-            addTagHint: 'Type a specialty and add it as a tag (custom values are allowed)',
-            addTag: 'Add',
-            languages: 'Languages (comma separated)',
-            country: 'Country (search and select)',
-            location: 'Clinic City',
-            clinicName: 'Clinic Name',
-            addressLine: 'Full Clinic Address',
-            mapUrl: 'Google Maps Link (optional)',
-            onlineAvailable: 'Available Online?',
-            consultationFee: 'Consultation Fee',
-            shortBio: 'Short Bio',
-            about: 'Detailed About Section',
-            licenseDocument: 'License Document (PDF or image)',
-            yes: 'Yes',
-            no: 'No',
-            requiredSchedule: 'Select at least one available day.',
-            requiredLicenseFile: 'License document is required.',
-            requiredNationalIdPhoto: 'National ID photo is required.',
-            requiredProfilePhoto: 'Profile photo is required.',
-            invalidPhone: 'Phone must be in +962 format followed by at least 8 digits.',
-            successFallback: 'Your application is under review.'
-          },
-    [isAr]
-  );
-  const countryOptions = isAr ? COUNTRY_OPTIONS_AR : COUNTRY_OPTIONS_EN;
   const fieldLabelClass = 'flex min-w-0 flex-col gap-2 text-sm font-semibold text-textMain';
   const inputClass =
     'h-11 w-full rounded-xl border border-borderGray bg-white px-4 text-sm transition focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/10';
   const textareaClass =
     'w-full rounded-xl border border-borderGray bg-white px-4 py-3 text-sm transition focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/10';
 
-  const setField = (key: keyof typeof form, value: string | boolean) => {
-    setForm((previous) => ({ ...previous, [key]: value }));
-  };
-
-  const normalizePhoneInput = (value: string) => {
-    const digitsOnly = value.replace(/\D/g, '');
-    const withoutCountry = digitsOnly.startsWith('962') ? digitsOnly.slice(3) : digitsOnly;
-    return `${PHONE_PREFIX}${withoutCountry}`;
-  };
-
-  const addSubSpecialtyTag = (rawValue: string) => {
-    const value = rawValue.trim();
-    if (!value) {
-      return;
-    }
-    setForm((previous) => {
-      const exists = previous.subSpecialties.some((item) => item.toLowerCase() === value.toLowerCase());
-      if (exists) {
-        return previous;
+  const roleCards = useMemo(
+    () => [
+      {
+        id: 'PSYCHIATRIST' as const,
+        title: isAr ? 'طبيب نفسي (MD)' : 'Psychiatrist (Medical Doctor)',
+        color: 'border-sky-200 bg-sky-50/70',
+        capabilities: isAr
+          ? [
+              'التشخيص الطبي النفسي',
+              'وصف الأدوية بعد التحقق والموافقة',
+              'إدارة الجلسات والخطة العلاجية والملاحظات'
+            ]
+          : [
+              'Medical psychiatric diagnosis',
+              'Prescriptions only after admin verification',
+              'Sessions, notes, and treatment-plan management'
+            ]
+      },
+      {
+        id: 'THERAPIST' as const,
+        title: isAr ? 'معالج/أخصائي نفسي (Non-MD)' : 'Psychologist / Therapist (Non-MD)',
+        color: 'border-emerald-200 bg-emerald-50/70',
+        capabilities: isAr
+          ? [
+              'جلسات علاج نفسي وإرشاد',
+              'إدارة المواعيد والجلسات والملاحظات والخطط',
+              'لا يمكن وصف أدوية أو إضافة تشخيص طبي'
+            ]
+          : [
+              'Psychotherapy and counseling sessions',
+              'Profile, schedule, sessions, notes, treatment plans',
+              'No prescriptions and no medical diagnosis fields'
+            ]
       }
-      return { ...previous, subSpecialties: [...previous.subSpecialties, value] };
-    });
-    setSubSpecialtyInput('');
+    ],
+    [isAr]
+  );
+
+  const resetForm = () => {
+    setWizardStep(0);
+    setFullNameAr('');
+    setFullNameEn('');
+    setEmail('');
+    setPhone('+962');
+    setCountry('Jordan');
+    setCity('');
+    setLanguages('Arabic, English');
+    setYearsExperience('');
+    setFocusAreas('');
+    setBio('');
+    setSessionFee('35');
+    setMedicalDegreeDetails('');
+    setPsychiatrySpecialization('');
+    setMedicalCouncilNumber('');
+    setTherapistDegree('');
+    setTherapyMethods('');
+    setMembershipNumber('');
+    setGovernmentIdFile(null);
+    setProfessionalLicenseFile(null);
+    setMedicalDegreeFile(null);
+    setPsychiatryCertFile(null);
+    setHighestDegreeFile(null);
+    setTherapistLicenseProofFile(null);
   };
 
-  const removeSubSpecialtyTag = (tag: string) => {
-    setForm((previous) => ({
-      ...previous,
-      subSpecialties: previous.subSpecialties.filter((item) => item !== tag)
-    }));
-  };
+  const validateStep = (step: number): string | null => {
+    if (!role) return isAr ? 'اختر نوع الحساب أولاً.' : 'Please select account type first.';
 
-  const setDayValue = (day: DayKey, key: 'enabled' | 'start' | 'end', value: boolean | string) => {
-    setDays((previous) =>
-      previous.map((item) => {
-        if (item.day !== day) {
-          return item;
+    if (step === 0) {
+      if (!fullNameAr.trim() || !fullNameEn.trim()) {
+        return isAr ? 'الاسم الكامل بالعربية والإنجليزية مطلوب.' : 'Full name in Arabic and English is required.';
+      }
+      if (!email.trim() || !phone.trim()) {
+        return isAr ? 'البريد الإلكتروني ورقم الهاتف مطلوبان.' : 'Email and phone are required.';
+      }
+      const emailValue = email.trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)) {
+        return isAr ? 'صيغة البريد الإلكتروني غير صحيحة.' : 'Please enter a valid email address.';
+      }
+      const phoneDigits = phone.replace(/\D/g, '');
+      if (phoneDigits.length < 8) {
+        return isAr ? 'رقم الهاتف غير صحيح.' : 'Please enter a valid phone number.';
+      }
+      if (!city.trim() || !country.trim()) {
+        return isAr ? 'الدولة والمدينة مطلوبتان.' : 'Country and city are required.';
+      }
+      if (!yearsExperience.trim()) {
+        return isAr ? 'سنوات الخبرة مطلوبة.' : 'Years of experience is required.';
+      }
+      const yearsValue = Number(yearsExperience);
+      if (Number.isNaN(yearsValue) || yearsValue < 0 || yearsValue > 60) {
+        return isAr ? 'سنوات الخبرة يجب أن تكون بين 0 و 60.' : 'Years of experience must be between 0 and 60.';
+      }
+      if (!focusAreas.trim() || !bio.trim()) {
+        return isAr ? 'مجالات التركيز والنبذة مطلوبة.' : 'Focus areas and bio are required.';
+      }
+      const feeValue = Number(sessionFee);
+      if (Number.isNaN(feeValue) || feeValue <= 0) {
+        return isAr ? 'رسوم الجلسة يجب أن تكون أكبر من صفر.' : 'Session fee must be greater than zero.';
+      }
+      return null;
+    }
+
+    if (step === 1) {
+      if (role === 'PSYCHIATRIST') {
+        if (!medicalDegreeDetails.trim() || !psychiatrySpecialization.trim() || !medicalCouncilNumber.trim()) {
+          return isAr
+            ? 'جميع بيانات الطبيب النفسي الإضافية مطلوبة.'
+            : 'All psychiatrist-specific fields are required.';
         }
-        return { ...item, [key]: value };
-      })
-    );
+      } else {
+        if (!therapistDegree.trim() || !therapyMethods.trim() || !membershipNumber.trim()) {
+          return isAr
+            ? 'جميع بيانات المعالج الإضافية مطلوبة.'
+            : 'All therapist-specific fields are required.';
+        }
+      }
+      return null;
+    }
+
+    if (!governmentIdFile || !professionalLicenseFile) {
+      return isAr ? 'رفع الهوية والترخيص المهني إلزامي.' : 'Government ID and professional license uploads are required.';
+    }
+
+    if (role === 'PSYCHIATRIST') {
+      if (!medicalDegreeFile || !psychiatryCertFile) {
+        return isAr
+          ? 'وثيقة الدرجة الطبية وشهادة تخصص الطب النفسي مطلوبتان.'
+          : 'Medical degree and psychiatry specialization certificate are required.';
+      }
+    } else {
+      if (!highestDegreeFile || !therapistLicenseProofFile) {
+        return isAr
+          ? 'وثيقة أعلى درجة وإثبات ترخيص المعالج مطلوبان.'
+          : 'Highest degree and therapist license/registration proof are required.';
+      }
+    }
+
+    return null;
   };
 
-  useEffect(() => {
-    if (!nationalIdPhoto) {
-      setNationalIdPhotoPreviewUrl(null);
+  const currentStepError = role ? validateStep(wizardStep) : (isAr ? 'اختر نوع الحساب أولاً.' : 'Please select account type first.');
+  const canMoveNext = currentStepError === null;
+  const canSubmit = role ? validateStep(2) === null : false;
+
+  const nextStep = () => {
+    const error = validateStep(wizardStep);
+    if (error) {
+      setErrorMessage(error);
       return;
     }
-    const objectUrl = URL.createObjectURL(nationalIdPhoto);
-    setNationalIdPhotoPreviewUrl(objectUrl);
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [nationalIdPhoto]);
+    setErrorMessage(null);
+    setWizardStep((current) => Math.min(current + 1, 2));
+  };
 
-  useEffect(() => {
-    if (!profilePhoto) {
-      setProfilePhotoPreviewUrl(null);
-      return;
-    }
-    const objectUrl = URL.createObjectURL(profilePhoto);
-    setProfilePhotoPreviewUrl(objectUrl);
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [profilePhoto]);
+  const prevStep = () => {
+    setErrorMessage(null);
+    setWizardStep((current) => Math.max(current - 1, 0));
+  };
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    const activeSchedule = days
-      .filter((item) => item.enabled)
-      .map((item) => ({ day: item.day, start: item.start, end: item.end }));
+    const finalError = validateStep(2);
+    if (finalError) {
+      setErrorMessage(finalError);
+      return;
+    }
 
-    if (activeSchedule.length === 0) {
-      setErrorMessage(copy.requiredSchedule);
-      return;
-    }
-    if (!licenseDocument) {
-      setErrorMessage(copy.requiredLicenseFile);
-      return;
-    }
-    if (!nationalIdPhoto) {
-      setErrorMessage(copy.requiredNationalIdPhoto);
-      return;
-    }
-    if (!profilePhoto) {
-      setErrorMessage(copy.requiredProfilePhoto);
-      return;
-    }
-    if (!/^\+962\d{8,}$/.test(form.phone)) {
-      setErrorMessage(copy.invalidPhone);
-      return;
-    }
+    if (!role) return;
 
     const formData = new FormData();
-    formData.set('full_name', form.fullName.trim());
-    formData.set('email', form.email.trim().toLowerCase());
-    formData.set('phone', form.phone.trim());
-    formData.set('license_number', form.licenseNumber.trim());
-    formData.set('experience_years', form.experienceYears.trim());
-    formData.set('specialty', form.specialty);
-    form.subSpecialties.forEach((item) => formData.append('sub_specialties', item));
-    splitCSV(form.languages).forEach((item) => formData.append('languages', item));
-    const cityValue = form.location.trim();
-    const countryValue = form.country.trim();
-    formData.set('location', countryValue ? `${cityValue}, ${countryValue}` : cityValue);
-    if (countryValue) {
-      formData.set('location_country', countryValue);
+    formData.set('professional_type', role);
+    formData.set('full_name', `${fullNameEn.trim()} / ${fullNameAr.trim()}`);
+    formData.set('email', email.trim().toLowerCase());
+    formData.set('phone', phone.trim());
+    formData.set('experience_years', yearsExperience.trim());
+    formData.set(
+      'specialty',
+      role === 'PSYCHIATRIST'
+        ? psychiatrySpecialization.trim() || 'Psychiatrist'
+        : therapyMethods
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean)[0] || 'Therapist'
+    );
+    formData.set('location', city.trim());
+    formData.set('location_country', country.trim());
+    formData.set('online_available', 'true');
+    formData.set('fee', sessionFee.trim() || '35');
+    formData.set('short_bio', bio.trim());
+    formData.set('schedule', DEFAULT_SCHEDULE);
+
+    const focusAreaValues = focusAreas
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+    focusAreaValues.forEach((item) => formData.append('sub_specialties', item));
+
+    const languageValues = languages
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+    languageValues.forEach((item) => formData.append('languages', item));
+
+    const roleDetailsText =
+      role === 'PSYCHIATRIST'
+        ? [
+            `Medical Degree Details: ${medicalDegreeDetails.trim() || 'N/A'}`,
+            `Psychiatry Specialization: ${psychiatrySpecialization.trim() || 'N/A'}`
+          ]
+        : [
+            `Highest Degree: ${therapistDegree.trim() || 'N/A'}`,
+            `Therapy Methods: ${therapyMethods.trim() || 'N/A'}`
+          ];
+    const aboutDetails = [
+      bio.trim(),
+      `Country: ${country.trim() || 'N/A'}`,
+      `City: ${city.trim() || 'N/A'}`,
+      `Languages: ${languageValues.join(', ') || 'N/A'}`,
+      `Focus Areas: ${focusAreaValues.join(', ') || 'N/A'}`,
+      ...roleDetailsText
+    ].join('\n');
+    formData.set('about', aboutDetails);
+
+    formData.set('national_id_photo', governmentIdFile as File);
+    formData.set('license_document', professionalLicenseFile as File);
+
+    if (role === 'PSYCHIATRIST') {
+      formData.set('license_number', medicalCouncilNumber.trim());
+      formData.set('license_issuing_authority', 'Medical Council');
+      formData.set('license_expiry_date', '2030-12-31');
+      formData.set(
+        'legal_prescription_declaration',
+        isAr
+          ? 'أقر أنني مخول قانونياً بوصف الأدوية النفسية بعد التحقق الإداري.'
+          : 'I declare I am legally authorized to prescribe psychiatric medication after admin verification.'
+      );
+      formData.set('psychiatrist_prescription_ack', 'true');
+      formData.set('medical_degree_certificate', medicalDegreeFile as File);
+      formData.set('psychiatry_specialization_certificate', psychiatryCertFile as File);
+      formData.set('active_practice_proof', professionalLicenseFile as File);
+      formData.set('license_number', medicalCouncilNumber.trim());
+      formData.set('headline', `Psychiatrist · ${psychiatrySpecialization.trim()}`);
+      if (medicalDegreeDetails.trim()) {
+        formData.append('sub_specialties', medicalDegreeDetails.trim());
+      }
+    } else {
+      formData.set('accreditation_body', therapistDegree.trim());
+      formData.set(
+        'no_prescription_declaration',
+        isAr
+          ? 'أقر أنني لا أملك صلاحية وصف أدوية أو إضافة تشخيص طبي.'
+          : 'I acknowledge I cannot prescribe medication or add medical diagnosis.'
+      );
+      formData.set('therapist_no_prescription_ack', 'true');
+      formData.set('therapy_specialization_certificate', therapistLicenseProofFile as File);
+      formData.set('specialization_certificate', highestDegreeFile as File);
+      formData.set('headline', `Therapist · ${therapyMethods.trim()}`);
+      formData.set('license_number', membershipNumber.trim());
+      therapyMethods
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .forEach((item) => formData.append('sub_specialties', item));
     }
-    if (form.clinicName.trim()) {
-      formData.set('clinic_name', form.clinicName.trim());
-    }
-    if (form.addressLine.trim()) {
-      formData.set('address_line', form.addressLine.trim());
-    }
-    if (form.mapUrl.trim()) {
-      formData.set('map_url', form.mapUrl.trim());
-    }
-    formData.set('online_available', form.onlineAvailable ? 'true' : 'false');
-    formData.set('fee', form.fee.trim());
-    formData.set('short_bio', form.shortBio.trim());
-    if (form.about.trim()) {
-      formData.set('about', form.about.trim());
-    }
-    formData.set('schedule', JSON.stringify(activeSchedule));
-    formData.set('photo', profilePhoto);
-    formData.set('national_id_photo', nationalIdPhoto);
-    formData.set('license_document', licenseDocument);
 
     setIsSubmitting(true);
     try {
@@ -365,43 +345,14 @@ export default function ApplyDoctorPage() {
         false,
         isAr ? 'فشل إرسال الطلب' : 'Failed to submit application'
       );
-      setSuccessMessage(payload.message || copy.successFallback);
-      setForm({
-        fullName: '',
-        email: '',
-        phone: PHONE_PREFIX,
-        licenseNumber: '',
-        experienceYears: '',
-        specialty: SPECIALTIES[0],
-        subSpecialties: [],
-        languages: isAr ? 'العربية, English' : 'Arabic, English',
-        country: isAr ? 'الأردن' : 'Jordan',
-        location: '',
-        clinicName: '',
-        addressLine: '',
-        mapUrl: '',
-        onlineAvailable: true,
-        fee: '',
-        shortBio: '',
-        about: ''
-      });
-      setNationalIdPhoto(null);
-      setProfilePhoto(null);
-      setLicenseDocument(null);
-      setSubSpecialtyInput('');
-      setDays(
-        DAY_ORDER.map((item) => ({
-          day: item.day,
-          enabled: item.day !== 'FRIDAY',
-          start: '09:00',
-          end: '17:00'
-        }))
-      );
+
+      setSuccessMessage(payload.message || (isAr ? 'تم إرسال الطلب بنجاح.' : 'Application submitted successfully.'));
+      resetForm();
     } catch (error) {
       if (error instanceof ApiError) {
         setErrorMessage(error.message);
       } else {
-        setErrorMessage(error instanceof Error ? error.message : isAr ? 'فشل إرسال الطلب' : 'Submission failed');
+        setErrorMessage(error instanceof Error ? error.message : isAr ? 'فشل الإرسال' : 'Submission failed');
       }
     } finally {
       setIsSubmitting(false);
@@ -421,367 +372,227 @@ export default function ApplyDoctorPage() {
 
       <main className="section-shell py-8 sm:py-10">
         <section className="rounded-hero border border-cyan-100 bg-white p-6 shadow-card sm:p-8">
-          <h1 className="text-3xl font-black tracking-tight text-textMain sm:text-4xl">{copy.title}</h1>
-          <p className="mt-3 max-w-3xl text-sm text-muted sm:text-base">{copy.subtitle}</p>
+          <h1 className="text-3xl font-black tracking-tight text-textMain sm:text-4xl">
+            {isAr ? 'تقديم طلب طبيب/معالج' : 'Doctor Application Flow'}
+          </h1>
+          <p className="mt-3 max-w-3xl text-sm text-muted sm:text-base">
+            {isAr
+              ? 'الخطوة 1: اختر نوع الحساب. الخطوة 2: نموذج ديناميكي حسب الدور مع مستندات إلزامية وتحقق إداري.'
+              : 'Step 1: mandatory role selection. Step 2: dynamic multi-step form with role-based requirements and admin verification workflow.'}
+          </p>
         </section>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-          <section className="rounded-hero border border-cyan-100 bg-white p-6 shadow-card sm:p-8">
-            <h2 className="text-xl font-black text-textMain">{copy.personalInfo}</h2>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-borderGray bg-slate-50/60 p-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-bold text-textMain">{copy.nationalIdPhoto}</p>
-                  {nationalIdPhoto && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">{isAr ? 'تم الرفع' : 'Uploaded'}</span>}
-                </div>
-                <p className="mt-1 text-xs text-muted">{isAr ? 'PNG / JPG حتى 5MB' : 'PNG / JPG up to 5MB'}</p>
-                <div className="mt-3 h-40 w-full overflow-hidden rounded-xl border border-borderGray bg-white">
-                  {nationalIdPhotoPreviewUrl ? (
-                    <img src={nationalIdPhotoPreviewUrl} alt={isAr ? 'معاينة الهوية الوطنية' : 'National ID preview'} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-sm text-muted">
-                      {isAr ? 'لا توجد معاينة بعد' : 'No preview yet'}
-                    </div>
-                  )}
-                </div>
-                <div className="mt-3 flex items-center gap-2">
-                  <label className="inline-flex cursor-pointer items-center rounded-lg bg-primary px-3 py-2 text-xs font-bold text-white transition hover:bg-primaryDark">
-                    {isAr ? 'اختر صورة' : 'Choose image'}
-                    <input
-                      required
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      onChange={(event) => setNationalIdPhoto(event.target.files?.[0] ?? null)}
-                      className="hidden"
-                    />
-                  </label>
-                  {nationalIdPhoto?.name && <span className="truncate text-xs text-muted">{nationalIdPhoto.name}</span>}
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-borderGray bg-slate-50/60 p-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-bold text-textMain">{copy.profilePhoto}</p>
-                  {profilePhoto && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">{isAr ? 'تم الرفع' : 'Uploaded'}</span>}
-                </div>
-                <p className="mt-1 text-xs text-muted">{isAr ? 'تُستخدم في الملف الشخصي على الموقع' : 'Used on your public website profile'}</p>
-                <div className="mt-3 h-40 w-full overflow-hidden rounded-xl border border-borderGray bg-white">
-                  {profilePhotoPreviewUrl ? (
-                    <img src={profilePhotoPreviewUrl} alt={isAr ? 'معاينة صورة الملف الشخصي' : 'Profile photo preview'} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-sm text-muted">
-                      {isAr ? 'لا توجد معاينة بعد' : 'No preview yet'}
-                    </div>
-                  )}
-                </div>
-                <div className="mt-3 flex items-center gap-2">
-                  <label className="inline-flex cursor-pointer items-center rounded-lg bg-primary px-3 py-2 text-xs font-bold text-white transition hover:bg-primaryDark">
-                    {isAr ? 'اختر صورة' : 'Choose image'}
-                    <input
-                      required
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      onChange={(event) => setProfilePhoto(event.target.files?.[0] ?? null)}
-                      className="hidden"
-                    />
-                  </label>
-                  {profilePhoto?.name && <span className="truncate text-xs text-muted">{profilePhoto.name}</span>}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <label className={fieldLabelClass}>
-                {copy.fullName}
-                <input
-                  required
-                  value={form.fullName}
-                  onChange={(event) => setField('fullName', event.target.value)}
-                  className={inputClass}
-                />
-              </label>
-              <label className={fieldLabelClass}>
-                {copy.email}
-                <input
-                  required
-                  type="email"
-                  value={form.email}
-                  onChange={(event) => setField('email', event.target.value)}
-                  className={inputClass}
-                />
-              </label>
-              <label className={fieldLabelClass}>
-                {copy.phone}
-                <input
-                  required
-                  type="tel"
-                  value={form.phone}
-                  onChange={(event) => setField('phone', normalizePhoneInput(event.target.value))}
-                  inputMode="numeric"
-                  maxLength={16}
-                  placeholder={`${PHONE_PREFIX}7xxxxxxxx`}
-                  className={inputClass}
-                />
-                <span className="text-xs font-medium text-muted">{copy.phoneHint}</span>
-              </label>
-            </div>
-          </section>
-
-          <section className="rounded-hero border border-cyan-100 bg-white p-6 shadow-card sm:p-8">
-            <h2 className="text-xl font-black text-textMain">{copy.professionalInfo}</h2>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <label className={fieldLabelClass}>
-                {copy.licenseNumber}
-                <input
-                  required
-                  value={form.licenseNumber}
-                  onChange={(event) => setField('licenseNumber', event.target.value)}
-                  className={inputClass}
-                />
-              </label>
-              <label className={fieldLabelClass}>
-                {copy.experienceYears}
-                <input
-                  required
-                  min={0}
-                  max={80}
-                  type="number"
-                  value={form.experienceYears}
-                  onChange={(event) => setField('experienceYears', event.target.value)}
-                  className={inputClass}
-                />
-              </label>
-              <label className={fieldLabelClass}>
-                {copy.specialty}
-                <select
-                  value={form.specialty}
-                  onChange={(event) => setField('specialty', event.target.value)}
-                  className={inputClass}
-                >
-                  {SPECIALTIES.map((specialty) => (
-                    <option key={specialty} value={specialty}>
-                      {specialty}
-                    </option>
+        <section className="mt-6 rounded-hero border border-cyan-100 bg-white p-6 shadow-card sm:p-8">
+          <h2 className="text-xl font-black text-textMain">{isAr ? 'الخطوة 1: نوع الحساب' : 'Step 1: Account Type'}</h2>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            {roleCards.map((card) => (
+              <button
+                key={card.id}
+                type="button"
+                onClick={() => {
+                  setRole(card.id);
+                  setWizardStep(0);
+                  setErrorMessage(null);
+                }}
+                className={`rounded-2xl border p-4 text-left transition ${card.color} ${role === card.id ? 'ring-2 ring-primary/40' : 'hover:shadow-md'}`}
+              >
+                <p className="text-sm font-black text-textMain">{card.title}</p>
+                <ul className="mt-2 space-y-1 text-xs text-muted">
+                  {card.capabilities.map((item) => (
+                    <li key={item}>• {item}</li>
                   ))}
-                </select>
-              </label>
-              <label className={`${fieldLabelClass} sm:col-span-2`}>
-                {copy.subSpecialties}
-                <div className="rounded-xl border border-borderGray bg-white p-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {form.subSpecialties.map((tag) => (
-                      <span key={tag} className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primaryBg px-3 py-1 text-xs font-semibold text-primary">
-                        {tag}
-                        <button
-                          type="button"
-                          onClick={() => removeSubSpecialtyTag(tag)}
-                          className="rounded-full px-1 text-primary/80 hover:bg-primary/10 hover:text-primary"
-                          aria-label={isAr ? `حذف ${tag}` : `Remove ${tag}`}
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                  <div className="mt-3 flex items-center gap-2">
-                    <input
-                      list="sub-specialty-suggestions"
-                      value={subSpecialtyInput}
-                      onChange={(event) => setSubSpecialtyInput(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ',') {
-                          event.preventDefault();
-                          addSubSpecialtyTag(subSpecialtyInput);
-                        }
-                      }}
-                      className="h-11 flex-1 rounded-lg border border-borderGray bg-white px-3 text-sm transition focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/10"
-                      placeholder={isAr ? 'مثل: القلق، العلاج المعرفي السلوكي...' : 'e.g. Anxiety, CBT...'}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => addSubSpecialtyTag(subSpecialtyInput)}
-                      className="inline-flex h-10 items-center rounded-lg bg-primary px-3 text-sm font-bold text-white transition hover:bg-primaryDark"
-                    >
-                      {copy.addTag}
-                    </button>
-                  </div>
-                  <p className="mt-2 text-xs text-muted">{copy.addTagHint}</p>
-                  <datalist id="sub-specialty-suggestions">
-                    {SUB_SPECIALTY_SUGGESTIONS.map((item) => (
-                      <option key={item} value={item} />
-                    ))}
-                  </datalist>
-                </div>
-              </label>
-              <label className={fieldLabelClass}>
-                {copy.languages}
-                <input
-                  required
-                  value={form.languages}
-                  onChange={(event) => setField('languages', event.target.value)}
-                  className={inputClass}
-                />
-              </label>
-              <label className={fieldLabelClass}>
-                {copy.country}
-                <input
-                  required
-                  list="country-options"
-                  value={form.country}
-                  onChange={(event) => setField('country', event.target.value)}
-                  className={inputClass}
-                />
-                <datalist id="country-options">
-                  {countryOptions.map((country) => (
-                    <option key={country} value={country} />
-                  ))}
-                </datalist>
-              </label>
-              <label className={fieldLabelClass}>
-                {copy.location}
-                <input
-                  required
-                  value={form.location}
-                  onChange={(event) => setField('location', event.target.value)}
-                  className={inputClass}
-                />
-              </label>
-              <label className={fieldLabelClass}>
-                {copy.clinicName}
-                <input
-                  value={form.clinicName}
-                  onChange={(event) => setField('clinicName', event.target.value)}
-                  className={inputClass}
-                />
-              </label>
-              <label className={`${fieldLabelClass} sm:col-span-2`}>
-                {copy.addressLine}
-                <input
-                  value={form.addressLine}
-                  onChange={(event) => setField('addressLine', event.target.value)}
-                  className={inputClass}
-                />
-              </label>
-              <label className={`${fieldLabelClass} sm:col-span-2`}>
-                {copy.mapUrl}
-                <input
-                  type="url"
-                  value={form.mapUrl}
-                  onChange={(event) => setField('mapUrl', event.target.value)}
-                  className={inputClass}
-                  placeholder={isAr ? 'https://maps.google.com/...' : 'https://maps.google.com/...'}
-                />
-              </label>
-              <label className={fieldLabelClass}>
-                {copy.consultationFee}
-                <input
-                  required
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={form.fee}
-                  onChange={(event) => setField('fee', event.target.value)}
-                  className={inputClass}
-                />
-              </label>
-              <label className={fieldLabelClass}>
-                {copy.onlineAvailable}
-                <select
-                  value={form.onlineAvailable ? 'yes' : 'no'}
-                  onChange={(event) => setField('onlineAvailable', event.target.value === 'yes')}
-                  className={inputClass}
-                >
-                  <option value="yes">{copy.yes}</option>
-                  <option value="no">{copy.no}</option>
-                </select>
-              </label>
-              <label className={`${fieldLabelClass} sm:col-span-2`}>
-                {copy.shortBio}
-                <textarea
-                  required
-                  rows={3}
-                  value={form.shortBio}
-                  onChange={(event) => setField('shortBio', event.target.value)}
-                  className={textareaClass}
-                />
-              </label>
-              <label className={`${fieldLabelClass} sm:col-span-2`}>
-                {copy.about}
-                <textarea
-                  rows={6}
-                  value={form.about}
-                  onChange={(event) => setField('about', event.target.value)}
-                  className={textareaClass}
-                />
-              </label>
-              <label className={`${fieldLabelClass} sm:col-span-2`}>
-                {copy.licenseDocument}
-                <input
-                  required
-                  type="file"
-                  accept="application/pdf,image/png,image/jpeg,image/webp"
-                  onChange={(event) => setLicenseDocument(event.target.files?.[0] ?? null)}
-                  className="w-full rounded-xl border border-borderGray bg-white px-3 py-2 text-sm file:me-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:text-xs file:font-bold file:text-white hover:file:bg-primaryDark"
-                />
-              </label>
-            </div>
-          </section>
-
-          <section className="rounded-hero border border-cyan-100 bg-white p-6 shadow-card sm:p-8">
-            <h2 className="text-xl font-black text-textMain">{copy.scheduleInfo}</h2>
-            <div className="mt-4 grid gap-3">
-              {DAY_ORDER.map((item) => {
-                const value = days.find((row) => row.day === item.day);
-                if (!value) {
-                  return null;
-                }
-                return (
-                  <div key={item.day} className="grid gap-3 rounded-xl border border-borderGray bg-slate-50 p-3 sm:grid-cols-[1.2fr_1fr_1fr] sm:items-center">
-                    <label className="flex items-center gap-2 text-sm font-semibold text-textMain">
-                      <input
-                        type="checkbox"
-                        checked={value.enabled}
-                        onChange={(event) => setDayValue(item.day, 'enabled', event.target.checked)}
-                      />
-                      {isAr ? item.ar : item.en}
-                    </label>
-                    <input
-                      type="time"
-                      disabled={!value.enabled}
-                      value={value.start}
-                      onChange={(event) => setDayValue(item.day, 'start', event.target.value)}
-                      className="rounded-lg border border-borderGray bg-white px-3 py-2 text-sm disabled:opacity-50"
-                    />
-                    <input
-                      type="time"
-                      disabled={!value.enabled}
-                      value={value.end}
-                      onChange={(event) => setDayValue(item.day, 'end', event.target.value)}
-                      className="rounded-lg border border-borderGray bg-white px-3 py-2 text-sm disabled:opacity-50"
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
-          {errorMessage && (
-            <p className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">{errorMessage}</p>
-          )}
-          {successMessage && (
-            <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{successMessage}</p>
-          )}
-
-          <div className="pb-2">
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="inline-flex h-12 items-center justify-center rounded-xl bg-teal-600 px-6 text-sm font-bold text-white transition hover:bg-teal-700 disabled:opacity-60"
-            >
-              {isSubmitting ? copy.sending : copy.submit}
-            </button>
+                </ul>
+              </button>
+            ))}
           </div>
-        </form>
+        </section>
+
+        {role && (
+          <form onSubmit={onSubmit} className="mt-6 space-y-6">
+            <section className="rounded-hero border border-cyan-100 bg-white p-6 shadow-card sm:p-8">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-xl font-black text-textMain">{isAr ? 'الخطوة 2: النموذج الديناميكي' : 'Step 2: Dynamic Multi-Step Form'}</h2>
+                <span className="rounded-full bg-cyan-100 px-3 py-1 text-xs font-bold text-cyan-800">
+                  {isAr ? `المرحلة ${wizardStep + 1} من 3` : `Stage ${wizardStep + 1} of 3`}
+                </span>
+              </div>
+
+              {wizardStep === 0 && (
+                <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                  <label className={fieldLabelClass}>
+                    {isAr ? 'الاسم الكامل (عربي)' : 'Full Name (Arabic)'}
+                    <input value={fullNameAr} onChange={(e) => setFullNameAr(e.target.value)} className={inputClass} required />
+                  </label>
+                  <label className={fieldLabelClass}>
+                    {isAr ? 'الاسم الكامل (English)' : 'Full Name (English)'}
+                    <input value={fullNameEn} onChange={(e) => setFullNameEn(e.target.value)} className={inputClass} required />
+                  </label>
+                  <label className={fieldLabelClass}>
+                    {isAr ? 'البريد الإلكتروني' : 'Email'}
+                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} required />
+                  </label>
+                  <label className={fieldLabelClass}>
+                    {isAr ? 'الهاتف' : 'Phone'}
+                    <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} required />
+                  </label>
+                  <label className={fieldLabelClass}>
+                    {isAr ? 'الدولة' : 'Country'}
+                    <select value={country} onChange={(e) => setCountry(e.target.value)} className={inputClass}>
+                      {COUNTRY_OPTIONS.map((item) => (
+                        <option key={item} value={item}>
+                          {item}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className={fieldLabelClass}>
+                    {isAr ? 'المدينة' : 'City'}
+                    <input value={city} onChange={(e) => setCity(e.target.value)} className={inputClass} required />
+                  </label>
+                  <label className={fieldLabelClass}>
+                    {isAr ? 'اللغات (مفصولة بفاصلة)' : 'Languages (comma separated)'}
+                    <input value={languages} onChange={(e) => setLanguages(e.target.value)} className={inputClass} required />
+                  </label>
+                  <label className={fieldLabelClass}>
+                    {isAr ? 'سنوات الخبرة' : 'Years of Experience'}
+                    <input type="number" min={0} value={yearsExperience} onChange={(e) => setYearsExperience(e.target.value)} className={inputClass} required />
+                  </label>
+                  <label className={`${fieldLabelClass} sm:col-span-2`}>
+                    {isAr ? 'مجالات التركيز (مفصولة بفاصلة)' : 'Focus Areas (comma separated)'}
+                    <input value={focusAreas} onChange={(e) => setFocusAreas(e.target.value)} className={inputClass} required />
+                  </label>
+                  <label className={`${fieldLabelClass} sm:col-span-2`}>
+                    {isAr ? 'نبذة مهنية' : 'Professional Bio'}
+                    <textarea rows={5} value={bio} onChange={(e) => setBio(e.target.value)} className={textareaClass} required />
+                  </label>
+                  <label className={fieldLabelClass}>
+                    {isAr ? 'رسوم الجلسة (JOD)' : 'Session Fee (JOD)'}
+                    <input type="number" min={0} step="0.01" value={sessionFee} onChange={(e) => setSessionFee(e.target.value)} className={inputClass} required />
+                  </label>
+                </div>
+              )}
+
+              {wizardStep === 1 && (
+                <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                  {role === 'PSYCHIATRIST' ? (
+                    <>
+                      <label className={fieldLabelClass}>
+                        {isAr ? 'تفاصيل الدرجة الطبية' : 'Medical Degree Details'}
+                        <input value={medicalDegreeDetails} onChange={(e) => setMedicalDegreeDetails(e.target.value)} className={inputClass} required />
+                      </label>
+                      <label className={fieldLabelClass}>
+                        {isAr ? 'تخصص الطب النفسي' : 'Psychiatry Specialization'}
+                        <input value={psychiatrySpecialization} onChange={(e) => setPsychiatrySpecialization(e.target.value)} className={inputClass} required />
+                      </label>
+                      <label className={fieldLabelClass}>
+                        {isAr ? 'رقم تسجيل المجلس الطبي' : 'Medical Council Registration Number'}
+                        <input value={medicalCouncilNumber} onChange={(e) => setMedicalCouncilNumber(e.target.value)} className={inputClass} required />
+                      </label>
+                      <p className="rounded-xl border border-cyan-100 bg-cyan-50 px-3 py-2 text-xs text-cyan-900 sm:col-span-2">
+                        {isAr
+                          ? 'الوصفات الطبية والتشخيص الطبي مفعّلة فقط بعد موافقة الإدارة والتحقق من المستندات.'
+                          : 'Prescriptions and medical diagnosis are enabled only after admin approval and verification.'}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <label className={fieldLabelClass}>
+                        {isAr ? 'المؤهل الأكاديمي' : 'Highest Degree'}
+                        <input value={therapistDegree} onChange={(e) => setTherapistDegree(e.target.value)} className={inputClass} required />
+                      </label>
+                      <label className={fieldLabelClass}>
+                        {isAr ? 'الأساليب العلاجية' : 'Therapy Methods'}
+                        <input value={therapyMethods} onChange={(e) => setTherapyMethods(e.target.value)} className={inputClass} required />
+                      </label>
+                      <label className={fieldLabelClass}>
+                        {isAr ? 'رقم الترخيص/العضوية' : 'License / Membership Number'}
+                        <input value={membershipNumber} onChange={(e) => setMembershipNumber(e.target.value)} className={inputClass} required />
+                      </label>
+                      <p className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-900 sm:col-span-2">
+                        {isAr
+                          ? 'المعالج لا يمتلك صلاحية الوصفات الطبية أو التشخيص الطبي.'
+                          : 'Therapist account has no prescription rights and no medical diagnosis fields.'}
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {wizardStep === 2 && (
+                <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                  <label className={fieldLabelClass}>
+                    {isAr ? 'رفع الهوية الحكومية (إلزامي)' : 'Government ID Upload (Required)'}
+                    <input type="file" accept="application/pdf,image/*" onChange={(e) => setGovernmentIdFile(e.target.files?.[0] ?? null)} className={inputClass} required />
+                  </label>
+                  <label className={fieldLabelClass}>
+                    {isAr ? 'رفع الترخيص المهني (إلزامي)' : 'Professional License Upload (Required)'}
+                    <input type="file" accept="application/pdf,image/*" onChange={(e) => setProfessionalLicenseFile(e.target.files?.[0] ?? null)} className={inputClass} required />
+                  </label>
+
+                  {role === 'PSYCHIATRIST' ? (
+                    <>
+                      <label className={fieldLabelClass}>
+                        {isAr ? 'شهادة الدرجة الطبية (إلزامي)' : 'Medical Degree Certificate (Required)'}
+                        <input type="file" accept="application/pdf,image/*" onChange={(e) => setMedicalDegreeFile(e.target.files?.[0] ?? null)} className={inputClass} required />
+                      </label>
+                      <label className={fieldLabelClass}>
+                        {isAr ? 'شهادة تخصص الطب النفسي (إلزامي)' : 'Psychiatry Specialization Certificate (Required)'}
+                        <input type="file" accept="application/pdf,image/*" onChange={(e) => setPsychiatryCertFile(e.target.files?.[0] ?? null)} className={inputClass} required />
+                      </label>
+                    </>
+                  ) : (
+                    <>
+                      <label className={fieldLabelClass}>
+                        {isAr ? 'وثيقة أعلى درجة (إلزامي)' : 'Highest Degree Upload (Required)'}
+                        <input type="file" accept="application/pdf,image/*" onChange={(e) => setHighestDegreeFile(e.target.files?.[0] ?? null)} className={inputClass} required />
+                      </label>
+                      <label className={fieldLabelClass}>
+                        {isAr ? 'إثبات ترخيص/تسجيل المعالج (إلزامي)' : 'Therapist License/Registration Proof (Required)'}
+                        <input type="file" accept="application/pdf,image/*" onChange={(e) => setTherapistLicenseProofFile(e.target.files?.[0] ?? null)} className={inputClass} required />
+                      </label>
+                    </>
+                  )}
+
+                  <div className="sm:col-span-2 rounded-xl border border-borderGray bg-slate-50 p-4 text-xs text-muted">
+                    {isAr
+                      ? 'حالات الإدارة: Draft, Submitted, Under Review, Approved_MD, Approved_Therapist, Rejected, Needs More Info.'
+                      : 'Admin statuses: Draft, Submitted, Under Review, Approved_MD, Approved_Therapist, Rejected, Needs More Info.'}
+                  </div>
+                </div>
+              )}
+
+              {errorMessage && <p className="mt-4 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">{errorMessage}</p>}
+              {successMessage && <p className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{successMessage}</p>}
+
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                {wizardStep > 0 && (
+                  <button type="button" onClick={prevStep} className="rounded-xl border border-borderGray bg-white px-5 py-2 text-sm font-semibold text-textMain hover:bg-slate-50">
+                    {isAr ? 'السابق' : 'Back'}
+                  </button>
+                )}
+
+                {wizardStep < 2 ? (
+                  <button
+                    type="button"
+                    onClick={nextStep}
+                    disabled={!canMoveNext}
+                    className="rounded-xl bg-primary px-5 py-2 text-sm font-bold text-white hover:bg-primaryDark disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isAr ? 'التالي' : 'Next'}
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || !canSubmit}
+                    className="rounded-xl bg-primary px-5 py-2 text-sm font-bold text-white hover:bg-primaryDark disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isSubmitting ? (isAr ? 'جاري الإرسال...' : 'Submitting...') : isAr ? 'إرسال الطلب' : 'Submit Application'}
+                  </button>
+                )}
+              </div>
+            </section>
+          </form>
+        )}
       </main>
 
       <Footer />

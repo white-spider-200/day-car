@@ -6,10 +6,15 @@ from tests.conftest import auth_headers
 
 def _application_payload(email: str):
     return {
+        "professional_type": "PSYCHIATRIST",
         "full_name": "Dr Public Applicant",
         "email": email,
         "phone": "+962790001122",
         "license_number": "LIC-100-AB",
+        "license_issuing_authority": "Jordan Medical Council",
+        "license_expiry_date": "2028-12-31",
+        "legal_prescription_declaration": "I am authorized to prescribe psychiatric medications.",
+        "psychiatrist_prescription_ack": "true",
         "experience_years": "9",
         "specialty": "Psychiatrist",
         "sub_specialties": "Trauma",
@@ -30,6 +35,13 @@ def test_public_application_submit_duplicate_and_admin_approve(client, admin_tok
         files={
             "photo": ("photo.png", BytesIO(b"\\x89PNG\\r\\n\\x1a\\n"), "image/png"),
             "license_document": ("license.pdf", BytesIO(b"%PDF-1.4 test"), "application/pdf"),
+            "medical_degree_certificate": ("medical-degree.pdf", BytesIO(b"%PDF-1.4 test"), "application/pdf"),
+            "psychiatry_specialization_certificate": (
+                "psychiatry-specialization.pdf",
+                BytesIO(b"%PDF-1.4 test"),
+                "application/pdf",
+            ),
+            "active_practice_proof": ("active-practice.pdf", BytesIO(b"%PDF-1.4 test"), "application/pdf"),
         },
     )
     assert first.status_code == 201, first.text

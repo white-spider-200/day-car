@@ -1,535 +1,617 @@
-import { useState, useEffect, useRef } from 'react';
-import { surveySteps, SurveyAnswers, TOTAL_STEPS, QuestionStep } from '../data/surveyData';
-import { matchDoctors, MatchedDoctor, ApiDoctor } from '../utils/matchingEngine';
+import { useMemo, useState } from 'react';
+import { DOCTOR_MATCH_QUESTIONS, INITIAL_FILTERS, TYPE_DESCRIPTIONS, TYPE_TITLES, type MatchFilters } from '../data/doctorMatchingTest';
+import { useLanguage } from '../context/LanguageContext';
 import { fetchFirstReachable } from '../utils/api';
 import { navigateTo } from '../utils/auth';
-import { useLanguage } from '../context/LanguageContext';
 import './DoctorSurveyPage.css';
 
-const surveyStepsAr: QuestionStep[] = [
-    {
-        id: 'care_goal',
-        index: 1,
-        title: 'ما الذي دفعك لبدء العلاج النفسي؟',
-        subtitle: 'اختر الخيار الأقرب لما تشعر به الآن.',
-        type: 'single',
-        required: true,
-        options: [
-            { id: 'anxiety_stress', label: 'قلق أو توتر', emoji: '😰', sublabel: 'قلق مستمر أو نوبات هلع' },
-            { id: 'depression', label: 'حزن أو اكتئاب', emoji: '😔', sublabel: 'مزاج منخفض وفقدان اهتمام' },
-            { id: 'trauma', label: 'صدمة أو أحداث مؤلمة', emoji: '💔', sublabel: 'ذكريات صعبة أو آثار نفسية' },
-            { id: 'relationships', label: 'مشاكل في العلاقات', emoji: '💑', sublabel: 'زوجية أو أسرية أو تواصل' },
-            { id: 'work_burnout', label: 'ضغط العمل أو الإرهاق', emoji: '💼', sublabel: 'إجهاد مهني واستنزاف' },
-            { id: 'self_growth', label: 'تطوير الذات', emoji: '🌱', sublabel: 'وعي ذاتي وتحسين الحياة' },
-            { id: 'child_support', label: 'دعم لطفلي', emoji: '👶', sublabel: 'سلوك، مدرسة، فرط حركة' },
-            { id: 'other', label: 'لست متأكدًا بعد', emoji: '💬', sublabel: 'ساعدني أكتشف الأنسب' },
-        ],
-        nextStep: 'concern_detail',
-    },
-    {
-        id: 'concern_detail',
-        index: 2,
-        title: 'أي خيار يصف حالتك بشكل أدق؟',
-        subtitle: 'اختيارك يساعدنا في مطابقتك مع المختص المناسب.',
-        type: 'single',
-        required: true,
-        options: [
-            { id: 'ocd', label: 'أفكار وسواسية أو طقوس متكررة', emoji: '🔄' },
-            { id: 'panic', label: 'نوبات هلع', emoji: '🫀' },
-            { id: 'grief', label: 'حزن أو فقدان', emoji: '🕊️' },
-            { id: 'addiction', label: 'إدمان أو اعتماد', emoji: '🔗' },
-            { id: 'adhd', label: 'فرط حركة وتشتت انتباه', emoji: '🧩' },
-            { id: 'phobia', label: 'رهاب أو خوف محدد', emoji: '😨' },
-            { id: 'insomnia', label: 'مشاكل النوم', emoji: '🌙' },
-            { id: 'anger', label: 'الغضب أو صعوبة ضبط المشاعر', emoji: '🌡️' },
-            { id: 'general_talk', label: 'أحتاج فقط شخصًا أتحدث معه', emoji: '🗣️' },
-        ],
-        nextStep: 'red_flag_screen',
-    },
-    {
-        id: 'red_flag_screen',
-        index: 3,
-        title: 'قبل المتابعة، هل ينطبق عليك أي مما يلي الآن؟',
-        subtitle: 'سلامتك أولًا. إجابتك سرية.',
-        type: 'boolean-grid',
-        isSafetyGate: true,
-        required: true,
-        options: [
-            { id: 'self_harm', label: 'أفكار بإيذاء نفسي' },
-            { id: 'suicidal', label: 'أفكار انتحارية أو عدم الرغبة في الحياة' },
-            { id: 'harm_others', label: 'أفكار بإيذاء شخص آخر' },
-            { id: 'crisis_now', label: 'أنا في أزمة نفسية الآن' },
-            { id: 'none', label: 'لا شيء مما سبق - أنا بخير حاليًا', overrideNext: 'who_is_it_for' },
-        ],
-        nextStep: 'who_is_it_for',
-    },
-    {
-        id: 'who_is_it_for',
-        index: 4,
-        title: 'من سيحضر الجلسات؟',
-        subtitle: 'هذا يساعدنا في اختيار التخصص الأنسب.',
-        type: 'single',
-        required: true,
-        options: [
-            { id: 'myself_adult', label: 'أنا (بالغ)', emoji: '👤' },
-            { id: 'myself_teen', label: 'أنا (مراهق 13-17)', emoji: '🧑' },
-            { id: 'my_child', label: 'طفلي (أقل من 13)', emoji: '🧒' },
-            { id: 'couple', label: 'أنا وشريكي', emoji: '💑' },
-            { id: 'family', label: 'العائلة كاملة', emoji: '👨‍👩‍👧' },
-        ],
-        nextStep: 'session_format',
-    },
-    {
-        id: 'session_format',
-        index: 5,
-        title: 'ما طريقة الجلسة التي تفضلها؟',
-        subtitle: 'سنرشح لك مختصين يقدمون هذا النوع من الجلسات.',
-        type: 'single',
-        required: true,
-        options: [
-            { id: 'in_person', label: 'حضوري في العيادة', emoji: '🏥', sublabel: 'جلسات مباشرة' },
-            { id: 'online', label: 'أونلاين', emoji: '💻', sublabel: 'مكالمة فيديو آمنة' },
-            { id: 'either', label: 'كلاهما مناسب', emoji: '✨', sublabel: 'أنا مرن' },
-        ],
-        nextStep: 'therapist_preference',
-    },
-    {
-        id: 'therapist_preference',
-        index: 6,
-        title: 'هل لديك تفضيلات لمعالجك؟',
-        subtitle: 'اختياري، والأولوية لصحتك.',
-        type: 'single',
-        required: false,
-        options: [
-            { id: 'lang_arabic', label: 'معالج يتحدث العربية', emoji: '🌍' },
-            { id: 'lang_english', label: 'معالج يتحدث الإنجليزية', emoji: '🇬🇧' },
-            { id: 'gender_female', label: 'معالجة', emoji: '👩‍⚕️' },
-            { id: 'gender_male', label: 'معالج', emoji: '👨‍⚕️' },
-            { id: 'no_pref', label: 'لا يوجد تفضيل', emoji: '✨' },
-        ],
-        nextStep: 'approach_style',
-    },
-    {
-        id: 'approach_style',
-        index: 7,
-        title: 'ما الأسلوب العلاجي الذي يناسبك؟',
-        subtitle: 'يساعدنا على ترشيح معالج متوافق معك.',
-        type: 'single',
-        required: false,
-        options: [
-            { id: 'cbt', label: 'عملي ومنظم (CBT)', emoji: '🧠', sublabel: 'العلاج المعرفي السلوكي' },
-            { id: 'mindfulness', label: 'تأملي وهادئ', emoji: '🧘', sublabel: 'مقاربات اليقظة الذهنية' },
-            { id: 'psychodynamic', label: 'استكشاف عميق', emoji: '🔍', sublabel: 'فهم الجذور العميقة' },
-            { id: 'supportive', label: 'داعم وحواري', emoji: '🗣️', sublabel: 'استماع وإرشاد' },
-            { id: 'no_pref_app', label: 'لا يوجد تفضيل', emoji: '✨' },
-        ],
-        nextStep: 'priority',
-    },
-    {
-        id: 'priority',
-        index: 8,
-        title: 'ما الأولوية الأهم عند اختيار المعالج؟',
-        subtitle: 'بناءً عليها نرتب النتائج.',
-        type: 'single',
-        required: true,
-        options: [
-            { id: 'fastest', label: 'أقرب موعد متاح', emoji: '⚡', sublabel: 'أريد البدء سريعًا' },
-            { id: 'experienced', label: 'الأكثر خبرة', emoji: '🏆', sublabel: 'خبرة طويلة' },
-            { id: 'top_rated', label: 'الأعلى تقييمًا', emoji: '⭐', sublabel: 'موثوق من المرضى' },
-            { id: 'balanced', label: 'أفضل تطابق شامل', emoji: '⚖️', sublabel: 'توازن بين كل العوامل' },
-        ],
-        nextStep: null,
-    },
-];
+type MatchDoctor = {
+  similarity: number;
+  doctor_type_code: string;
+  doctor: {
+    doctor_user_id: string;
+    slug: string;
+    display_name: string;
+    headline: string | null;
+    photo_url: string | null;
+    specialties: string[] | null;
+    languages: string[] | null;
+    session_types: string[] | null;
+    gender_identity: string | null;
+    insurance_providers: string[] | null;
+    location_city: string | null;
+    location_country: string | null;
+    next_available_at: string | null;
+    rating: number | string | null;
+    reviews_count: number;
+    pricing_currency: string;
+    pricing_per_session: number | string | null;
+    verification_badges: string[] | null;
+  };
+};
 
-// ── Step Option Card ──────────────────────────────────────────────────────────
-function StepCard({
-    step,
-    answers,
-    onAnswer,
-}: {
-    step: QuestionStep;
-    answers: SurveyAnswers;
-    onAnswer: (stepId: string, value: string) => void;
-}) {
-    const current = answers[step.id] as string | undefined;
+type MatchResponse = {
+  user_type_code: string;
+  label: string;
+  doctors: MatchDoctor[];
+};
 
-    return (
-        <div className={`survey-options-grid ${step.id === 'red_flag_screen' ? 'survey-options-list' : ''}`}>
-            {step.options?.map(opt => {
-                const isSelected = current === opt.id;
-                return (
-                    <button
-                        key={opt.id}
-                        className={`survey-option-card ${isSelected ? 'selected' : ''} ${opt.id === 'none' ? 'survey-option-safe' : ''}`}
-                        onClick={() => onAnswer(step.id, opt.id)}
-                        aria-pressed={isSelected}
-                    >
-                        {opt.emoji && <span className="survey-option-emoji">{opt.emoji}</span>}
-                        <span className="survey-option-text">
-                            <span className="survey-option-label">{opt.label}</span>
-                            {opt.sublabel && <span className="survey-option-sublabel">{opt.sublabel}</span>}
-                        </span>
-                        {isSelected && <span className="survey-option-check">✓</span>}
-                    </button>
-                );
-            })}
-        </div>
-    );
+const QUESTIONS_PER_PAGE = 6;
+const TOTAL_QUESTION_PAGES = Math.ceil(DOCTOR_MATCH_QUESTIONS.length / QUESTIONS_PER_PAGE);
+const TOTAL_STEPS = TOTAL_QUESTION_PAGES + 1;
+const SCALE_VALUES = [5, 4, 3, 2, 1] as const;
+
+const ARABIC_QUESTION_STATEMENTS: Record<string, string> = {
+  care_1: 'أفضل أن يخبرني الطبيب بما يجب أن أفعله بالضبط.',
+  care_2: 'أحب مناقشة خيارات علاج متعددة.',
+  care_3: 'أريد جلسات منظمة بخطط واضحة.',
+  care_4: 'أفضل الحوار المفتوح على الالتزام الصارم بالبنية.',
+  care_5: 'أثق بالسلطة المهنية أكثر من النقاش.',
+  care_6: 'أرغب بالمشاركة الفعالة في اتخاذ القرار.',
+  care_7: 'أتقدم بشكل أفضل عندما يعطيني الطبيب خطوات عملية واضحة.',
+  care_8: 'أفضل خطة علاج مشتركة على التوجيه الثابت.',
+  approach_1: 'أفضل أساليب علاجية علمية ومنظمة.',
+  approach_2: 'أريد أخذ العوامل العاطفية ونمط الحياة بعين الاعتبار بعمق.',
+  approach_3: 'أقدّر التشخيص الرسمي قبل بدء العلاج.',
+  approach_4: 'أفضل أساليب علاج مرنة.',
+  approach_5: 'أثق بالأطر السريرية المعتمدة.',
+  approach_6: 'أؤمن أن الوقاية ونمط الحياة جزء أساسي من التعافي.',
+  approach_7: 'أفضل نتائج علاج قابلة للقياس وبروتوكولات واضحة.',
+  approach_8: 'أريد أن تكون رعايتي النفسية مرتبطة بعادات الحياة اليومية.',
+  specialization_1: 'أريد معالجًا يتعامل مع حالات متعددة ومختلفة.',
+  specialization_2: 'أفضل شخصًا متخصصًا بعمق في مشكلتي.',
+  specialization_3: 'أنا غير متأكد تمامًا من طبيعة مشكلتي.',
+  specialization_4: 'أعرف تمامًا ما الذي أحتاج المساعدة فيه.',
+  specialization_5: 'أفضل دعمًا عامًا بدل التركيز الضيق.',
+  specialization_6: 'أريد خبيرًا في حالة محددة جدًا.',
+  specialization_7: 'أبحث عن إرشاد عام للصحة النفسية.',
+  specialization_8: 'أفضل العمل مع أخصائي دقيق أكثر من معالج عام.',
+};
+
+const COPY = {
+  en: {
+    pageKicker: 'Sabina Therapy · Doctor Matching Test',
+    introTitle: 'Find Your Best-Match Mental Health Doctor',
+    introLead:
+      'This 24-question assessment maps your care preferences across doctor style, medical approach, and specialization level.',
+    introQuestions: '24 questions',
+    introScale: '5-point Likert scale',
+    introDuration: 'About 6-8 minutes',
+    start: 'Start Test',
+    back: 'Back',
+    minLeft: 'min left',
+    step: 'Step',
+    disagree: 'Disagree',
+    agree: 'Agree',
+    next: 'Next',
+    filtersTag: 'FILTERS (OPTIONAL)',
+    filtersTitle: 'Refine your doctor shortlist',
+    filtersLead: 'These fields do not affect your type code, they only narrow the doctor pool.',
+    gender: 'Preferred doctor gender',
+    language: 'Preferred language',
+    sessionType: 'Session type',
+    budgetMin: 'Budget min',
+    budgetMax: 'Budget max',
+    location: 'Location',
+    insurance: 'Insurance provider',
+    any: 'Any',
+    female: 'Female',
+    male: 'Male',
+    arabic: 'Arabic',
+    english: 'English',
+    onlineVideo: 'Online (Video)',
+    inPerson: 'In-person',
+    pricePlaceholderMin: 'e.g. 40',
+    pricePlaceholderMax: 'e.g. 120',
+    locationPlaceholder: 'City, country, or online',
+    insurancePlaceholder: 'e.g. MedNet',
+    matching: 'Matching doctors...',
+    seeMatches: 'See My Matches',
+    typeTitle: 'Your Doctor Type',
+    verified: 'Verified',
+    doctorFallbackTitle: 'Mental Health Doctor',
+    locationMissing: 'Location not listed',
+    typeFit: 'Type fit',
+    noRating: 'No rating yet',
+    fromReviews: 'from',
+    reviews: 'reviews',
+    viewProfile: 'View Profile',
+    retake: 'Retake Test',
+    ratingFor: 'Rate',
+    availabilityNotListed: 'Availability not listed',
+    availableToday: 'Available today',
+    availableInOneDay: 'Available in 1 day',
+    availableInDays: 'Available in {days} days',
+    contactPricing: 'Contact for pricing',
+    perSession: '/ session',
+  },
+  ar: {
+    pageKicker: 'سابينا ثيرابي · اختبار مطابقة الطبيب',
+    introTitle: 'اعثر على أفضل طبيب نفسي مناسب لك',
+    introLead:
+      'هذا التقييم المكوّن من 24 سؤالًا يحدد تفضيلاتك في أسلوب الرعاية والمنهج الطبي ومستوى التخصص.',
+    introQuestions: '24 سؤال',
+    introScale: 'مقياس ليكرت من 5 درجات',
+    introDuration: 'حوالي 6-8 دقائق',
+    start: 'ابدأ الاختبار',
+    back: 'رجوع',
+    minLeft: 'دقائق متبقية',
+    step: 'الخطوة',
+    disagree: 'لا أوافق',
+    agree: 'أوافق',
+    next: 'التالي',
+    filtersTag: 'الفلاتر (اختياري)',
+    filtersTitle: 'حسّن قائمة الأطباء المقترحة',
+    filtersLead: 'هذه الحقول لا تؤثر على نوعك، لكنها تقلل نطاق نتائج الأطباء.',
+    gender: 'جنس الطبيب المفضل',
+    language: 'اللغة المفضلة',
+    sessionType: 'نوع الجلسة',
+    budgetMin: 'أقل ميزانية',
+    budgetMax: 'أعلى ميزانية',
+    location: 'الموقع',
+    insurance: 'مزود التأمين',
+    any: 'الكل',
+    female: 'أنثى',
+    male: 'ذكر',
+    arabic: 'العربية',
+    english: 'الإنجليزية',
+    onlineVideo: 'أونلاين (فيديو)',
+    inPerson: 'حضوري',
+    pricePlaceholderMin: 'مثال: 40',
+    pricePlaceholderMax: 'مثال: 120',
+    locationPlaceholder: 'مدينة، دولة، أو أونلاين',
+    insurancePlaceholder: 'مثال: MedNet',
+    matching: 'جارٍ مطابقة الأطباء...',
+    seeMatches: 'عرض النتائج',
+    typeTitle: 'نوع الطبيب المناسب لك',
+    verified: 'موثق',
+    doctorFallbackTitle: 'طبيب صحة نفسية',
+    locationMissing: 'الموقع غير متوفر',
+    typeFit: 'نسبة التطابق',
+    noRating: 'لا يوجد تقييم بعد',
+    fromReviews: 'من',
+    reviews: 'تقييم',
+    viewProfile: 'عرض الملف الشخصي',
+    retake: 'إعادة الاختبار',
+    ratingFor: 'تقييم',
+    availabilityNotListed: 'التوفر غير مذكور',
+    availableToday: 'متاح اليوم',
+    availableInOneDay: 'متاح خلال يوم واحد',
+    availableInDays: 'متاح خلال {days} أيام',
+    contactPricing: 'تواصل لمعرفة السعر',
+    perSession: '/ جلسة',
+  },
+} as const;
+
+function resolveMediaUrl(url: string | null): string | undefined {
+  if (!url) return undefined;
+  const trimmed = url.trim();
+  if (!trimmed) return undefined;
+  if (/^(https?:)?\/\//i.test(trimmed) || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) return trimmed;
+
+  const path = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  if (typeof window !== 'undefined' && path.startsWith('/images/')) {
+    return `${window.location.origin}${path}`;
+  }
+  const env = import.meta.env as Record<string, string | boolean | undefined>;
+  const envBase = typeof env.VITE_API_BASE_URL === 'string' ? env.VITE_API_BASE_URL.trim() : '';
+  const fallback = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8000` : 'http://localhost:8000';
+  const base = (envBase && envBase !== '/api' ? envBase : fallback).replace(/\/+$/, '').replace(/\/api$/, '');
+  return `${base}${path}`;
 }
 
-// ── Doctor Result Card (real API doctor) ──────────────────────────────────────
-function DoctorResultCard({ doctor, rank, delay }: { doctor: MatchedDoctor; rank: number; delay: number }) {
-    const { lang } = useLanguage();
-    const isAr = lang === 'ar';
-    const [visible, setVisible] = useState(false);
-    useEffect(() => {
-        const t = setTimeout(() => setVisible(true), delay);
-        return () => clearTimeout(t);
-    }, [delay]);
-
-    const { nextAvailableDays } = doctor;
-    const availText =
-        nextAvailableDays === 0 ? '✅ Available today'
-            : nextAvailableDays === 1 ? '🟢 Available tomorrow'
-                : nextAvailableDays <= 99 ? `🟡 Available in ${nextAvailableDays} days`
-                    : '🔵 Check availability';
-
-    const types = (doctor.session_types ?? []).map(s => s.toUpperCase());
-    const hasOnline = types.some(t => ['VIDEO', 'AUDIO', 'CHAT', 'ONLINE'].includes(t));
-    const hasInPerson = types.includes('IN_PERSON');
-    const formatLabel = [hasOnline ? (isAr ? 'أونلاين' : 'Online') : null, hasInPerson ? (isAr ? 'حضوري' : 'In-person') : null]
-        .filter(Boolean)
-        .join(' · ');
-
-    const isVerified = (doctor.verification_badges ?? []).includes('VERIFIED_DOCTOR');
-    const profilePath = `/doctors/${doctor.slug}`;
-
-    function goToProfile(action?: string) {
-        const path = action ? `${profilePath}?action=${action}` : profilePath;
-        window.history.pushState({}, '', path);
-        window.dispatchEvent(new PopStateEvent('popstate'));
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    return (
-        <div
-            className={`survey-result-card ${doctor.isRecommended ? 'recommended' : ''} ${visible ? 'visible' : ''}`}
-            style={{ transitionDelay: `${delay}ms` }}
-        >
-            {doctor.isRecommended && (
-                <div className="survey-result-badge">{isAr ? '⭐ موصى به لك' : '⭐ Recommended for you'}</div>
-            )}
-            {!doctor.isRecommended && <div className="survey-result-rank">#{rank}</div>}
-
-            <div className="survey-result-header">
-                {doctor.resolvedPhotoUrl ? (
-                    <img src={doctor.resolvedPhotoUrl} alt={doctor.display_name} className="survey-result-avatar" />
-                ) : (
-                    <div className="survey-result-avatar survey-result-avatar-initials">
-                        {doctor.display_name.replace('Dr. ', '').split(' ').slice(0, 2).map(p => p[0]).join('').toUpperCase()}
-                    </div>
-                )}
-
-                <div className="survey-result-meta">
-                    <div className="survey-result-name-row">
-                        <h3 className="survey-result-name">{doctor.display_name}</h3>
-                        {isVerified && <span className="survey-verified-badge">✓ Verified</span>}
-                    </div>
-                    <p className="survey-result-title">{doctor.headline ?? (isAr ? 'معالج نفسي' : 'Therapist')}</p>
-
-                    <div className="survey-result-tags">
-                        {doctor.resolvedLocation && (
-                            <span className="survey-tag survey-tag-city">📍 {doctor.resolvedLocation}</span>
-                        )}
-                        <span className="survey-tag survey-tag-avail">{availText}</span>
-                        {formatLabel && <span className="survey-tag survey-tag-format">🎥 {formatLabel}</span>}
-                        <span className="survey-tag survey-tag-fee">💰 {doctor.resolvedPrice}</span>
-                    </div>
-
-                    <div className="survey-result-rating">
-                        {doctor.resolvedRating > 0 && (
-                            <>
-                                <span className="survey-stars">{'★'.repeat(Math.floor(doctor.resolvedRating))}</span>
-                                <span className="survey-rating-value">{doctor.resolvedRating.toFixed(1)}</span>
-                            </>
-                        )}
-                        <span className="survey-review-count">({doctor.reviews_count} {isAr ? 'تقييمات' : 'reviews'})</span>
-                    </div>
-                </div>
-            </div>
-
-            {/* Specialties / concern tags */}
-            {(doctor.specialties ?? []).length > 0 && (
-                <ul className="survey-specialty-tags">
-                    {(doctor.specialties ?? []).slice(0, 4).map(tag => (
-                        <li key={tag} className="survey-specialty-tag">{tag}</li>
-                    ))}
-                </ul>
-            )}
-
-            {doctor.explanation.length > 0 && (
-                <div className="survey-result-why">
-                    <span className="survey-why-label">{isAr ? 'سبب الترشيح:' : 'Why matched:'}</span>
-                    {doctor.explanation.map((e, i) => (
-                        <span key={i} className="survey-why-tag">✓ {e}</span>
-                    ))}
-                </div>
-            )}
-
-            {doctor.warnings.length > 0 && (
-                <div className="survey-result-warnings">
-                    {doctor.warnings.map((w, i) => (
-                        <span key={i} className="survey-warning-tag">⚠ {w}</span>
-                    ))}
-                </div>
-            )}
-
-            <div className="survey-result-actions">
-                <button className="survey-btn survey-btn-primary" onClick={() => goToProfile()}>
-                    {isAr ? 'عرض الملف' : 'View profile'}
-                </button>
-                <button className="survey-btn survey-btn-secondary" onClick={() => goToProfile('book')}>
-                    {isAr ? 'احجز جلسة' : 'Book a session'}
-                </button>
-            </div>
-        </div>
-    );
+function availabilityLabel(nextAvailableAt: string | null, lang: 'en' | 'ar'): string {
+  const copy = COPY[lang];
+  if (!nextAvailableAt) return copy.availabilityNotListed;
+  const diff = Date.parse(nextAvailableAt) - Date.now();
+  if (Number.isNaN(diff)) return copy.availabilityNotListed;
+  if (diff <= 0) return copy.availableToday;
+  const days = Math.ceil(diff / 86_400_000);
+  if (days === 1) return copy.availableInOneDay;
+  return copy.availableInDays.replace('{days}', String(days));
 }
 
-// ── Results Screen (fetches from API) ─────────────────────────────────────────
-function ResultsScreen({ answers, onRetake }: { answers: SurveyAnswers; onRetake: () => void }) {
-    const { lang } = useLanguage();
-    const isAr = lang === 'ar';
-    const [results, setResults] = useState<MatchedDoctor[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        let cancelled = false;
-
-        async function loadAndMatch() {
-            setLoading(true);
-            setError(null);
-            try {
-                const res = await fetchFirstReachable('/doctors');
-                if (!res.ok) throw new Error(`Server returned ${res.status}`);
-                const raw = (await res.json()) as unknown;
-                const doctors: ApiDoctor[] = Array.isArray(raw) ? (raw as ApiDoctor[]) : [raw as ApiDoctor];
-                if (!cancelled) {
-                    setResults(matchDoctors(answers, doctors, isAr ? 'ar' : 'en'));
-                    setLoading(false);
-                }
-            } catch (err) {
-                if (!cancelled) {
-                    setError(err instanceof Error ? err.message : isAr ? 'تعذر تحميل الأطباء' : 'Could not load therapists');
-                    setLoading(false);
-                }
-            }
-        }
-
-        void loadAndMatch();
-        return () => { cancelled = true; };
-    }, [answers, isAr]);
-
-    if (loading) {
-        return (
-                <div className="survey-loading">
-                    <div className="survey-loading-rings"><div /><div /><div /></div>
-                <p className="survey-loading-text">{isAr ? 'نبحث عن أفضل معالج مناسب لك…' : 'Finding your best therapist match…'}</p>
-                <p className="survey-loading-sub">{isAr ? 'المطابقة حسب التخصص، الأسلوب، المواعيد المتاحة وتفضيلاتك' : 'Matching by specialty, approach, availability & your preferences'}</p>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="survey-no-results">
-                <p>{isAr ? '⚠ تعذر الاتصال بقاعدة بيانات الأطباء.' : '⚠ Could not connect to the therapist database.'}</p>
-                <p style={{ fontSize: 13, color: '#94a3b8', marginTop: 4 }}>{error}</p>
-                <button className="survey-btn survey-btn-primary" style={{ marginTop: 20 }} onClick={onRetake}>
-                    {isAr ? 'حاول مرة أخرى' : 'Try again'}
-                </button>
-            </div>
-        );
-    }
-
-    return (
-        <div className="survey-results">
-            <div className="survey-results-header">
-                <div className="survey-results-pill">{isAr ? '🎯 نتائجك المخصصة' : '🎯 Your personalized matches'}</div>
-                <h2 className="survey-results-title">
-                    {results.length > 0
-                        ? isAr
-                            ? `وجدنا ${results.length} معالجين مناسبين لك`
-                            : `We found ${results.length} therapists for you`
-                        : isAr ? 'لم نجد نتائج مطابقة' : 'No matches found'}
-                </h2>
-                <p className="survey-results-subtitle">
-                    {isAr
-                        ? 'تم ترتيب النتائج حسب مدى توافقها مع حالتك وتفضيلاتك وتوفر المواعيد. الملفات المعروضة حقيقية من منصتنا.'
-                        : 'Ranked by how closely they match your concerns, preferred style, and availability. Therapists shown are real profiles from our platform.'}
-                </p>
-                <button className="survey-btn survey-btn-ghost survey-retake-btn" onClick={onRetake}>
-                    {isAr ? '← تعديل الإجابات' : '← Adjust my answers'}
-                </button>
-            </div>
-
-            {results.length > 0 ? (
-                <div className="survey-results-list">
-                    {results.map((doc, i) => (
-                        <DoctorResultCard key={doc.doctor_user_id} doctor={doc} rank={i + 1} delay={i * 100} />
-                    ))}
-                </div>
-            ) : (
-                <div className="survey-no-results">
-                    <p>{isAr ? 'لا يوجد تطابق كامل مع معاييرك. جرّب تعديل التفضيلات.' : 'No therapists matched your exact criteria. Try adjusting your preferences.'}</p>
-                    <button className="survey-btn survey-btn-primary" onClick={onRetake}>{isAr ? 'تعديل الإجابات' : 'Adjust answers'}</button>
-                </div>
-            )}
-
-            <div className="survey-disclaimer">
-                {isAr
-                    ? 'ℹ️ يتم ترتيب النتائج آليًا بناءً على إجاباتك. يرجى التأكد من توفر المواعيد مع المعالج مباشرة قبل الحجز. هذه الأداة ليست نصيحة طبية.'
-                    : 'ℹ️ Results are ranked algorithmically based on your answers. Always verify availability directly with the therapist before booking. This tool does not constitute medical advice.'}
-            </div>
-        </div>
-    );
+function formatPrice(amount: number | string | null, currency: string, lang: 'en' | 'ar'): string {
+  const copy = COPY[lang];
+  if (amount === null || amount === '') return copy.contactPricing;
+  const value = Number(amount);
+  if (Number.isNaN(value)) return copy.contactPricing;
+  return `${value} ${currency} ${copy.perSession}`;
 }
 
-// ── Progress Dots ─────────────────────────────────────────────────────────────
-function ProgressDots({ total, current }: { total: number; current: number }) {
-    return (
-        <div className="survey-progress-dots">
-            {Array.from({ length: total }).map((_, i) => (
-                <div key={i} className={`survey-dot ${i < current ? 'done' : ''} ${i === current ? 'active' : ''}`} />
-            ))}
-        </div>
-    );
+function typeLabel(code: string, lang: 'en' | 'ar'): string {
+  if (code.length !== 3) return code;
+  if (lang === 'ar') {
+    const arTitles: Record<string, string> = {
+      D: 'توجيهي',
+      C: 'تعاوني',
+      E: 'سريري',
+      H: 'شمولي',
+      G: 'عام',
+      S: 'متخصص',
+    };
+    return `${arTitles[code[0]]} ${arTitles[code[1]]} ${arTitles[code[2]]}`;
+  }
+  return `${TYPE_TITLES[code[0]]} ${TYPE_TITLES[code[1]]} ${TYPE_TITLES[code[2]]}`;
 }
 
-// ── Main Survey Page ──────────────────────────────────────────────────────────
+function statementLabel(questionId: string, fallback: string, lang: 'en' | 'ar'): string {
+  if (lang === 'ar') return ARABIC_QUESTION_STATEMENTS[questionId] ?? fallback;
+  return fallback;
+}
+
+function toRequestFilters(filters: MatchFilters) {
+  const request: Record<string, string | number> = {};
+
+  if (filters.gender) request.gender = filters.gender;
+  if (filters.language) request.language = filters.language;
+  if (filters.sessionType) request.session_type = filters.sessionType;
+  if (filters.location) request.location = filters.location;
+  if (filters.insuranceProvider) request.insurance_provider = filters.insuranceProvider;
+
+  if (filters.minPrice) {
+    const min = Number(filters.minPrice);
+    if (!Number.isNaN(min)) request.min_price = min;
+  }
+
+  if (filters.maxPrice) {
+    const max = Number(filters.maxPrice);
+    if (!Number.isNaN(max)) request.max_price = max;
+  }
+
+  return request;
+}
+
+function ResultCard({ item, lang }: { item: MatchDoctor; lang: 'en' | 'ar' }) {
+  const copy = COPY[lang];
+  const doctor = item.doctor;
+  const profilePath = `/doctors/${doctor.slug}`;
+  const rating = doctor.rating === null ? 0 : Number(doctor.rating);
+  const safeRating = Number.isNaN(rating) ? 0 : rating;
+  const isVerified = (doctor.verification_badges ?? []).includes('VERIFIED_DOCTOR');
+  const highlights = [
+    `${copy.typeFit}: ${(item.similarity * 100).toFixed(0)}% (${item.doctor_type_code})`,
+    `${safeRating > 0 ? `${safeRating.toFixed(1)}★` : copy.noRating} ${copy.fromReviews} ${doctor.reviews_count} ${copy.reviews}`,
+    availabilityLabel(doctor.next_available_at, lang),
+  ];
+
+  return (
+    <article className="match-result-card">
+      <div className="match-result-head">
+        {resolveMediaUrl(doctor.photo_url) ? (
+          <img src={resolveMediaUrl(doctor.photo_url)} alt={doctor.display_name} className="match-avatar" />
+        ) : (
+          <div className="match-avatar match-avatar-fallback">{doctor.display_name.slice(0, 2).toUpperCase()}</div>
+        )}
+
+        <div className="match-meta">
+          <div className="match-name-row">
+            <h3>{doctor.display_name}</h3>
+            {isVerified ? <span className="match-verified">{copy.verified}</span> : null}
+          </div>
+          <p className="match-title">{doctor.headline ?? copy.doctorFallbackTitle}</p>
+          <p className="match-subline">
+            {[doctor.location_city, doctor.location_country].filter(Boolean).join(' · ') || copy.locationMissing}
+            {' · '}
+            {formatPrice(doctor.pricing_per_session, doctor.pricing_currency, lang)}
+          </p>
+        </div>
+      </div>
+
+      <ul className="match-highlights">
+        {highlights.map((highlight) => (
+          <li key={highlight}>{highlight}</li>
+        ))}
+      </ul>
+
+      <button
+        type="button"
+        className="match-primary-btn"
+        onClick={() => {
+          window.history.pushState({}, '', profilePath);
+          window.dispatchEvent(new PopStateEvent('popstate'));
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+      >
+        {copy.viewProfile}
+      </button>
+    </article>
+  );
+}
+
 export default function DoctorSurveyPage() {
-    const { lang, setLang } = useLanguage();
-    const isAr = lang === 'ar';
-    const [stepIndex, setStepIndex] = useState(0);
-    const [answers, setAnswers] = useState<SurveyAnswers>({});
-    const [showResults, setShowResults] = useState(false);
-    const containerRef = useRef<HTMLDivElement>(null);
+  const { lang, setLang } = useLanguage();
+  const copy = COPY[lang];
+  const localizedTypeDescriptions = useMemo(() => {
+    if (lang === 'en') return TYPE_DESCRIPTIONS;
+    return {
+      DEG: 'تفضّل توجيهًا واضحًا ونهجًا سريريًا منظمًا مع دعم عام واسع لأهداف الصحة النفسية.',
+      DES: 'تفضّل التوجيه المباشر والبنية السريرية مع متخصص مركّز لمخاوفك المحددة.',
+      DHG: 'تحب قيادة الطبيب الواضحة مع نظرة شمولية تدعم احتياجاتك العامة.',
+      DHS: 'تريد طبيبًا توجيهيًا يجمع بين الرعاية التكاملية والتركيز التخصصي العميق.',
+      CEG: 'تفضّل القرار المشترك والرعاية المبنية على الأدلة مع دعم مرن وشامل.',
+      CES: 'تريد رعاية تعاونية دقيقة سريريًا مع متخصص في المشكلة الأساسية لديك.',
+      CHG: 'تفضّل رعاية تعاونية شاملة مع طبيب عام يدعمك عبر سياقات الحياة المختلفة.',
+      CHS: 'تبحث عن رعاية تعاونية تكاملية من متخصص يركز بعمق على احتياجك المحدد.',
+    } as Record<string, string>;
+  }, [lang]);
+  const [phase, setPhase] = useState<'intro' | 'question' | 'filters' | 'results'>('intro');
+  const [pageIndex, setPageIndex] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, number>>({});
+  const [filters, setFilters] = useState<MatchFilters>(INITIAL_FILTERS);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<MatchResponse | null>(null);
 
-    const localizedSteps = isAr ? surveyStepsAr : surveySteps;
-    const currentStep = localizedSteps[stepIndex];
-    const progress = (stepIndex / TOTAL_STEPS) * 100;
+  const batchStart = pageIndex * QUESTIONS_PER_PAGE;
+  const currentBatch = DOCTOR_MATCH_QUESTIONS.slice(batchStart, batchStart + QUESTIONS_PER_PAGE);
+  const isBatchComplete = currentBatch.every((q) => Boolean(answers[q.id]));
 
-    useEffect(() => {
-        containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, [stepIndex, showResults]);
+  const progress = useMemo(() => {
+    if (phase === 'intro') return 0;
+    if (phase === 'question') return ((pageIndex + 1) / TOTAL_STEPS) * 100;
+    if (phase === 'filters') return ((TOTAL_STEPS - 1) / TOTAL_STEPS) * 100;
+    return 100;
+  }, [phase, pageIndex]);
 
-    function handleAnswer(stepId: string, value: string) {
-        const newAnswers = { ...answers, [stepId]: value };
-        setAnswers(newAnswers);
+  const answeredCount = Object.keys(answers).length;
+  const estimatedRemainingMinutes = Math.max(1, Math.ceil((DOCTOR_MATCH_QUESTIONS.length - answeredCount) / 4));
 
-        const step = localizedSteps.find(s => s.id === stepId)!;
-        if (step.nextStep === null) { setShowResults(true); return; }
-        if (step.nextStep) {
-            const idx = localizedSteps.findIndex(s => s.id === step.nextStep);
-            if (idx !== -1) { setStepIndex(idx); return; }
-        }
-        if (stepIndex + 1 < localizedSteps.length) setStepIndex(stepIndex + 1);
-        else setShowResults(true);
+  const onNextPage = () => {
+    if (!isBatchComplete) return;
+    if (pageIndex < TOTAL_QUESTION_PAGES - 1) {
+      setPageIndex((prev) => prev + 1);
+      return;
     }
+    setPhase('filters');
+  };
 
-    function handleBack() {
-        if (showResults) { setShowResults(false); return; }
-        if (stepIndex > 0) { setStepIndex(stepIndex - 1); return; }
-        navigateTo('/home');
+  const onBack = () => {
+    setError(null);
+    if (phase === 'intro') {
+      navigateTo('/home');
+      return;
     }
-
-    function handleSkip() {
-        const step = currentStep;
-        if (step.nextStep === null) { setShowResults(true); return; }
-        if (step.nextStep) {
-            const idx = localizedSteps.findIndex(s => s.id === step.nextStep);
-            if (idx !== -1) { setStepIndex(idx); return; }
-        }
-        if (stepIndex + 1 < localizedSteps.length) setStepIndex(stepIndex + 1);
-        else setShowResults(true);
+    if (phase === 'question') {
+      if (pageIndex === 0) {
+        setPhase('intro');
+        return;
+      }
+      setPageIndex((prev) => prev - 1);
+      return;
     }
-
-    function handleRetake() {
-        setAnswers({});
-        setStepIndex(0);
-        setShowResults(false);
+    if (phase === 'filters') {
+      setPhase('question');
+      setPageIndex(TOTAL_QUESTION_PAGES - 1);
+      return;
     }
+    setPhase('filters');
+  };
 
+  const submit = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetchFirstReachable('/matching/doctors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answers, filters: toRequestFilters(filters) }),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
+        throw new Error(payload?.detail ?? `Match request failed (${response.status})`);
+      }
+
+      const data = (await response.json()) as MatchResponse;
+      setResult(data);
+      setPhase('results');
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'Unable to match doctors right now.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (phase === 'intro') {
     return (
-        <div className="survey-page" ref={containerRef}>
-            {/* Header */}
-            <div className="survey-header">
-                <button className="survey-back-btn" onClick={handleBack} aria-label="Go back">←</button>
-                <div className="survey-header-center">
-                    {!showResults && (
-                        <span className="survey-step-label">{isAr ? `الخطوة ${stepIndex + 1} من ${TOTAL_STEPS}` : `Step ${stepIndex + 1} of ${TOTAL_STEPS}`}</span>
-                    )}
-                    {showResults && <span className="survey-step-label">{isAr ? 'نتائجك' : 'Your Matches'}</span>}
-                </div>
-                <div className="survey-header-actions">
-                    <button
-                        type="button"
-                        onClick={() => setLang(lang === 'en' ? 'ar' : 'en')}
-                        className="survey-lang-switch"
-                        aria-label={isAr ? 'Switch to English' : 'التبديل إلى العربية'}
-                    >
-                        {lang === 'en' ? 'AR' : 'EN'}
-                    </button>
-                    {!showResults ? (
-                        <button className="survey-skip-btn" onClick={handleSkip}>{isAr ? 'تخطي →' : 'Skip →'}</button>
-                    ) : (
-                        <div style={{ minWidth: 64 }} />
-                    )}
-                </div>
-            </div>
-
-            {/* Progress */}
-            {!showResults && (
-                <>
-                    <div className="survey-progress-bar">
-                        <div className="survey-progress-fill" style={{ width: `${progress}%` }} />
-                    </div>
-                    <ProgressDots total={TOTAL_STEPS} current={stepIndex} />
-                </>
-            )}
-
-            {/* Main content */}
-            <div className="survey-content">
-                {showResults ? (
-                    <ResultsScreen answers={answers} onRetake={handleRetake} />
-                ) : (
-                    <div className="survey-step" key={currentStep.id}>
-                        <div className="survey-step-hero">
-                            <div className="survey-step-number">{stepIndex + 1}</div>
-                            <div>
-                                <h2 className="survey-step-title">{currentStep.title}</h2>
-                                {currentStep.subtitle && (
-                                    <p className="survey-step-subtitle">{currentStep.subtitle}</p>
-                                )}
-                            </div>
-                        </div>
-                        <StepCard step={currentStep} answers={answers} onAnswer={handleAnswer} />
-                        {!currentStep.required && (
-                            <button className="survey-link-btn" onClick={handleSkip}>{isAr ? 'تخطي هذا السؤال →' : 'Skip this question →'}</button>
-                        )}
-                    </div>
-                )}
-            </div>
-
-            {/* Footer */}
-            {!showResults && (
-                <div className="survey-footer">
-                    {isAr ? '🔒 إجاباتك خاصة ولا يتم حفظها دون موافقتك' : '🔒 Your answers are private and never stored without your consent'}
-                </div>
-            )}
-        </div>
+      <div className="match-page">
+        <section className="match-shell intro-shell">
+          <p className="match-kicker">{copy.pageKicker}</p>
+          <h1>{copy.introTitle}</h1>
+          <p className="match-lead">{copy.introLead}</p>
+          <div className="intro-meta">
+            <span>{copy.introQuestions}</span>
+            <span>{copy.introScale}</span>
+            <span>{copy.introDuration}</span>
+          </div>
+          <button type="button" className="match-primary-btn" onClick={() => setPhase('question')}>
+            {copy.start}
+          </button>
+        </section>
+      </div>
     );
+  }
+
+  return (
+    <div className="match-page">
+      <header className="match-header">
+        <button type="button" className="match-back-btn" onClick={onBack}>
+          ← {copy.back}
+        </button>
+        <div className="match-progress-wrap">
+          <div className="match-progress-bar">
+            <div className="match-progress-fill" style={{ width: `${progress}%` }} />
+          </div>
+          <p>
+            {copy.step} {phase === 'question' ? pageIndex + 1 : TOTAL_STEPS} / {TOTAL_STEPS}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="match-back-btn"
+            onClick={() => setLang(lang === 'en' ? 'ar' : 'en')}
+          >
+            {lang === 'en' ? 'AR' : 'EN'}
+          </button>
+          <span className="match-time">~{estimatedRemainingMinutes} {copy.minLeft}</span>
+        </div>
+      </header>
+
+      <main className="match-shell">
+        {phase === 'question' ? (
+          <section className="match-likert-card">
+            {currentBatch.map((question) => (
+              <div key={question.id} className="likert-row">
+                <p className="likert-statement">{statementLabel(question.id, question.statement, lang)}</p>
+                <div className="likert-scale-wrap">
+                  <span className="likert-side-label">{copy.disagree}</span>
+                  <div className="likert-circles" role="radiogroup" aria-label={statementLabel(question.id, question.statement, lang)}>
+                    {SCALE_VALUES.map((value, idx) => {
+                      const selected = answers[question.id] === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          className={`likert-circle circle-${idx + 1} ${selected ? 'selected' : ''}`}
+                          onClick={() => setAnswers((prev) => ({ ...prev, [question.id]: value }))}
+                          aria-pressed={selected}
+                          aria-label={`${copy.ratingFor} ${value}`}
+                        />
+                      );
+                    })}
+                  </div>
+                  <span className="likert-side-label">{copy.agree}</span>
+                </div>
+              </div>
+            ))}
+
+            <button type="button" className="match-primary-btn" disabled={!isBatchComplete} onClick={onNextPage}>
+              {copy.next}
+            </button>
+          </section>
+        ) : null}
+
+        {phase === 'filters' ? (
+          <section className="match-question-card">
+            <p className="match-dimension">{copy.filtersTag}</p>
+            <h2>{copy.filtersTitle}</h2>
+            <p className="match-lead">{copy.filtersLead}</p>
+
+            <div className="filter-grid">
+              <label>
+                {copy.gender}
+                <select value={filters.gender} onChange={(e) => setFilters((prev) => ({ ...prev, gender: e.target.value }))}>
+                  <option value="">{copy.any}</option>
+                  <option value="Female">{copy.female}</option>
+                  <option value="Male">{copy.male}</option>
+                </select>
+              </label>
+
+              <label>
+                {copy.language}
+                <select value={filters.language} onChange={(e) => setFilters((prev) => ({ ...prev, language: e.target.value }))}>
+                  <option value="">{copy.any}</option>
+                  <option value="Arabic">{copy.arabic}</option>
+                  <option value="English">{copy.english}</option>
+                </select>
+              </label>
+
+              <label>
+                {copy.sessionType}
+                <select value={filters.sessionType} onChange={(e) => setFilters((prev) => ({ ...prev, sessionType: e.target.value }))}>
+                  <option value="">{copy.any}</option>
+                  <option value="VIDEO">{copy.onlineVideo}</option>
+                  <option value="IN_PERSON">{copy.inPerson}</option>
+                  <option value="AUDIO">Audio</option>
+                  <option value="CHAT">Chat</option>
+                </select>
+              </label>
+
+              <label>
+                {copy.budgetMin}
+                <input
+                  type="number"
+                  min={0}
+                  inputMode="decimal"
+                  value={filters.minPrice}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, minPrice: e.target.value }))}
+                  placeholder={copy.pricePlaceholderMin}
+                />
+              </label>
+
+              <label>
+                {copy.budgetMax}
+                <input
+                  type="number"
+                  min={0}
+                  inputMode="decimal"
+                  value={filters.maxPrice}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, maxPrice: e.target.value }))}
+                  placeholder={copy.pricePlaceholderMax}
+                />
+              </label>
+
+              <label>
+                {copy.location}
+                <input
+                  type="text"
+                  value={filters.location}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, location: e.target.value }))}
+                  placeholder={copy.locationPlaceholder}
+                />
+              </label>
+
+              <label>
+                {copy.insurance}
+                <input
+                  type="text"
+                  value={filters.insuranceProvider}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, insuranceProvider: e.target.value }))}
+                  placeholder={copy.insurancePlaceholder}
+                />
+              </label>
+            </div>
+
+            {error ? <p className="match-error">{error}</p> : null}
+
+            <button type="button" className="match-primary-btn" onClick={submit} disabled={loading}>
+              {loading ? copy.matching : copy.seeMatches}
+            </button>
+          </section>
+        ) : null}
+
+        {phase === 'results' && result ? (
+          <section className="match-results">
+            <p className="match-kicker">{copy.typeTitle}</p>
+            <h2>
+              🧠 {result.user_type_code} · {typeLabel(result.user_type_code, lang)}
+            </h2>
+            <p className="match-lead">{localizedTypeDescriptions[result.user_type_code] ?? result.label}</p>
+
+            <div className="match-results-grid">
+              {result.doctors.map((item) => (
+                <ResultCard key={item.doctor.doctor_user_id} item={item} lang={lang} />
+              ))}
+            </div>
+
+            <button
+              type="button"
+              className="match-secondary-btn"
+              onClick={() => {
+                setPageIndex(0);
+                setAnswers({});
+                setFilters(INITIAL_FILTERS);
+                setResult(null);
+                setPhase('intro');
+              }}
+            >
+              {copy.retake}
+            </button>
+          </section>
+        ) : null}
+      </main>
+    </div>
+  );
 }

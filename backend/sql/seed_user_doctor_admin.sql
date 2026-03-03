@@ -1,5 +1,5 @@
 -- Seed data for quick local testing (PostgreSQL)
--- Creates 1 ADMIN, 6 DOCTOR, 1 USER and wires doctor profile/application.
+-- Creates 1 ADMIN, 7 DOCTOR, 1 USER and wires doctor profile/application.
 -- Passwords:
 --   ADMIN  -> Admin12345!
 --   DOCTOR -> Doctor12345!
@@ -18,6 +18,7 @@ DECLARE
     v_doctor4_id UUID := '22222222-2222-4222-8222-222222222225';
     v_doctor5_id UUID := '22222222-2222-4222-8222-222222222226';
     v_doctor6_id UUID := '22222222-2222-4222-8222-222222222227';
+    v_doctor7_id UUID := '22222222-2222-4222-8222-222222222228';
     v_user_id UUID := '33333333-3333-4333-8333-333333333333';
     v_doctor_application_id UUID := '44444444-4444-4444-8444-444444444444';
     v_doctor2_application_id UUID := '44444444-4444-4444-8444-444444444445';
@@ -25,12 +26,14 @@ DECLARE
     v_doctor4_application_id UUID := '44444444-4444-4444-8444-444444444447';
     v_doctor5_application_id UUID := '44444444-4444-4444-8444-444444444448';
     v_doctor6_application_id UUID := '44444444-4444-4444-8444-444444444449';
+    v_doctor7_application_id UUID := '44444444-4444-4444-8444-444444444450';
     v_doctor_profile_id UUID := '55555555-5555-4555-8555-555555555555';
     v_doctor2_profile_id UUID := '55555555-5555-4555-8555-555555555556';
     v_doctor3_profile_id UUID := '55555555-5555-4555-8555-555555555557';
     v_doctor4_profile_id UUID := '55555555-5555-4555-8555-555555555558';
     v_doctor5_profile_id UUID := '55555555-5555-4555-8555-555555555559';
     v_doctor6_profile_id UUID := '55555555-5555-4555-8555-555555555560';
+    v_doctor7_profile_id UUID := '55555555-5555-4555-8555-555555555561';
 BEGIN
     INSERT INTO users (id, email, phone, password_hash, role, status)
     VALUES (
@@ -160,6 +163,22 @@ BEGIN
         status = EXCLUDED.status
     RETURNING id INTO v_doctor6_id;
 
+    INSERT INTO users (id, email, phone, password_hash, role, status)
+    VALUES (
+        v_doctor7_id,
+        'noor.hamdan.test@sabina.dev',
+        '+962790000009',
+        crypt('Doctor12345!', gen_salt('bf', 12)),
+        'DOCTOR',
+        'ACTIVE'
+    )
+    ON CONFLICT (email) DO UPDATE
+    SET
+        phone = EXCLUDED.phone,
+        role = EXCLUDED.role,
+        status = EXCLUDED.status
+    RETURNING id INTO v_doctor7_id;
+
     INSERT INTO doctor_applications (
         id,
         doctor_user_id,
@@ -263,6 +282,8 @@ BEGIN
         follow_up_price,
         pricing_notes,
         certifications,
+        doctor_type_code,
+        professional_type,
         verification_badges,
         is_top_doctor,
         is_public,
@@ -300,6 +321,8 @@ BEGIN
         32.00,
         'Dummy doctor seed pricing.',
         '["Psychiatry Certification (Dummy)","CBT Training (Dummy)"]'::jsonb,
+        'PSY',
+        'PSYCHIATRIST',
         '["VERIFIED_DOCTOR"]'::jsonb,
         false,
         true,
@@ -336,6 +359,8 @@ BEGIN
         follow_up_price = EXCLUDED.follow_up_price,
         pricing_notes = EXCLUDED.pricing_notes,
         certifications = EXCLUDED.certifications,
+        doctor_type_code = EXCLUDED.doctor_type_code,
+        professional_type = EXCLUDED.professional_type,
         verification_badges = EXCLUDED.verification_badges,
         is_top_doctor = EXCLUDED.is_top_doctor,
         is_public = EXCLUDED.is_public,
@@ -485,6 +510,30 @@ BEGIN
         now(),
         now(),
         v_admin_id
+    ),
+    (
+        v_doctor7_application_id,
+        v_doctor7_id,
+        'APPROVED',
+        'Dr. Noor Hamdan',
+        'Clinical Psychologist (Demo)',
+        'Demo profile for local testing. Focused on anxiety, panic episodes, and burnout recovery.',
+        '["Arabic","English"]'::jsonb,
+        '["Clinical Psychology","Anxiety Therapy","Burnout Recovery"]'::jsonb,
+        '["Anxiety","Panic Disorder","Stress","Burnout"]'::jsonb,
+        '["Cognitive Behavioral Therapy (CBT)","Mindfulness-Based Therapy","Behavioral Activation"]'::jsonb,
+        '["VIDEO","IN_PERSON"]'::jsonb,
+        'Female',
+        '["MedNet","NatHealth"]'::jsonb,
+        'Jordan',
+        'Amman',
+        7,
+        'JOD',
+        38.00,
+        'Demo doctor seed pricing.',
+        now(),
+        now(),
+        v_admin_id
     )
     ON CONFLICT (doctor_user_id) DO UPDATE
     SET
@@ -542,6 +591,8 @@ BEGIN
         pricing_per_session,
         follow_up_price,
         pricing_notes,
+        doctor_type_code,
+        professional_type,
         verification_badges,
         is_top_doctor,
         is_public,
@@ -556,7 +607,7 @@ BEGIN
         'Clinical Psychologist (CBT/ACT)',
         'Dr. Lina Sabri is a clinical psychologist providing structured, compassionate therapy for anxiety, depression, and trauma-related concerns. She uses evidence-based approaches and focuses on practical skills, emotional regulation, and long-term resilience. (Dummy profile for testing only.)',
         'Integrative CBT + ACT approach. Sessions are goal-oriented: we define the problem, build coping skills, and practice tools between sessions. Emphasis on safety, confidentiality, and measurable progress.',
-        'https://placehold.co/512x512?text=Dr.+Lina',
+        '/images/doctors/demo-2.png',
         '["Arabic","English"]'::jsonb,
         '["Anxiety","Depression","Trauma","Stress Management","Panic Disorder"]'::jsonb,
         '["Anxiety","Depression","Trauma","Stress Management","Panic Disorder"]'::jsonb,
@@ -581,6 +632,8 @@ BEGIN
         35.00,
         25.00,
         'Dummy profile for testing only.',
+        'THR',
+        'THERAPIST',
         '["VERIFIED_DOCTOR"]'::jsonb,
         true,
         true,
@@ -594,7 +647,7 @@ BEGIN
         'Child & Adolescent Psychiatrist',
         'Dummy profile for local testing. Works with ADHD, behavioral challenges, and family support plans.',
         'Structured adolescent care with family-informed planning and behavioral tools.',
-        'https://randomuser.me/api/portraits/men/54.jpg',
+        '/images/doctors/demo-5.png',
         '["Arabic","English"]'::jsonb,
         '["Child Psychiatry","Adolescent Mental Health","ADHD","Family Guidance"]'::jsonb,
         '["ADHD","School Anxiety","Behavioral Challenges","Sleep Issues"]'::jsonb,
@@ -619,6 +672,8 @@ BEGIN
         40.00,
         30.00,
         'Dummy doctor seed pricing.',
+        'PSY',
+        'PSYCHIATRIST',
         '["VERIFIED_DOCTOR"]'::jsonb,
         false,
         true,
@@ -632,7 +687,7 @@ BEGIN
         'Couples & Family Therapist',
         'Dummy profile for local testing. Focused on relationship repair, communication, and family systems.',
         'Emotion-focused and systems-informed sessions for couples and families.',
-        'https://randomuser.me/api/portraits/women/52.jpg',
+        '/images/doctors/demo-3.png',
         '["Arabic","English","French"]'::jsonb,
         '["Couples Therapy","Family Counseling","Relationship Therapy"]'::jsonb,
         '["Relationship Conflict","Communication Issues","Parenting Stress","Premarital Counseling"]'::jsonb,
@@ -657,6 +712,8 @@ BEGIN
         55.00,
         45.00,
         'Dummy doctor seed pricing.',
+        'THR',
+        'THERAPIST',
         '["VERIFIED_DOCTOR"]'::jsonb,
         false,
         true,
@@ -670,7 +727,7 @@ BEGIN
         'Trauma & PTSD Specialist',
         'Dummy profile for local testing. Provides trauma-informed care for PTSD, grief, and crisis recovery.',
         'Trauma-informed sessions emphasizing safety, pacing, and stabilization skills.',
-        'https://randomuser.me/api/portraits/men/63.jpg',
+        '/images/doctors/demo-6.png',
         '["Arabic","English"]'::jsonb,
         '["Trauma Therapy","PTSD Care","Grief Counseling"]'::jsonb,
         '["Trauma","PTSD","Grief","Insomnia"]'::jsonb,
@@ -695,6 +752,8 @@ BEGIN
         48.00,
         38.00,
         'Dummy doctor seed pricing.',
+        'THR',
+        'THERAPIST',
         '["VERIFIED_DOCTOR"]'::jsonb,
         false,
         true,
@@ -708,7 +767,7 @@ BEGIN
         'Anxiety & Mood Therapist',
         'Dummy profile for local testing. Specializes in anxiety management, mood regulation, and stress recovery.',
         'Practical therapy plans focused on anxiety reduction and daily functioning improvements.',
-        'https://randomuser.me/api/portraits/women/33.jpg',
+        '/images/doctors/demo-1.png',
         '["Arabic","English"]'::jsonb,
         '["Anxiety Therapy","Mood Disorders","Women Mental Health"]'::jsonb,
         '["Social Anxiety","Depression","Stress","Burnout"]'::jsonb,
@@ -733,6 +792,48 @@ BEGIN
         35.00,
         28.00,
         'Dummy doctor seed pricing.',
+        'THR',
+        'THERAPIST',
+        '["VERIFIED_DOCTOR"]'::jsonb,
+        false,
+        true,
+        now()
+    ),
+    (
+        v_doctor7_profile_id,
+        v_doctor7_id,
+        'dr-noor-hamdan',
+        'Dr. Noor Hamdan',
+        'Clinical Psychologist (Demo)',
+        'Demo profile for local testing. Focused on anxiety, panic episodes, and burnout recovery.',
+        'Structured CBT-focused sessions with practical coping plans and weekly progress tracking.',
+        '/images/doctors/demo-4.png',
+        '["Arabic","English"]'::jsonb,
+        '["Clinical Psychology","Anxiety Therapy","Burnout Recovery"]'::jsonb,
+        '["Anxiety","Panic Disorder","Stress","Burnout"]'::jsonb,
+        '["Cognitive Behavioral Therapy (CBT)","Mindfulness-Based Therapy","Behavioral Activation"]'::jsonb,
+        '["VIDEO","IN_PERSON"]'::jsonb,
+        'Female',
+        '["MedNet","NatHealth"]'::jsonb,
+        'Jordan',
+        'Amman',
+        'Sabina Therapy Center',
+        'Shmeisani, Amman (Demo Address for Testing)',
+        'https://maps.google.com/?q=Amman+Shmeisani',
+        now() + interval '2 days',
+        'Asia/Amman',
+        '["2026-03-05T17:30:00+03:00","2026-03-06T12:30:00+03:00"]'::jsonb,
+        7,
+        4.88,
+        57,
+        '["MSc Clinical Psychology (Dummy)"]'::jsonb,
+        '["CBT Practitioner Training (Dummy)"]'::jsonb,
+        'JOD',
+        38.00,
+        30.00,
+        'Demo doctor seed pricing.',
+        'THR',
+        'THERAPIST',
         '["VERIFIED_DOCTOR"]'::jsonb,
         false,
         true,
@@ -770,10 +871,14 @@ BEGIN
         pricing_per_session = EXCLUDED.pricing_per_session,
         follow_up_price = EXCLUDED.follow_up_price,
         pricing_notes = EXCLUDED.pricing_notes,
+        doctor_type_code = EXCLUDED.doctor_type_code,
+        professional_type = EXCLUDED.professional_type,
         verification_badges = EXCLUDED.verification_badges,
         is_top_doctor = EXCLUDED.is_top_doctor,
         is_public = EXCLUDED.is_public,
         published_at = EXCLUDED.published_at;
+
+    DELETE FROM users WHERE email = 'doctor.test@sabina.dev' AND role = 'DOCTOR';
 
     RAISE NOTICE 'Seed complete. admin=%, doctors=6, user=%', v_admin_id, v_user_id;
 END $$;

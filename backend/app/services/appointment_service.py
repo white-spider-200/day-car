@@ -6,7 +6,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from app.db.models import (
-    ApplicationStatus,
+    APPROVED_APPLICATION_STATUSES,
     Appointment,
     AppointmentCallStatus,
     AppointmentStatus,
@@ -19,6 +19,11 @@ from app.db.models import (
 )
 from app.services.availability_service import resolve_slot
 from app.services.notification_service import create_notification
+
+ACTIVE_APPOINTMENT_STATUSES = (
+    AppointmentStatus.REQUESTED,
+    AppointmentStatus.CONFIRMED,
+)
 
 
 @dataclass
@@ -49,14 +54,14 @@ def _ensure_doctor_bookable(db: Session, doctor_user_id):
     app = db.scalar(
         select(DoctorApplication).where(
             DoctorApplication.doctor_user_id == doctor_user_id,
-            DoctorApplication.status == ApplicationStatus.APPROVED,
+            DoctorApplication.status.in_(APPROVED_APPLICATION_STATUSES),
         )
     )
     if not app:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Doctor is not approved")
 
 
-def _find_conflicting_confirmed_appointment(
+def _find_conflicting_active_appointment(
     db: Session,
     *,
     doctor_user_id,
@@ -66,7 +71,7 @@ def _find_conflicting_confirmed_appointment(
     return db.scalar(
         select(Appointment).where(
             Appointment.doctor_user_id == doctor_user_id,
-            Appointment.status == AppointmentStatus.CONFIRMED,
+            Appointment.status.in_(ACTIVE_APPOINTMENT_STATUSES),
             Appointment.start_at < end_at,
             Appointment.end_at > start_at,
         )
@@ -150,12 +155,12 @@ def request_appointment(
         db,
         doctor_user_id=doctor_user_id,
         requested_start_at_utc=requested_start_at_utc,
-        check_confirmed_conflict=True,
+        check_active_conflict=True,
     )
     if end_at_utc is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Requested slot is invalid")
     if has_conflict:
-        conflicting = _find_conflicting_confirmed_appointment(
+        conflicting = _find_conflicting_active_appointment(
             db,
             doctor_user_id=doctor_user_id,
             start_at=requested_start_at_utc,
@@ -307,7 +312,7 @@ def reschedule_appointment(
         db,
         doctor_user_id=appointment.doctor_user_id,
         requested_start_at_utc=new_start_at_utc,
-        check_confirmed_conflict=False,
+        check_active_conflict=False,
     )
     if new_end_at_utc is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Requested slot is invalid")
@@ -315,7 +320,7 @@ def reschedule_appointment(
     conflict = db.scalar(
         select(Appointment.id).where(
             Appointment.doctor_user_id == appointment.doctor_user_id,
-            Appointment.status == AppointmentStatus.CONFIRMED,
+            Appointment.status.in_(ACTIVE_APPOINTMENT_STATUSES),
             Appointment.id != appointment.id,
             Appointment.start_at < new_end_at_utc,
             Appointment.end_at > new_start_at_utc,

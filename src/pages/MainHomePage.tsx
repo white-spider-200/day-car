@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import HeroSearch from '../components/HeroSearch';
-import DoctorSearchArabic, { type DoctorSearchFilters } from '../components/DoctorSearchArabic';
+import DoctorSearchArabic, { INITIAL_FILTERS, type DoctorSearchFilters } from '../components/DoctorSearchArabic';
 import DoctorCard from '../components/DoctorCard';
 import HowItWorks from '../components/HowItWorks';
 import VRTherapySection from '../components/VRTherapySection';
@@ -19,6 +19,7 @@ type ApiDoctor = {
   specialties: string[] | null;
   concerns: string[] | null;
   therapy_approaches: string[] | null;
+  professional_type: string | null;
   languages: string[] | null;
   session_types: string[] | null;
   gender_identity: string | null;
@@ -46,6 +47,9 @@ function resolveMediaUrl(url: string | null): string | undefined {
   }
 
   const path = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  if (typeof window !== 'undefined' && path.startsWith('/images/')) {
+    return `${window.location.origin}${path}`;
+  }
   const env = import.meta.env as Record<string, string | boolean | undefined>;
   const envBase = typeof env.VITE_API_BASE_URL === 'string' ? env.VITE_API_BASE_URL.trim() : '';
   const fallbackBase =
@@ -139,14 +143,18 @@ function sortByBestMatch(doctors: ApiDoctor[], filters?: DoctorSearchFilters): A
       if (matchedSearch) score += 5;
     }
 
-    if (filters.specialty && (doctor.specialties ?? []).includes(filters.specialty)) score += 4;
-    if (filters.concern && (doctor.concerns ?? []).includes(filters.concern)) score += 4;
-    if (filters.approach && (doctor.therapy_approaches ?? []).includes(filters.approach)) score += 4;
+    if (filters.specialization) {
+      const specializationMatched = includesText(
+        [...(doctor.specialties ?? []), ...(doctor.concerns ?? []), ...(doctor.therapy_approaches ?? [])],
+        normalize(filters.specialization)
+      );
+      if (specializationMatched) score += 4;
+    }
+    if (filters.specialistType && doctor.professional_type === filters.specialistType) score += 4;
+    if (filters.country && includesText([doctor.location_country], normalize(filters.country))) score += 3;
     if (filters.language && (doctor.languages ?? []).includes(filters.language)) score += 3;
-    if (filters.sessionType && (doctor.session_types ?? []).some((item) => item.toUpperCase() === filters.sessionType.toUpperCase())) score += 3;
-    if (filters.location && includesText([doctor.location_city, doctor.location_country], normalize(filters.location))) score += 3;
-    if (filters.gender && (doctor.gender_identity ?? '').toLowerCase() === normalize(filters.gender)) score += 2;
-    if (filters.insurance && (doctor.insurance_providers ?? []).includes(filters.insurance)) score += 2;
+    if (filters.rating && Number(doctor.rating ?? 0) >= Number(filters.rating)) score += 2;
+    if (filters.availabilityDays && toTime(doctor.next_available_at) !== Number.POSITIVE_INFINITY) score += 2;
 
     return score;
   };
@@ -216,6 +224,8 @@ export default function MainHomePage() {
   const [isLoadingDoctors, setIsLoadingDoctors] = useState(false);
   const [isFilteredResults, setIsFilteredResults] = useState(false);
   const [doctorNameSuggestions, setDoctorNameSuggestions] = useState<string[]>([]);
+  const [activeFilters, setActiveFilters] = useState<DoctorSearchFilters>(INITIAL_FILTERS);
+  const [searchResetSignal, setSearchResetSignal] = useState(0);
 
   const hasActiveFilters = (filters?: DoctorSearchFilters) => {
     if (!filters) {
@@ -223,19 +233,15 @@ export default function MainHomePage() {
     }
 
     return (
-      filters.consultationType !== 'all' ||
       filters.mainSearch.trim() !== '' ||
-      filters.specialty !== '' ||
-      filters.concern !== '' ||
-      filters.approach !== '' ||
+      filters.specialistType !== '' ||
+      filters.specialization !== '' ||
+      filters.country !== '' ||
       filters.language !== '' ||
-      filters.sessionType !== '' ||
-      filters.location !== '' ||
-      filters.gender !== '' ||
-      filters.insurance !== '' ||
+      filters.rating !== '' ||
       filters.availabilityDays !== '' ||
-      filters.minPrice !== '' ||
-      filters.maxPrice !== ''
+      Number(filters.minPrice) > 20 ||
+      Number(filters.maxPrice) < 250
     );
   };
 
@@ -247,43 +253,28 @@ export default function MainHomePage() {
       setIsFilteredResults(isFiltering);
       const query = new URLSearchParams();
 
-      if (filters?.specialty) {
-        query.set('specialty', filters.specialty);
+      if (filters?.specialistType) {
+        query.set('professional_type', filters.specialistType);
       }
-      if (filters?.concern) {
-        query.set('concern', filters.concern);
+      if (filters?.specialization) {
+        query.set('specialization', filters.specialization);
       }
-      if (filters?.approach) {
-        query.set('approach', filters.approach);
+      if (filters?.country) {
+        query.set('country', filters.country);
       }
       if (filters?.language) {
         query.set('language', filters.language);
       }
-      if (filters?.sessionType) {
-        query.set('session_type', filters.sessionType);
-      }
-      if (filters?.consultationType === 'in_person' && !filters?.sessionType) {
-        query.set('session_type', 'IN_PERSON');
-      }
-      if (filters?.consultationType === 'online') {
-        query.set('online_only', 'true');
-      }
-      if (filters?.location) {
-        query.set('city', filters.location);
-      }
-      if (filters?.gender) {
-        query.set('gender', filters.gender);
-      }
-      if (filters?.insurance) {
-        query.set('insurance', filters.insurance);
+      if (filters?.rating) {
+        query.set('min_rating', filters.rating);
       }
       if (filters?.availabilityDays) {
         query.set('available_within_days', filters.availabilityDays);
       }
-      if (filters?.minPrice) {
+      if (filters?.minPrice && Number(filters.minPrice) > 20) {
         query.set('min_price', filters.minPrice);
       }
-      if (filters?.maxPrice) {
+      if (filters?.maxPrice && Number(filters.maxPrice) < 250) {
         query.set('max_price', filters.maxPrice);
       }
 
@@ -359,8 +350,25 @@ export default function MainHomePage() {
   };
 
   const handleArabicSearch = (filters: DoctorSearchFilters) => {
+    setActiveFilters(filters);
     void fetchDoctors(filters);
   };
+
+  const activeFilterTags = [
+    activeFilters.country,
+    activeFilters.language,
+    activeFilters.rating ? `${activeFilters.rating}★+` : '',
+    activeFilters.specialization,
+    activeFilters.specialistType === 'PSYCHIATRIST'
+      ? lang === 'ar'
+        ? 'طبيب نفسي'
+        : 'Psychiatrist'
+      : activeFilters.specialistType === 'THERAPIST'
+        ? lang === 'ar'
+          ? 'معالج نفسي'
+          : 'Therapist'
+        : ''
+  ].filter((value) => value.trim() !== '');
 
   useEffect(() => {
     void fetchDoctors();
@@ -370,11 +378,16 @@ export default function MainHomePage() {
     <div className="min-h-screen bg-gradient-to-b from-primary-50/40 via-white to-white text-textMain">
       <main>
         <HeroSearch />
-        <DoctorSearchArabic onSearch={handleArabicSearch} doctorNameSuggestions={doctorNameSuggestions} />
+        <DoctorSearchArabic
+          onSearch={handleArabicSearch}
+          doctorNameSuggestions={doctorNameSuggestions}
+          resetSignal={searchResetSignal}
+          resultCount={featuredDoctors.length}
+        />
 
         <section
           id="featured-doctors"
-          className="section-shell pt-6 pb-12 sm:pt-8 sm:pb-14"
+          className="section-shell pt-10 pb-16 sm:pt-12 sm:pb-20"
           aria-labelledby={isFilteredResults ? undefined : 'featured-title'}
         >
           {!isFilteredResults && (
@@ -396,6 +409,36 @@ export default function MainHomePage() {
             <p className="mt-4 text-sm text-muted">
               {lang === 'ar' ? 'جاري تحديث النتائج...' : 'Updating results...'}
             </p>
+          )}
+
+          {!doctorsError && (
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#dbe8ef] bg-white/85 px-4 py-3">
+              <p className="text-sm font-semibold text-[#3d5875]">
+                {lang === 'ar'
+                  ? `عرض ${featuredDoctors.length} معالجين مطابقين`
+                  : `Showing ${featuredDoctors.length} therapists near you`}
+              </p>
+              {activeFilterTags.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  {activeFilterTags.map((tag) => (
+                    <span key={tag} className="rounded-full border border-[#c8e4ee] bg-[#eef9fd] px-3 py-1 text-xs font-semibold text-[#15566b]">
+                      {tag}
+                    </span>
+                  ))}
+                  <button
+                    type="button"
+                    className="rounded-full border border-[#d0dee8] bg-white px-3 py-1 text-xs font-semibold text-[#2d4761] transition hover:bg-[#f4f8fb]"
+                    onClick={() => {
+                      setActiveFilters(INITIAL_FILTERS);
+                      setSearchResetSignal((current) => current + 1);
+                      void fetchDoctors();
+                    }}
+                  >
+                    {lang === 'ar' ? 'مسح الكل' : 'Clear All'}
+                  </button>
+                </div>
+              )}
+            </div>
           )}
 
           {!doctorsError && featuredDoctors.length === 0 && (

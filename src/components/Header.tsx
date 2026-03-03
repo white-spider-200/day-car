@@ -133,17 +133,14 @@ export default function Header({
         <a 
           href={brandHref} 
           onClick={(e) => navigateTo(e, brandHref)}
-          className="focus-outline inline-flex items-center gap-3 rounded-xl transition-transform hover:scale-105" 
+          className="focus-outline inline-flex items-center rounded-xl transition-transform hover:scale-105" 
           aria-label="Sabina Therapy home"
         >
-          <div className="h-10 w-10 overflow-hidden rounded-lg bg-slate-950 flex items-center justify-center p-0.5 shadow-sm">
-            <img 
-              src={sabinaLogo} 
-              alt="Sabina Logo" 
-              className="h-full w-full object-contain"
-            />
-          </div>
-          <span className="text-xl font-black tracking-tighter text-slate-900 uppercase">Sabina</span>
+          <img
+            src={sabinaLogo}
+            alt="Sabina Therapy"
+            className="h-16 w-auto max-w-[320px] object-contain"
+          />
         </a>
 
         <nav className="hidden items-center gap-6 md:flex" aria-label="Main navigation">

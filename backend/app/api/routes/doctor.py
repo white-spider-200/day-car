@@ -39,6 +39,7 @@ from app.services.appointment_service import (
 )
 from app.services.availability_service import generate_slots, replace_exceptions, replace_rules
 from app.services.doctor_directory_service import filter_doctors
+from app.services.professional_type_service import validate_application_by_professional_type
 from app.services.storage_service import save_document
 
 router = APIRouter(prefix="/doctor", tags=["doctor"])
@@ -78,7 +79,7 @@ def save_application(
     db: Session = Depends(get_db),
 ):
     app = _get_or_create_application(db, current_user.id)
-    if app.status not in {ApplicationStatus.DRAFT, ApplicationStatus.NEEDS_CHANGES}:
+    if app.status not in {ApplicationStatus.DRAFT, ApplicationStatus.NEEDS_CHANGES, ApplicationStatus.NEEDS_MORE_INFO}:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Application cannot be edited in current status",
@@ -98,9 +99,10 @@ def submit_application(
     db: Session = Depends(get_db),
 ):
     app = _get_or_create_application(db, current_user.id)
-    if app.status not in {ApplicationStatus.DRAFT, ApplicationStatus.NEEDS_CHANGES}:
+    if app.status not in {ApplicationStatus.DRAFT, ApplicationStatus.NEEDS_CHANGES, ApplicationStatus.NEEDS_MORE_INFO}:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Application cannot be submitted")
 
+    validate_application_by_professional_type(db, app)
     app.status = ApplicationStatus.SUBMITTED
     app.submitted_at = datetime.now(UTC)
     app.rejection_reason = None

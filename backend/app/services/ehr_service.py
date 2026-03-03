@@ -11,17 +11,20 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.professional_roles import ProfessionalType
 from app.db.models import (
     Appointment,
     AppointmentStatus,
     PatientRecord,
     RecordDocument,
     RecordEntry,
+    RecordEntryType,
     TreatmentRequest,
     TreatmentRequestStatus,
     User,
     UserRole,
 )
+from app.services.professional_type_service import get_doctor_professional_type
 from app.services.storage_service import save_document
 
 _DOC_TOKEN_LIFETIME_SECONDS = 300
@@ -116,6 +119,13 @@ def list_record_entries(db: Session, *, record_id) -> list[RecordEntry]:
 def create_record_entry(db: Session, *, record: PatientRecord, doctor_user: User, entry_type, content: str) -> RecordEntry:
     if doctor_user.role != UserRole.DOCTOR or record.doctor_id != doctor_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only assigned doctor can write entries")
+    if entry_type == RecordEntryType.PRESCRIPTION:
+        professional_type = get_doctor_professional_type(db, doctor_user_id=doctor_user.id)
+        if professional_type != ProfessionalType.PSYCHIATRIST:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only psychiatrists are allowed to create prescription entries",
+            )
     entry = RecordEntry(
         record_id=record.id,
         entry_type=entry_type,

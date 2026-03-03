@@ -15,136 +15,143 @@ export default function FounderProfilePage() {
     { labelKey: 'nav.about', href: '/about' }
   ];
 
+  const heroBadge = isAr ? 'مؤسس المنصة' : 'Platform Founder';
+  const introTitle = isAr ? 'نبذة سريعة' : 'Quick Intro';
+  const storyTitle = isAr ? 'القصة' : 'Story';
+  const journeyTitle = isAr ? 'المسيرة المهنية' : 'Career Journey';
+  const specialtiesTitle = isAr ? 'مجالات التركيز' : 'Focus Areas';
+  const languagesTitle = isAr ? 'اللغات' : 'Languages';
+  const experienceTitle = isAr ? 'الخبرة السريرية' : 'Clinical Experience';
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary-50/40 via-white to-white text-textMain">
+    <div className="min-h-screen bg-[#f7f5f1] text-textMain">
       <Header brandHref="/home" navItems={profileNavItems} />
 
       <main className="section-shell py-10 sm:py-14">
-        <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card sm:p-8" aria-labelledby="founder-profile-title">
-          <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
-            <div>
-              <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-primary">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                {isAr ? 'الملف التعريفي للمؤسس' : 'Founder Profile'}
+        <section className="animate-fade-up border-y border-black/10 py-8 sm:py-12" aria-labelledby="founder-profile-title">
+          <div className="grid gap-8 lg:grid-cols-[1.12fr_0.88fr] lg:items-end">
+            <div className="animate-fade-up [animation-delay:80ms]">
+              <span className="inline-flex rounded-full border border-black/15 bg-white/80 px-4 py-1 text-xs font-black uppercase tracking-[0.2em] text-primary/90">
+                {heroBadge}
               </span>
-              <h1 id="founder-profile-title" className="mt-4 text-4xl font-black tracking-tight text-textMain sm:text-5xl">
-                {isAr ? founderProfile.name_ar : founderProfile.name_en}
+
+              <h1 id="founder-profile-title" className="mt-5 text-4xl font-black uppercase leading-[0.95] tracking-tight sm:text-6xl lg:text-7xl">
+                <span className="block">{isAr ? founderProfile.name_ar : founderProfile.name_en}</span>
+                <span className="mt-1 block text-primary/70">{isAr ? 'المؤسس' : 'Founder'}</span>
               </h1>
-              <p className="mt-3 text-lg font-semibold text-primary/90">
+
+              <p className="mt-4 max-w-2xl text-base leading-relaxed text-black/75 sm:text-lg">
                 {isAr ? founderProfile.title_ar : founderProfile.title_en}
               </p>
-              <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
-                <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-700">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                  {isAr ? 'موثق' : 'Verified'}
-                </span>
-                <span className="text-muted">📍 {founderProfile.location}</span>
+
+              <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                <div className="hover-lift-soft rounded-xl border border-black/10 bg-white p-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-black/60">1995</p>
+                  <p className="mt-2 text-sm font-semibold text-black/80">{isAr ? 'بداية الممارسة السريرية' : 'Clinical practice started'}</p>
+                </div>
+                <div className="hover-lift-soft rounded-xl border border-black/10 bg-white p-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-black/60">{founderProfile.credentials.yearsOfExperience}+ years</p>
+                  <p className="mt-2 text-sm font-semibold text-black/80">{isAr ? 'خبرة تراكمية' : 'Total experience'}</p>
+                </div>
+                <div className="hover-lift-soft rounded-xl border border-black/10 bg-white p-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-black/60">{isAr ? 'الموقع' : 'Location'}</p>
+                  <p className="mt-2 text-sm font-semibold text-black/80">{founderProfile.location}</p>
+                </div>
               </div>
-              <p className="mt-6 text-base leading-relaxed text-muted">
-                {isAr ? founderProfile.shortBio_ar : founderProfile.shortBio_en}
-              </p>
             </div>
 
-            <div className="mx-auto w-full max-w-sm">
-              <div className="overflow-hidden rounded-[20px] border border-borderGray bg-primaryBg/20 shadow-soft">
-                <img
-                  src={imageSrc}
-                  alt={isAr ? founderProfile.name_ar : founderProfile.name_en}
-                  className="h-full w-full object-cover"
-                  onError={() => setImageSrc(founderImageFallback)}
-                />
-              </div>
+            <div className="animate-image-reveal [animation-delay:160ms] mx-auto w-full max-w-xl rounded-2xl border border-black/15 bg-white p-2 shadow-card">
+              <img
+                src={imageSrc}
+                alt={isAr ? founderProfile.name_ar : founderProfile.name_en}
+                className="h-auto w-full rounded-xl object-cover"
+                onError={() => setImageSrc(founderImageFallback)}
+              />
             </div>
           </div>
         </section>
 
-        <section className="mt-8 rounded-hero border border-borderGray bg-white p-6 shadow-card sm:p-8" aria-labelledby="founder-about-title">
-          <h2 id="founder-about-title" className="text-2xl font-black text-textMain sm:text-3xl">
-            {isAr ? 'نبذة' : 'About'}
-          </h2>
-          <p className="mt-4 text-sm leading-relaxed text-muted sm:text-base">
-            {isAr ? founderProfile.about_ar : founderProfile.about_en}
-          </p>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <article className="rounded-card border border-borderGray bg-primaryBg/25 p-4">
-              <h3 className="text-base font-bold text-textMain">{isAr ? 'النهج المهني' : 'Professional Approach'}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted">
-                {isAr ? founderProfile.approach_ar : founderProfile.approach_en}
-              </p>
-            </article>
-            <article className="rounded-card border border-borderGray bg-primaryBg/25 p-4">
-              <h3 className="text-base font-bold text-textMain">{isAr ? 'الفلسفة العلاجية' : 'Therapy Philosophy'}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted">
-                {isAr ? founderProfile.philosophy_ar : founderProfile.philosophy_en}
-              </p>
-            </article>
-          </div>
+        <section className="animate-fade-up [animation-delay:220ms] grid gap-6 border-b border-black/10 py-10 sm:grid-cols-2">
+          <article className="hover-lift-soft">
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-primary/80">{introTitle}</p>
+            <p className="mt-4 text-base leading-relaxed text-black/75 sm:text-lg">
+              {isAr ? founderProfile.shortBio_ar : founderProfile.shortBio_en}
+            </p>
+          </article>
+          <article className="hover-lift-soft">
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-primary/80">{storyTitle}</p>
+            <p className="mt-4 text-base leading-relaxed text-black/75 sm:text-lg">
+              {isAr ? founderProfile.about_ar : founderProfile.about_en}
+            </p>
+          </article>
         </section>
 
-        <section className="mt-8 rounded-hero border border-borderGray bg-white p-6 shadow-card sm:p-8" aria-labelledby="founder-credentials-title">
-          <h2 id="founder-credentials-title" className="text-2xl font-black text-textMain sm:text-3xl">
-            {isAr ? 'المؤهلات' : 'Credentials'}
+        <section className="animate-fade-up [animation-delay:320ms] border-b border-black/10 py-10" aria-labelledby="founder-journey-title">
+          <h2 id="founder-journey-title" className="text-3xl font-black uppercase tracking-tight sm:text-4xl">
+            {journeyTitle}
           </h2>
-          <div className="mt-6 grid gap-6 lg:grid-cols-2">
-            <article>
-              <h3 className="text-sm font-black uppercase tracking-wider text-primary/70">{isAr ? 'التعليم' : 'Education'}</h3>
-              <ul className="mt-3 space-y-2">
+
+          <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            <article className="hover-lift-soft rounded-2xl border border-black/10 bg-white p-5">
+              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-black/60">{isAr ? 'التعليم' : 'Education'}</h3>
+              <ul className="mt-4 space-y-2">
                 {founderProfile.credentials.education.map((item) => (
-                  <li key={item} className="text-sm text-muted">• {item}</li>
+                  <li key={item} className="text-sm text-black/75">• {item}</li>
                 ))}
               </ul>
-            </article>
-            <article>
-              <h3 className="text-sm font-black uppercase tracking-wider text-primary/70">{isAr ? 'الشهادات' : 'Certifications'}</h3>
-              <ul className="mt-3 space-y-2">
+
+              <h3 className="mt-6 text-xs font-black uppercase tracking-[0.2em] text-black/60">{isAr ? 'الشهادات' : 'Certifications'}</h3>
+              <ul className="mt-4 space-y-2">
                 {founderProfile.credentials.certifications.map((item) => (
-                  <li key={item} className="text-sm text-muted">• {item}</li>
+                  <li key={item} className="text-sm text-black/75">• {item}</li>
                 ))}
               </ul>
             </article>
-            <article>
-              <h3 className="text-sm font-black uppercase tracking-wider text-primary/70">{isAr ? 'سنوات الخبرة' : 'Years of Experience'}</h3>
-              <p className="mt-3 text-lg font-bold text-textMain">{founderProfile.credentials.yearsOfExperience}+</p>
-            </article>
-            <article>
-              <h3 className="text-sm font-black uppercase tracking-wider text-primary/70">{isAr ? 'العضويات المهنية' : 'Professional Memberships'}</h3>
-              <ul className="mt-3 space-y-2">
+
+            <article className="hover-lift-soft rounded-2xl border border-black/10 bg-white p-5">
+              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-black/60">{experienceTitle}</h3>
+              <p className="mt-4 text-5xl font-black leading-none text-primary">{founderProfile.credentials.yearsOfExperience}+</p>
+              <p className="mt-2 text-sm font-semibold text-black/70">{isAr ? 'سنة من الخبرة في الطب النفسي وعلاج الإدمان' : 'Years in psychiatry and addiction care'}</p>
+
+              <h3 className="mt-8 text-xs font-black uppercase tracking-[0.2em] text-black/60">{isAr ? 'العضويات المهنية' : 'Memberships'}</h3>
+              <ul className="mt-4 space-y-2">
                 {founderProfile.credentials.memberships.map((item) => (
-                  <li key={item} className="text-sm text-muted">• {item}</li>
+                  <li key={item} className="text-sm text-black/75">• {item}</li>
                 ))}
               </ul>
             </article>
           </div>
         </section>
 
-        <section className="mt-8 grid gap-8 lg:grid-cols-2">
-          <article className="rounded-hero border border-borderGray bg-white p-6 shadow-card sm:p-8" aria-labelledby="founder-specialties-title">
-            <h2 id="founder-specialties-title" className="text-2xl font-black text-textMain sm:text-3xl">
-              {isAr ? 'التخصصات' : 'Specialties'}
-            </h2>
+        <section className="animate-fade-up [animation-delay:420ms] grid gap-6 py-10 sm:grid-cols-2">
+          <article className="hover-lift-soft rounded-2xl border border-black/10 bg-white p-5">
+            <h2 className="text-2xl font-black uppercase tracking-tight sm:text-3xl">{specialtiesTitle}</h2>
             <div className="mt-5 flex flex-wrap gap-2">
               {(isAr ? founderProfile.specialties_ar : founderProfile.specialties_en).map((specialty) => (
-                <span
-                  key={specialty}
-                  className="inline-flex items-center rounded-lg border border-primary/20 bg-primaryBg px-3 py-1.5 text-sm font-semibold text-primary"
-                >
+                <span key={specialty} className="rounded-full border border-black/15 bg-[#f7f5f1] px-3 py-1 text-sm font-semibold text-black/80">
                   {specialty}
                 </span>
               ))}
             </div>
+
+            <div className="mt-7 rounded-xl border border-primary/20 bg-primary/5 p-4">
+              <p className="text-sm leading-relaxed text-black/75">{isAr ? founderProfile.approach_ar : founderProfile.approach_en}</p>
+            </div>
           </article>
 
-          <article className="rounded-hero border border-borderGray bg-white p-6 shadow-card sm:p-8" aria-labelledby="founder-languages-title">
-            <h2 id="founder-languages-title" className="text-2xl font-black text-textMain sm:text-3xl">
-              {isAr ? 'اللغات' : 'Languages'}
-            </h2>
-            <ul className="mt-5 space-y-3">
+          <article className="hover-lift-soft rounded-2xl border border-black/10 bg-white p-5">
+            <h2 className="text-2xl font-black uppercase tracking-tight sm:text-3xl">{languagesTitle}</h2>
+            <div className="mt-5 flex flex-wrap gap-2">
               {founderProfile.languages.map((language) => (
-                <li key={language} className="text-sm font-semibold text-muted">
-                  • {language}
-                </li>
+                <span key={language} className="rounded-full border border-black/15 bg-[#f7f5f1] px-3 py-1 text-sm font-semibold text-black/80">
+                  {language}
+                </span>
               ))}
-            </ul>
+            </div>
+
+            <div className="mt-7 rounded-xl border border-primary/20 bg-primary/5 p-4">
+              <p className="text-sm leading-relaxed text-black/75">{isAr ? founderProfile.philosophy_ar : founderProfile.philosophy_en}</p>
+            </div>
           </article>
         </section>
       </main>

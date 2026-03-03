@@ -1,14 +1,25 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.core.professional_roles import ProfessionalType
 from app.db.models import ApplicationStatus
+from app.schemas.doctor_document import DoctorDocumentOut
 
 
 class ApplicationSaveRequest(BaseModel):
+    professional_type: ProfessionalType | None = None
     display_name: str | None = Field(default=None, max_length=255)
+    license_number: str | None = Field(default=None, max_length=120)
+    license_issuing_authority: str | None = Field(default=None, max_length=255)
+    license_expiry_date: date | None = None
+    accreditation_body: str | None = Field(default=None, max_length=255)
+    legal_prescription_declaration: str | None = None
+    no_prescription_declaration: str | None = None
+    psychiatrist_prescription_ack: bool | None = None
+    therapist_no_prescription_ack: bool | None = None
     headline: str | None = Field(default=None, max_length=255)
     bio: str | None = None
     languages: list[str] | None = None
@@ -40,7 +51,15 @@ class ApplicationOut(BaseModel):
     phone: str | None
     photo_url: str | None
     national_id: str | None
+    professional_type: ProfessionalType | None
     license_number: str | None
+    license_issuing_authority: str | None
+    license_expiry_date: date | None
+    accreditation_body: str | None
+    legal_prescription_declaration: str | None
+    no_prescription_declaration: str | None
+    psychiatrist_prescription_ack: bool | None
+    therapist_no_prescription_ack: bool | None
     headline: str | None
     specialty: str | None
     sub_specialties: list[str] | None
@@ -74,6 +93,8 @@ class ApplicationOut(BaseModel):
     rejection_reason: str | None
     admin_note: str | None
     internal_notes: str | None
+    verification_status: str | None = None
+    documents: list[DoctorDocumentOut] | None = None
     created_at: datetime
     updated_at: datetime
 

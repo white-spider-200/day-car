@@ -13,6 +13,11 @@ from app.db.models import (
 )
 from app.schemas.availability import AvailabilityExceptionIn, AvailabilityRuleIn, AvailabilitySlotOut
 
+ACTIVE_APPOINTMENT_STATUSES = (
+    AppointmentStatus.REQUESTED,
+    AppointmentStatus.CONFIRMED,
+)
+
 
 def replace_rules(db: Session, doctor_user_id, rules: list[AvailabilityRuleIn]) -> list[DoctorAvailabilityRule]:
     db.execute(
@@ -203,14 +208,14 @@ def _get_exceptions_map(
     return by_date
 
 
-def _get_confirmed_appointments(
+def _get_active_appointments(
     db: Session, doctor_user_id, window_start_utc: datetime, window_end_utc: datetime
 ) -> list[Appointment]:
     return list(
         db.scalars(
             select(Appointment).where(
                 Appointment.doctor_user_id == doctor_user_id,
-                Appointment.status == AppointmentStatus.CONFIRMED,
+                Appointment.status.in_(ACTIVE_APPOINTMENT_STATUSES),
                 Appointment.start_at < window_end_utc,
                 Appointment.end_at > window_start_utc,
             )
@@ -231,7 +236,9 @@ def generate_slots(
     exceptions_map = _get_exceptions_map(db, doctor_user_id, date_from, date_to)
     window_start_utc = datetime.combine(date_from, time.min, tzinfo=UTC)
     window_end_utc = datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=UTC)
-    confirmed = _get_confirmed_appointments(db, doctor_user_id, window_start_utc, window_end_utc)
+    active_appointments = _get_active_appointments(
+        db, doctor_user_id, window_start_utc, window_end_utc
+    )
 
     slots: list[AvailabilitySlotOut] = []
     day = date_from
@@ -268,11 +275,11 @@ def generate_slots(
                     slot_start_local += step
                     continue
 
-                is_overlapping_confirmed = any(
+                is_overlapping_active_appointment = any(
                     _slot_overlaps(slot_start_utc, slot_end_utc, appt.start_at, appt.end_at)
-                    for appt in confirmed
+                    for appt in active_appointments
                 )
-                if not is_overlapping_confirmed:
+                if not is_overlapping_active_appointment:
                     slots.append(
                         AvailabilitySlotOut(
                             start_at=slot_start_utc,
@@ -292,10 +299,10 @@ def resolve_slot(
     db: Session,
     doctor_user_id,
     requested_start_at_utc: datetime,
-    check_confirmed_conflict: bool,
+    check_active_conflict: bool,
 ) -> tuple[datetime | None, bool]:
     """
-    Returns: (slot_end_at_utc, has_conflict_with_confirmed).
+    Returns: (slot_end_at_utc, has_conflict_with_active_appointment).
     If slot does not match rules/exceptions, slot_end_at_utc is None.
     """
     all_rules = _get_rules(db, doctor_user_id)
@@ -345,11 +352,11 @@ def resolve_slot(
         ):
             continue
 
-        if check_confirmed_conflict:
+        if check_active_conflict:
             conflict_exists = db.scalar(
                 select(Appointment.id).where(
                     Appointment.doctor_user_id == doctor_user_id,
-                    Appointment.status == AppointmentStatus.CONFIRMED,
+                    Appointment.status.in_(ACTIVE_APPOINTMENT_STATUSES),
                     Appointment.start_at < end_utc,
                     Appointment.end_at > requested_start_at_utc,
                 )

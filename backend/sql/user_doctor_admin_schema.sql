@@ -17,9 +17,13 @@ BEGIN
             'DRAFT',
             'SUBMITTED',
             'IN_REVIEW',
+            'UNDER_REVIEW',
             'APPROVED',
+            'APPROVED_MD',
+            'APPROVED_THERAPIST',
             'REJECTED',
-            'NEEDS_CHANGES'
+            'NEEDS_CHANGES',
+            'NEEDS_MORE_INFO'
         );
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'appointment_status') THEN

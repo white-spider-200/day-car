@@ -1,16 +1,24 @@
 import { useEffect, useMemo, useState } from 'react';
 import AvailabilityCalendarBoard from '../components/AvailabilityCalendarBoard';
 import Header from '../components/Header';
-import MessageCenter from '../components/MessageCenter';
-import TimelineFeed from '../components/TimelineFeed';
+import { useLanguage } from '../context/LanguageContext';
 import { ApiError, apiJson } from '../utils/api';
+import { navigateTo } from '../utils/auth';
 
-type ApplicationStatus = 'DRAFT' | 'SUBMITTED' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED' | 'NEEDS_CHANGES';
-type DocumentStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
+type ApplicationStatus =
+  | 'DRAFT'
+  | 'SUBMITTED'
+  | 'IN_REVIEW'
+  | 'UNDER_REVIEW'
+  | 'APPROVED'
+  | 'APPROVED_MD'
+  | 'APPROVED_THERAPIST'
+  | 'REJECTED'
+  | 'NEEDS_CHANGES'
+  | 'NEEDS_MORE_INFO';
 type AppointmentStatus = 'REQUESTED' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'NO_SHOW';
 type AppointmentCallStatus = 'NOT_READY' | 'READY' | 'LIVE' | 'ENDED';
 type TreatmentRequestStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED';
-type ReferralStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'COMPLETED';
 
 type DoctorApplication = {
   id: string;
@@ -18,19 +26,10 @@ type DoctorApplication = {
   status: ApplicationStatus;
   display_name: string | null;
   headline: string | null;
+  schedule: Array<{ day?: string; start?: string; end?: string }> | null;
   internal_notes: string | null;
   rejection_reason: string | null;
   updated_at: string;
-};
-
-type DoctorDocument = {
-  id: string;
-  application_id: string;
-  type: 'LICENSE' | 'ID' | 'DEGREE' | 'OTHER';
-  file_url: string;
-  status: DocumentStatus;
-  admin_comment: string | null;
-  uploaded_at: string;
 };
 
 type DoctorAppointment = {
@@ -86,65 +85,23 @@ type TreatmentRequest = {
   created_at: string;
 };
 
-type Referral = {
-  id: string;
-  sender_doctor_id: string;
-  receiver_doctor_id: string;
-  patient_id: string;
-  status: ReferralStatus;
-  note: string | null;
-  created_at: string;
-};
-
-type PatientRecord = {
-  id: string;
-  user_id: string;
-  doctor_id: string;
-  title: string;
-  created_at: string;
-  updated_at: string;
-};
-
-type RecordEntry = {
-  id: string;
-  record_id: string;
-  entry_type: 'DIAGNOSIS' | 'PRESCRIPTION' | 'TEST_RESULT' | 'NOTE';
-  content: string;
-  created_at: string;
-};
-
-type ProfileUpdateRequest = {
-  id: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  admin_note: string | null;
-  created_at: string;
-};
-
 type AvailabilityBulkResponse = {
   rules: AvailabilityRule[];
   exceptions: AvailabilityException[];
 };
 
-function formatDateTime(isoValue: string): string {
+function formatDateTime(isoValue: string, locale: string): string {
   const date = new Date(isoValue);
   if (Number.isNaN(date.getTime())) {
     return isoValue;
   }
-  return date.toLocaleString('en-US', {
+  return date.toLocaleString(locale, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit'
   });
-}
-
-function appStatusClass(status: ApplicationStatus): string {
-  if (status === 'APPROVED') return 'bg-emerald-50 text-emerald-700 border-emerald-100';
-  if (status === 'REJECTED') return 'bg-rose-50 text-rose-700 border-rose-100';
-  if (status === 'NEEDS_CHANGES') return 'bg-amber-50 text-amber-700 border-amber-100';
-  if (status === 'IN_REVIEW' || status === 'SUBMITTED') return 'bg-sky-50 text-sky-700 border-sky-100';
-  return 'bg-slate-100 text-slate-700 border-slate-200';
 }
 
 function appointmentStatusClass(status: AppointmentStatus): string {
@@ -155,141 +112,186 @@ function appointmentStatusClass(status: AppointmentStatus): string {
   return 'bg-slate-100 text-slate-700 border-slate-200';
 }
 
+function appointmentJourneyLabel(status: AppointmentStatus, isAr: boolean): string {
+  if (status === 'REQUESTED') return isAr ? 'محجوز' : 'Booked';
+  if (status === 'CONFIRMED') return isAr ? 'مؤكد' : 'Confirmed';
+  if (status === 'COMPLETED') return isAr ? 'مكتمل' : 'Finished';
+  if (status === 'CANCELLED') return isAr ? 'ملغي' : 'Cancelled';
+  if (status === 'NO_SHOW') return isAr ? 'لم يحضر' : 'No Show';
+  return status;
+}
+
+function appointmentStatusLabel(status: AppointmentStatus, isAr: boolean): string {
+  if (!isAr) return status;
+  if (status === 'REQUESTED') return 'قيد الطلب';
+  if (status === 'CONFIRMED') return 'مؤكد';
+  if (status === 'COMPLETED') return 'مكتمل';
+  if (status === 'CANCELLED') return 'ملغي';
+  if (status === 'NO_SHOW') return 'لم يحضر';
+  return status;
+}
+
+function scheduleDayToWeekday(day: string): number | null {
+  const upper = day.trim().toUpperCase();
+  const mapping: Record<string, number> = {
+    MONDAY: 0,
+    TUESDAY: 1,
+    WEDNESDAY: 2,
+    THURSDAY: 3,
+    FRIDAY: 4,
+    SATURDAY: 5,
+    SUNDAY: 6
+  };
+  return upper in mapping ? mapping[upper] : null;
+}
+
+function normalizeScheduleTime(timeValue: string): string | null {
+  const trimmed = timeValue.trim();
+  if (/^\d{2}:\d{2}$/.test(trimmed)) return `${trimmed}:00`;
+  if (/^\d{2}:\d{2}:\d{2}$/.test(trimmed)) return trimmed;
+  return null;
+}
+
 export default function DoctorDashboardPage() {
+  const { lang } = useLanguage();
+  const isAr = lang === 'ar';
+  const locale = isAr ? 'ar-JO' : 'en-US';
+
   const [application, setApplication] = useState<DoctorApplication | null>(null);
-  const [documents, setDocuments] = useState<DoctorDocument[]>([]);
   const [appointments, setAppointments] = useState<DoctorAppointment[]>([]);
   const [rules, setRules] = useState<AvailabilityRule[]>([]);
   const [exceptions, setExceptions] = useState<AvailabilityException[]>([]);
   const [treatmentRequests, setTreatmentRequests] = useState<TreatmentRequest[]>([]);
-  const [incomingReferrals, setIncomingReferrals] = useState<Referral[]>([]);
-  const [outgoingReferrals, setOutgoingReferrals] = useState<Referral[]>([]);
-  const [records, setRecords] = useState<PatientRecord[]>([]);
-  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
-  const [selectedRecordEntries, setSelectedRecordEntries] = useState<RecordEntry[]>([]);
-  const [profileUpdates, setProfileUpdates] = useState<ProfileUpdateRequest[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [warningMessages, setWarningMessages] = useState<string[]>([]);
   const [busyAction, setBusyAction] = useState<string | null>(null);
-
-  const [referralReceiverDoctorId, setReferralReceiverDoctorId] = useState('');
-  const [referralPatientId, setReferralPatientId] = useState('');
-  const [referralNote, setReferralNote] = useState('');
-
-  const [recordPatientId, setRecordPatientId] = useState('');
-  const [recordTitle, setRecordTitle] = useState('Patient Record');
-  const [entryType, setEntryType] = useState<'DIAGNOSIS' | 'PRESCRIPTION' | 'TEST_RESULT' | 'NOTE'>('NOTE');
-  const [entryContent, setEntryContent] = useState('');
-  const [profileUpdateJson, setProfileUpdateJson] = useState('{ "headline": "Updated professional headline" }');
 
   const upcomingCount = useMemo(
     () => appointments.filter((item) => item.status === 'REQUESTED' || item.status === 'CONFIRMED').length,
     [appointments]
   );
+  const pendingTreatmentCount = useMemo(
+    () => treatmentRequests.filter((item) => item.status === 'PENDING').length,
+    [treatmentRequests]
+  );
+  const treatedPatientsCount = useMemo(
+    () => new Set(appointments.filter((item) => item.status === 'COMPLETED').map((item) => item.user_id)).size,
+    [appointments]
+  );
+  const patientTimeline = useMemo(() => {
+    const grouped = new Map<
+      string,
+      {
+        patientId: string;
+        totalAppointments: number;
+        completedAppointments: number;
+        upcomingAppointments: number;
+        latestEventAt: string | null;
+        events: DoctorAppointment[];
+      }
+    >();
+
+    for (const appointment of appointments) {
+      const current = grouped.get(appointment.user_id) ?? {
+        patientId: appointment.user_id,
+        totalAppointments: 0,
+        completedAppointments: 0,
+        upcomingAppointments: 0,
+        latestEventAt: null,
+        events: []
+      };
+
+      current.totalAppointments += 1;
+      if (appointment.status === 'COMPLETED') current.completedAppointments += 1;
+      if (appointment.status === 'REQUESTED' || appointment.status === 'CONFIRMED') current.upcomingAppointments += 1;
+      if (!current.latestEventAt || new Date(appointment.start_at).getTime() > new Date(current.latestEventAt).getTime()) {
+        current.latestEventAt = appointment.start_at;
+      }
+      current.events.push(appointment);
+      grouped.set(appointment.user_id, current);
+    }
+
+    return [...grouped.values()]
+      .map((patient) => ({
+        ...patient,
+        events: [...patient.events].sort((a, b) => new Date(b.start_at).getTime() - new Date(a.start_at).getTime())
+      }))
+      .sort((a, b) => {
+        const aTime = a.latestEventAt ? new Date(a.latestEventAt).getTime() : 0;
+        const bTime = b.latestEventAt ? new Date(b.latestEventAt).getTime() : 0;
+        return bTime - aTime;
+      });
+  }, [appointments]);
+  const nextUpcomingAppointment = useMemo(() => {
+    const now = Date.now();
+    return [...appointments]
+      .filter((item) => (item.status === 'REQUESTED' || item.status === 'CONFIRMED') && new Date(item.start_at).getTime() >= now)
+      .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())[0];
+  }, [appointments]);
 
   const loadDashboard = async () => {
     setIsLoading(true);
     setErrorMessage(null);
-    try {
-      const [
-        appPayload,
-        docsPayload,
-        appointmentsPayload,
-        rulesPayload,
-        exceptionsPayload,
-        treatmentRequestsPayload,
-        incomingReferralsPayload,
-        outgoingReferralsPayload,
-        recordsPayload,
-        profileUpdatesPayload
-      ] = await Promise.all([
-        apiJson<DoctorApplication>('/doctor/application', undefined, true, 'Failed to load application'),
-        apiJson<DoctorDocument[]>('/doctor/documents', undefined, true, 'Failed to load documents'),
-        apiJson<DoctorAppointment[]>('/doctor/appointments', undefined, true, 'Failed to load appointments'),
-        apiJson<AvailabilityRule[]>('/doctor/availability/rules', undefined, true, 'Failed to load availability rules'),
-        apiJson<AvailabilityException[]>(
-          '/doctor/availability/exceptions',
-          undefined,
-          true,
-          'Failed to load availability exceptions'
-        ),
-        apiJson<TreatmentRequest[]>('/doctor/treatment-requests', undefined, true, 'Failed to load treatment requests'),
-        apiJson<Referral[]>('/doctor/referrals/incoming', undefined, true, 'Failed to load incoming referrals'),
-        apiJson<Referral[]>('/doctor/referrals/outgoing', undefined, true, 'Failed to load outgoing referrals'),
-        apiJson<PatientRecord[]>('/doctor/patient-records', undefined, true, 'Failed to load patient records'),
-        apiJson<ProfileUpdateRequest[]>('/doctor/profile-updates', undefined, true, 'Failed to load profile updates')
-      ]);
+    setWarningMessages([]);
 
-      setApplication(appPayload);
-      setDocuments(docsPayload);
-      setAppointments(appointmentsPayload);
-      setRules(rulesPayload);
-      setExceptions(exceptionsPayload);
-      setTreatmentRequests(treatmentRequestsPayload);
-      setIncomingReferrals(incomingReferralsPayload);
-      setOutgoingReferrals(outgoingReferralsPayload);
-      setRecords(recordsPayload);
-      setProfileUpdates(profileUpdatesPayload);
-
-      if (!selectedRecordId && recordsPayload.length > 0) {
-        setSelectedRecordId(recordsPayload[0].id);
-      }
-    } catch (error) {
-      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
-        setErrorMessage('You do not have doctor access for this dashboard.');
-      } else {
-        setErrorMessage(error instanceof Error ? error.message : 'Failed to load doctor dashboard');
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadRecordEntries = async (recordId: string) => {
-    try {
-      const payload = await apiJson<RecordEntry[]>(
-        `/records/${recordId}/entries`,
+    const settled = await Promise.allSettled([
+      apiJson<DoctorApplication>('/doctor/application', undefined, true, 'Failed to load application'),
+      apiJson<DoctorAppointment[]>('/doctor/appointments', undefined, true, 'Failed to load appointments'),
+      apiJson<AvailabilityRule[]>('/doctor/availability/rules', undefined, true, 'Failed to load availability rules'),
+      apiJson<AvailabilityException[]>(
+        '/doctor/availability/exceptions',
         undefined,
         true,
-        'Failed to load record entries'
-      );
-      setSelectedRecordEntries(payload);
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to load record entries');
-      setSelectedRecordEntries([]);
+        'Failed to load availability exceptions'
+      ),
+      apiJson<TreatmentRequest[]>('/doctor/treatment-requests', undefined, true, 'Failed to load treatment requests')
+    ]);
+
+    const warnings: string[] = [];
+    let hasAuthError = false;
+
+    const pickValue = <T,>(index: number, fallback: T, label: string): T => {
+      const result = settled[index];
+      if (result.status === 'fulfilled') {
+        return result.value as T;
+      }
+
+      const reason = result.reason;
+      if (reason instanceof ApiError && (reason.status === 401 || reason.status === 403)) {
+        hasAuthError = true;
+      } else {
+        warnings.push(label);
+      }
+
+      return fallback;
+    };
+
+    const appPayload = pickValue<DoctorApplication | null>(0, null, 'Application');
+    const appointmentsPayload = pickValue<DoctorAppointment[]>(1, [], 'Appointments');
+    const rulesPayload = pickValue<AvailabilityRule[]>(2, [], 'Availability rules');
+    const exceptionsPayload = pickValue<AvailabilityException[]>(3, [], 'Availability exceptions');
+    const treatmentRequestsPayload = pickValue<TreatmentRequest[]>(4, [], 'Treatment requests');
+
+    setApplication(appPayload);
+    setAppointments(appointmentsPayload);
+    setRules(rulesPayload);
+    setExceptions(exceptionsPayload);
+    setTreatmentRequests(treatmentRequestsPayload);
+
+    if (hasAuthError) {
+      setErrorMessage(isAr ? 'ليس لديك صلاحية طبيب لهذه اللوحة.' : 'You do not have doctor access for this dashboard.');
+    } else if (warnings.length > 0) {
+      setWarningMessages(warnings);
     }
+
+    setIsLoading(false);
   };
 
   useEffect(() => {
     void loadDashboard();
   }, []);
-
-  useEffect(() => {
-    if (selectedRecordId) {
-      void loadRecordEntries(selectedRecordId);
-    } else {
-      setSelectedRecordEntries([]);
-    }
-  }, [selectedRecordId]);
-
-  const submitApplication = async () => {
-    setBusyAction('submit_application');
-    setErrorMessage(null);
-    try {
-      await apiJson<{ status: ApplicationStatus; submitted_at: string }>(
-        '/doctor/application/submit',
-        { method: 'POST' },
-        true,
-        'Failed to submit application'
-      );
-      await loadDashboard();
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to submit application');
-    } finally {
-      setBusyAction(null);
-    }
-  };
 
   const updateAppointment = async (appointmentId: string, action: 'confirm' | 'cancel') => {
     setBusyAction(`${action}_${appointmentId}`);
@@ -330,97 +332,6 @@ export default function DoctorDashboardPage() {
     }
   };
 
-  const createReferral = async () => {
-    const receiver = referralReceiverDoctorId.trim();
-    const patient = referralPatientId.trim();
-    if (!receiver || !patient) {
-      setErrorMessage('Receiver doctor and patient IDs are required.');
-      return;
-    }
-    setBusyAction('create_referral');
-    try {
-      await apiJson(
-        '/referrals',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            receiver_doctor_id: receiver,
-            patient_id: patient,
-            note: referralNote.trim() || null
-          })
-        },
-        true,
-        'Failed to create referral'
-      );
-      setReferralReceiverDoctorId('');
-      setReferralPatientId('');
-      setReferralNote('');
-      await loadDashboard();
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to create referral');
-    } finally {
-      setBusyAction(null);
-    }
-  };
-
-  const createPatientRecord = async () => {
-    const userId = recordPatientId.trim();
-    if (!userId) {
-      setErrorMessage('Patient user ID is required.');
-      return;
-    }
-    setBusyAction('create_record');
-    try {
-      await apiJson(
-        '/doctor/patient-records',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id: userId, title: recordTitle.trim() || 'Patient Record' })
-        },
-        true,
-        'Failed to create patient record'
-      );
-      setRecordPatientId('');
-      await loadDashboard();
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to create patient record');
-    } finally {
-      setBusyAction(null);
-    }
-  };
-
-  const createRecordEntry = async () => {
-    if (!selectedRecordId) {
-      setErrorMessage('Select a patient record first.');
-      return;
-    }
-    const content = entryContent.trim();
-    if (!content) {
-      setErrorMessage('Entry content is required.');
-      return;
-    }
-    setBusyAction('create_record_entry');
-    try {
-      await apiJson(
-        `/records/${selectedRecordId}/entries`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ entry_type: entryType, content })
-        },
-        true,
-        'Failed to create record entry'
-      );
-      setEntryContent('');
-      await loadRecordEntries(selectedRecordId);
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to create record entry');
-    } finally {
-      setBusyAction(null);
-    }
-  };
 
   const addRuleToCalendar = async (input: {
     day_of_week: number;
@@ -486,23 +397,124 @@ export default function DoctorDashboardPage() {
     }
   };
 
-  const submitProfileUpdateRequest = async () => {
-    setBusyAction('profile_update_request');
+  const importApplicationScheduleToCalendar = async () => {
+    const schedule = application?.schedule ?? [];
+    if (!schedule || schedule.length === 0) {
+      setErrorMessage(isAr ? 'لا يوجد جدول أوقات متاحة في طلب الطبيب.' : 'No free-time schedule found in doctor application.');
+      return;
+    }
+
+    const importedRules = schedule
+      .map((slot) => {
+        const day = typeof slot.day === 'string' ? scheduleDayToWeekday(slot.day) : null;
+        const start = typeof slot.start === 'string' ? normalizeScheduleTime(slot.start) : null;
+        const end = typeof slot.end === 'string' ? normalizeScheduleTime(slot.end) : null;
+        if (day === null || !start || !end || end <= start) {
+          return null;
+        }
+        return {
+          day_of_week: day,
+          start_time: start,
+          end_time: end,
+          timezone: 'Asia/Amman',
+          slot_duration_minutes: 50,
+          buffer_minutes: 10,
+          is_blocked: false,
+          effective_from: null,
+          effective_to: null
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+
+    if (importedRules.length === 0) {
+      setErrorMessage(isAr ? 'جدول طلب الطبيب يحتوي على أوقات غير صحيحة.' : 'Doctor application schedule has invalid time ranges.');
+      return;
+    }
+
+    setBusyAction('availability_import');
+    setErrorMessage(null);
     try {
-      const parsed = JSON.parse(profileUpdateJson) as Record<string, unknown>;
-      await apiJson(
-        '/doctor/profile-updates',
+      const exceptionPayload = exceptions.map((item) => ({
+        date: item.date,
+        is_unavailable: item.is_unavailable,
+        is_blocking: item.is_blocking,
+        is_recurring: item.is_recurring,
+        recurrence_type: item.recurrence_type,
+        recurrence_interval: item.recurrence_interval,
+        recurrence_until: item.recurrence_until,
+        weekday: item.weekday,
+        start_time: item.start_time,
+        end_time: item.end_time,
+        note: item.note
+      }));
+      const payload = await apiJson<AvailabilityBulkResponse>(
+        '/doctor/availability/bulk',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ payload_json: parsed })
+          body: JSON.stringify({
+            rules: importedRules,
+            exceptions: exceptionPayload
+          })
         },
         true,
-        'Failed to submit profile update request'
+        'Failed to import free-time schedule from application'
       );
-      await loadDashboard();
+      setRules(payload.rules);
+      setExceptions(payload.exceptions);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to submit profile update request');
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to import free-time schedule from application');
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const removeRuleFromCalendar = async (ruleId: string) => {
+    setBusyAction('availability_bulk');
+    try {
+      const nextRulesPayload = rules
+        .filter((rule) => rule.id !== ruleId)
+        .map((rule) => ({
+          day_of_week: rule.day_of_week,
+          start_time: rule.start_time,
+          end_time: rule.end_time,
+          timezone: rule.timezone,
+          slot_duration_minutes: rule.slot_duration_minutes,
+          buffer_minutes: rule.buffer_minutes,
+          is_blocked: rule.is_blocked,
+          effective_from: null,
+          effective_to: null
+        }));
+      const exceptionPayload = exceptions.map((item) => ({
+        date: item.date,
+        is_unavailable: item.is_unavailable,
+        is_blocking: item.is_blocking,
+        is_recurring: item.is_recurring,
+        recurrence_type: item.recurrence_type,
+        recurrence_interval: item.recurrence_interval,
+        recurrence_until: item.recurrence_until,
+        weekday: item.weekday,
+        start_time: item.start_time,
+        end_time: item.end_time,
+        note: item.note
+      }));
+      const payload = await apiJson<AvailabilityBulkResponse>(
+        '/doctor/availability/bulk',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            rules: nextRulesPayload,
+            exceptions: exceptionPayload
+          })
+        },
+        true,
+        'Failed to remove availability rule'
+      );
+      setRules(payload.rules);
+      setExceptions(payload.exceptions);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to remove availability rule');
     } finally {
       setBusyAction(null);
     }
@@ -525,7 +537,9 @@ export default function DoctorDashboardPage() {
             <div>
               <h1 className="text-2xl font-black tracking-tight text-textMain sm:text-3xl">Doctor Dashboard</h1>
               <p className="mt-2 text-sm text-muted">
-                Manage appointments, treatment requests, referrals, EHR records, messaging, and onboarding updates.
+                {isAr
+                  ? 'إدارة المواعيد وطلبات العلاج والمحادثات وتحديثات الانضمام.'
+                  : 'Manage appointments, treatment requests, messaging, and onboarding updates.'}
               </p>
             </div>
             <button
@@ -533,7 +547,7 @@ export default function DoctorDashboardPage() {
               onClick={() => void loadDashboard()}
               className="rounded-xl border border-borderGray px-3 py-2 text-xs font-semibold text-textMain transition hover:border-primary/40 hover:text-primary"
             >
-              Refresh
+              {isAr ? 'تحديث' : 'Refresh'}
             </button>
           </div>
 
@@ -541,88 +555,66 @@ export default function DoctorDashboardPage() {
             <p className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">{errorMessage}</p>
           )}
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-4">
+          {warningMessages.length > 0 && (
+            <p className="mt-4 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+              {isAr
+                ? `بعض أقسام لوحة التحكم غير متاحة الآن: ${warningMessages.join('، ')}.`
+                : `Some dashboard sections are unavailable right now: ${warningMessages.join(', ')}.`}
+            </p>
+          )}
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <article className="rounded-xl border border-borderGray bg-slate-50 px-4 py-3">
-              <p className="text-xs font-black uppercase tracking-wide text-muted">Application</p>
-              <p className="mt-1 text-sm font-bold text-textMain">{application?.status ?? 'N/A'}</p>
+              <p className="text-xs font-black uppercase tracking-wide text-muted">{isAr ? 'الطلب' : 'Application'}</p>
+              <p className="mt-1 text-sm font-bold text-textMain">{application?.status ?? (isAr ? 'غير متوفر' : 'N/A')}</p>
             </article>
             <article className="rounded-xl border border-borderGray bg-slate-50 px-4 py-3">
-              <p className="text-xs font-black uppercase tracking-wide text-muted">Upcoming</p>
+              <p className="text-xs font-black uppercase tracking-wide text-muted">{isAr ? 'القادمة' : 'Upcoming'}</p>
               <p className="mt-1 text-sm font-bold text-textMain">{upcomingCount}</p>
             </article>
             <article className="rounded-xl border border-borderGray bg-slate-50 px-4 py-3">
-              <p className="text-xs font-black uppercase tracking-wide text-muted">Treatment Requests</p>
-              <p className="mt-1 text-sm font-bold text-textMain">{treatmentRequests.length}</p>
+              <p className="text-xs font-black uppercase tracking-wide text-muted">{isAr ? 'طلبات العلاج' : 'Treatment Requests'}</p>
+              <p className="mt-1 text-sm font-bold text-textMain">{pendingTreatmentCount} {isAr ? 'قيد الانتظار' : 'pending'}</p>
             </article>
             <article className="rounded-xl border border-borderGray bg-slate-50 px-4 py-3">
-              <p className="text-xs font-black uppercase tracking-wide text-muted">Patient Records</p>
-              <p className="mt-1 text-sm font-bold text-textMain">{records.length}</p>
+              <p className="text-xs font-black uppercase tracking-wide text-muted">{isAr ? 'مرضى تم علاجهم' : 'Treated Patients'}</p>
+              <p className="mt-1 text-sm font-bold text-textMain">{treatedPatientsCount}</p>
             </article>
           </div>
-        </section>
 
-        <section className="mt-6 rounded-hero border border-borderGray bg-white p-6 shadow-card">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-xl font-black text-textMain">Application</h2>
-            {application && (application.status === 'DRAFT' || application.status === 'NEEDS_CHANGES') && (
-              <button
-                type="button"
-                onClick={() => void submitApplication()}
-                disabled={busyAction === 'submit_application'}
-                className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-primaryDark disabled:opacity-60"
-              >
-                {busyAction === 'submit_application' ? 'Submitting...' : 'Submit Application'}
-              </button>
-            )}
+          <div className="mt-3 rounded-xl border border-borderGray bg-slate-50 px-4 py-3">
+            <p className="text-xs font-black uppercase tracking-wide text-muted">{isAr ? 'الموعد القادم' : 'Next Appointment'}</p>
+            <p className="mt-1 text-sm font-bold text-textMain">
+              {nextUpcomingAppointment
+                ? `${isAr ? 'المريض' : 'Patient'} #${nextUpcomingAppointment.user_id.slice(0, 8)} • ${formatDateTime(nextUpcomingAppointment.start_at, locale)}`
+                : isAr
+                  ? 'لا توجد مواعيد قادمة'
+                  : 'No upcoming appointments'}
+            </p>
           </div>
-          {isLoading ? (
-            <p className="mt-4 text-sm text-muted">Loading application...</p>
-          ) : !application ? (
-            <p className="mt-4 text-sm text-muted">No application found.</p>
-          ) : (
-            <div className="mt-4 rounded-2xl border border-borderGray bg-slate-50 p-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-sm font-bold text-textMain">{application.display_name ?? 'Unnamed profile'}</h3>
-                <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${appStatusClass(application.status)}`}>
-                  {application.status}
-                </span>
-              </div>
-              <p className="mt-1 text-xs text-muted">Updated: {formatDateTime(application.updated_at)}</p>
-              {application.rejection_reason && (
-                <p className="mt-2 rounded-lg border border-rose-100 bg-rose-50 px-3 py-2 text-xs text-rose-700">
-                  Rejection reason: {application.rejection_reason}
-                </p>
-              )}
-              {application.internal_notes && (
-                <p className="mt-2 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                  Admin notes: {application.internal_notes}
-                </p>
-              )}
-            </div>
-          )}
         </section>
 
         <section className="mt-6 rounded-hero border border-borderGray bg-white p-6 shadow-card">
-          <h2 className="text-xl font-black text-textMain">Appointments</h2>
+          <h2 className="text-xl font-black text-textMain">{isAr ? 'المواعيد' : 'Appointments'}</h2>
           {isLoading ? (
-            <p className="mt-4 text-sm text-muted">Loading appointments...</p>
+            <p className="mt-4 text-sm text-muted">{isAr ? 'جارٍ تحميل المواعيد...' : 'Loading appointments...'}</p>
           ) : appointments.length === 0 ? (
-            <p className="mt-4 text-sm text-muted">No appointments found.</p>
+            <p className="mt-4 text-sm text-muted">{isAr ? 'لا توجد مواعيد.' : 'No appointments found.'}</p>
           ) : (
             <div className="mt-4 space-y-3">
               {appointments.map((appointment) => (
                 <article key={appointment.id} className="rounded-2xl border border-borderGray bg-slate-50 p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <h3 className="text-sm font-bold text-textMain">Patient #{appointment.user_id.slice(0, 8)}</h3>
-                      <p className="mt-1 text-xs text-muted">{formatDateTime(appointment.start_at)}</p>
-                      <p className="mt-1 text-xs text-muted">Timezone: {appointment.timezone}</p>
-                      <p className="mt-1 text-xs text-muted">Video: {appointment.call_status}</p>
-                      <p className="mt-1 text-xs text-muted">Paid: {appointment.fee_paid ? 'Yes' : 'No'}</p>
+                      <h3 className="text-sm font-bold text-textMain">{isAr ? 'المريض' : 'Patient'} #{appointment.user_id.slice(0, 8)}</h3>
+                      <p className="mt-1 text-xs text-muted">{formatDateTime(appointment.start_at, locale)}</p>
+                      <p className="mt-1 text-xs text-muted">{isAr ? 'المنطقة الزمنية' : 'Timezone'}: {appointment.timezone}</p>
+                      <p className="mt-1 text-xs text-muted">{isAr ? 'الفيديو' : 'Video'}: {appointment.call_status}</p>
+                      <p className="mt-1 text-xs text-muted">{isAr ? 'الدفع' : 'Paid'}: {appointment.fee_paid ? (isAr ? 'نعم' : 'Yes') : (isAr ? 'لا' : 'No')}</p>
                     </div>
                     <div className="flex flex-col items-end gap-2">
                       <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${appointmentStatusClass(appointment.status)}`}>
-                        {appointment.status}
+                        {appointmentStatusLabel(appointment.status, isAr)}
                       </span>
                       <div className="flex gap-2">
                         {appointment.status === 'REQUESTED' && (
@@ -632,7 +624,7 @@ export default function DoctorDashboardPage() {
                             disabled={busyAction === `confirm_${appointment.id}`}
                             className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-primaryDark disabled:opacity-60"
                           >
-                            Confirm
+                            {isAr ? 'تأكيد' : 'Confirm'}
                           </button>
                         )}
                         {(appointment.status === 'REQUESTED' || appointment.status === 'CONFIRMED') && (
@@ -642,7 +634,7 @@ export default function DoctorDashboardPage() {
                             disabled={busyAction === `cancel_${appointment.id}`}
                             className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:border-rose-300 disabled:opacity-60"
                           >
-                            Cancel
+                            {isAr ? 'إلغاء' : 'Cancel'}
                           </button>
                         )}
                       </div>
@@ -655,16 +647,16 @@ export default function DoctorDashboardPage() {
         </section>
 
         <section className="mt-6 rounded-hero border border-borderGray bg-white p-6 shadow-card">
-          <h2 className="text-xl font-black text-textMain">Treatment Requests</h2>
+          <h2 className="text-xl font-black text-textMain">{isAr ? 'طلبات العلاج' : 'Treatment Requests'}</h2>
           {treatmentRequests.length === 0 ? (
-            <p className="mt-4 text-sm text-muted">No incoming treatment requests.</p>
+            <p className="mt-4 text-sm text-muted">{isAr ? 'لا توجد طلبات علاج واردة.' : 'No incoming treatment requests.'}</p>
           ) : (
             <div className="mt-4 space-y-3">
               {treatmentRequests.map((request) => (
                 <article key={request.id} className="rounded-xl border border-borderGray bg-slate-50 p-4">
-                  <p className="text-xs text-muted">Patient #{request.user_id.slice(0, 8)}</p>
+                  <p className="text-xs text-muted">{isAr ? 'المريض' : 'Patient'} #{request.user_id.slice(0, 8)}</p>
                   <p className="mt-2 text-sm text-textMain">{request.message}</p>
-                  <p className="mt-2 text-xs font-semibold text-muted">Status: {request.status}</p>
+                  <p className="mt-2 text-xs font-semibold text-muted">{isAr ? 'الحالة' : 'Status'}: {request.status}</p>
                   {request.status === 'PENDING' && (
                     <div className="mt-3 flex gap-2">
                       <button
@@ -673,7 +665,7 @@ export default function DoctorDashboardPage() {
                         disabled={busyAction === `treatment_${request.id}_ACCEPTED`}
                         className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
                       >
-                        Accept
+                        {isAr ? 'قبول' : 'Accept'}
                       </button>
                       <button
                         type="button"
@@ -681,7 +673,7 @@ export default function DoctorDashboardPage() {
                         disabled={busyAction === `treatment_${request.id}_DECLINED`}
                         className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-rose-700 disabled:opacity-60"
                       >
-                        Decline
+                        {isAr ? 'رفض' : 'Decline'}
                       </button>
                     </div>
                   )}
@@ -692,257 +684,94 @@ export default function DoctorDashboardPage() {
         </section>
 
         <section className="mt-6 rounded-hero border border-borderGray bg-white p-6 shadow-card">
-          <h2 className="text-xl font-black text-textMain">Referrals</h2>
-          <div className="mt-4 rounded-xl border border-borderGray bg-slate-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted">Create Referral</p>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
-              <input
-                value={referralReceiverDoctorId}
-                onChange={(event) => setReferralReceiverDoctorId(event.target.value)}
-                placeholder="Receiver Doctor User ID"
-                className="rounded-lg border border-borderGray bg-white px-3 py-2 text-sm text-textMain"
-              />
-              <input
-                value={referralPatientId}
-                onChange={(event) => setReferralPatientId(event.target.value)}
-                placeholder="Patient User ID"
-                className="rounded-lg border border-borderGray bg-white px-3 py-2 text-sm text-textMain"
-              />
-            </div>
-            <textarea
-              rows={2}
-              value={referralNote}
-              onChange={(event) => setReferralNote(event.target.value)}
-              placeholder="Referral note (optional)"
-              className="mt-2 w-full rounded-lg border border-borderGray bg-white px-3 py-2 text-sm text-textMain"
-            />
-            <button
-              type="button"
-              onClick={() => void createReferral()}
-              disabled={busyAction === 'create_referral'}
-              className="mt-2 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-primaryDark disabled:opacity-60"
-            >
-              {busyAction === 'create_referral' ? 'Sending...' : 'Create Referral'}
-            </button>
-          </div>
-          <div className="mt-4 grid gap-3 lg:grid-cols-2">
-            <article className="rounded-xl border border-borderGray bg-slate-50 p-4">
-              <h3 className="text-sm font-bold text-textMain">Incoming</h3>
-              {incomingReferrals.length === 0 ? (
-                <p className="mt-2 text-xs text-muted">No incoming referrals.</p>
-              ) : (
-                <ul className="mt-2 space-y-2">
-                  {incomingReferrals.map((item) => (
-                    <li key={item.id} className="text-xs text-muted">
-                      Patient #{item.patient_id.slice(0, 8)} • Status: {item.status}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </article>
-            <article className="rounded-xl border border-borderGray bg-slate-50 p-4">
-              <h3 className="text-sm font-bold text-textMain">Outgoing</h3>
-              {outgoingReferrals.length === 0 ? (
-                <p className="mt-2 text-xs text-muted">No outgoing referrals.</p>
-              ) : (
-                <ul className="mt-2 space-y-2">
-                  {outgoingReferrals.map((item) => (
-                    <li key={item.id} className="text-xs text-muted">
-                      To doctor #{item.receiver_doctor_id.slice(0, 8)} • Status: {item.status}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </article>
-          </div>
-        </section>
-
-        <section className="mt-6 rounded-hero border border-borderGray bg-white p-6 shadow-card">
-          <h2 className="text-xl font-black text-textMain">EHR Records</h2>
-          <div className="mt-4 rounded-xl border border-borderGray bg-slate-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted">Create Patient Record</p>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
-              <input
-                value={recordPatientId}
-                onChange={(event) => setRecordPatientId(event.target.value)}
-                placeholder="Patient User ID"
-                className="rounded-lg border border-borderGray bg-white px-3 py-2 text-sm text-textMain"
-              />
-              <input
-                value={recordTitle}
-                onChange={(event) => setRecordTitle(event.target.value)}
-                placeholder="Record title"
-                className="rounded-lg border border-borderGray bg-white px-3 py-2 text-sm text-textMain"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => void createPatientRecord()}
-              disabled={busyAction === 'create_record'}
-              className="mt-2 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-primaryDark disabled:opacity-60"
-            >
-              {busyAction === 'create_record' ? 'Creating...' : 'Create Record'}
-            </button>
-          </div>
-
-          <div className="mt-4 grid gap-3 lg:grid-cols-[0.8fr_1.2fr]">
-            <article className="rounded-xl border border-borderGray bg-slate-50 p-4">
-              <h3 className="text-sm font-bold text-textMain">Records</h3>
-              {records.length === 0 ? (
-                <p className="mt-2 text-xs text-muted">No records yet.</p>
-              ) : (
-                <ul className="mt-2 space-y-2">
-                  {records.map((record) => (
-                    <li key={record.id}>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedRecordId(record.id)}
-                        className={`w-full rounded-lg border px-3 py-2 text-left text-xs transition ${
-                          selectedRecordId === record.id
-                            ? 'border-primary bg-primary-50 text-primary'
-                            : 'border-borderGray bg-white text-muted hover:border-primary/30 hover:text-primary'
-                        }`}
-                      >
-                        {record.title} • Patient #{record.user_id.slice(0, 8)}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </article>
-            <article className="rounded-xl border border-borderGray bg-slate-50 p-4">
-              <h3 className="text-sm font-bold text-textMain">Record Entries</h3>
-              {!selectedRecordId ? (
-                <p className="mt-2 text-xs text-muted">Select a record to manage entries.</p>
-              ) : (
-                <>
-                  <div className="mt-2 grid gap-2 sm:grid-cols-3">
-                    <select
-                      value={entryType}
-                      onChange={(event) => setEntryType(event.target.value as typeof entryType)}
-                      className="rounded-lg border border-borderGray bg-white px-3 py-2 text-sm text-textMain"
-                    >
-                      <option value="NOTE">NOTE</option>
-                      <option value="DIAGNOSIS">DIAGNOSIS</option>
-                      <option value="PRESCRIPTION">PRESCRIPTION</option>
-                      <option value="TEST_RESULT">TEST_RESULT</option>
-                    </select>
-                    <input
-                      value={entryContent}
-                      onChange={(event) => setEntryContent(event.target.value)}
-                      placeholder="Entry content"
-                      className="sm:col-span-2 rounded-lg border border-borderGray bg-white px-3 py-2 text-sm text-textMain"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => void createRecordEntry()}
-                    disabled={busyAction === 'create_record_entry'}
-                    className="mt-2 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-primaryDark disabled:opacity-60"
-                  >
-                    {busyAction === 'create_record_entry' ? 'Saving...' : 'Add Entry'}
-                  </button>
-                  {selectedRecordEntries.length === 0 ? (
-                    <p className="mt-3 text-xs text-muted">No entries yet.</p>
-                  ) : (
-                    <ul className="mt-3 space-y-2">
-                      {selectedRecordEntries.map((entry) => (
-                        <li key={entry.id} className="rounded-lg border border-borderGray bg-white p-2 text-xs text-muted">
-                          <p className="font-semibold text-textMain">{entry.entry_type}</p>
-                          <p>{entry.content}</p>
-                          <p className="mt-1">{formatDateTime(entry.created_at)}</p>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </>
-              )}
-            </article>
-          </div>
-        </section>
-
-        <section className="mt-6 rounded-hero border border-borderGray bg-white p-6 shadow-card">
-          <h2 className="text-xl font-black text-textMain">Availability Calendar</h2>
-          <div className="mt-4">
-            <AvailabilityCalendarBoard rules={rules} onAddRule={addRuleToCalendar} />
-          </div>
-          <article className="mt-4 rounded-xl border border-borderGray bg-slate-50 p-4">
-            <h3 className="text-sm font-bold text-textMain">Exceptions</h3>
-            {exceptions.length === 0 ? (
-              <p className="mt-2 text-xs text-muted">No exceptions configured.</p>
-            ) : (
-              <ul className="mt-2 space-y-2">
-                {exceptions.map((exception) => (
-                  <li key={exception.id} className="text-xs text-muted">
-                    {exception.date}: {exception.is_blocking ? 'Blocking' : 'Unblocking'}
-                    {exception.is_recurring ? ` • ${exception.recurrence_type} every ${exception.recurrence_interval}` : ''}
-                    {exception.start_time && exception.end_time ? ` (${exception.start_time} - ${exception.end_time})` : ''}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </article>
-        </section>
-
-        <section className="mt-6 rounded-hero border border-borderGray bg-white p-6 shadow-card">
-          <h2 className="text-xl font-black text-textMain">Profile Update Requests</h2>
+          <h2 className="text-xl font-black text-textMain">{isAr ? 'سجل المرضى والخط الزمني' : 'Patient History & Timeline'}</h2>
           <p className="mt-2 text-sm text-muted">
-            Submit profile updates for admin approval before they go live on the public directory.
+            {isAr
+              ? 'تابع رحلة كل مريض من الحجز حتى الانتهاء. يعرض الخط الزمني مراحل الموعد وتوقيتها.'
+              : 'Follow each patient journey from booking to finish. Timeline entries show appointment stages and times.'}
           </p>
-          <textarea
-            rows={5}
-            value={profileUpdateJson}
-            onChange={(event) => setProfileUpdateJson(event.target.value)}
-            className="mt-3 w-full rounded-xl border border-borderGray bg-white px-3 py-2 text-sm text-textMain"
-          />
-          <button
-            type="button"
-            onClick={() => void submitProfileUpdateRequest()}
-            disabled={busyAction === 'profile_update_request'}
-            className="mt-2 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-primaryDark disabled:opacity-60"
-          >
-            {busyAction === 'profile_update_request' ? 'Submitting...' : 'Submit Update Request'}
-          </button>
-          {profileUpdates.length > 0 && (
-            <ul className="mt-3 space-y-2">
-              {profileUpdates.map((item) => (
-                <li key={item.id} className="rounded-lg border border-borderGray bg-slate-50 p-3 text-xs text-muted">
-                  {formatDateTime(item.created_at)} • {item.status}
-                  {item.admin_note ? ` • ${item.admin_note}` : ''}
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section className="mt-6 rounded-hero border border-borderGray bg-white p-6 shadow-card">
-          <h2 className="text-xl font-black text-textMain">Documents</h2>
-          {documents.length === 0 ? (
-            <p className="mt-4 text-sm text-muted">No uploaded documents found.</p>
+          {patientTimeline.length === 0 ? (
+            <p className="mt-4 text-sm text-muted">{isAr ? 'لا يوجد سجل مرضى بعد.' : 'No patient history yet.'}</p>
           ) : (
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {documents.map((document) => (
-                <article key={document.id} className="rounded-2xl border border-borderGray bg-slate-50 p-4">
-                  <p className="text-sm font-bold text-textMain">{document.type}</p>
-                  <p className="mt-1 text-xs text-muted">Uploaded: {formatDateTime(document.uploaded_at)}</p>
-                  <p className="mt-1 text-xs text-muted">Status: {document.status}</p>
-                  {document.admin_comment && <p className="mt-1 text-xs text-muted">Comment: {document.admin_comment}</p>}
-                  <a
-                    href={document.file_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-2 inline-block text-xs font-semibold text-primary hover:text-primaryDark"
-                  >
-                    Open file
-                  </a>
+            <div className="mt-4 space-y-3">
+              {patientTimeline.map((patient) => (
+                <article key={patient.patientId} className="rounded-xl border border-borderGray bg-slate-50 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-sm font-bold text-textMain">{isAr ? 'المريض' : 'Patient'} #{patient.patientId.slice(0, 8)}</h3>
+                    <p className="text-xs text-muted">
+                      {isAr ? 'آخر حدث' : 'Last event'}: {patient.latestEventAt ? formatDateTime(patient.latestEventAt, locale) : (isAr ? 'غير متوفر' : 'N/A')}
+                    </p>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                    <span className="rounded-full border border-borderGray bg-white px-2 py-1 text-muted">
+                      {isAr ? 'الإجمالي' : 'Total'}: {patient.totalAppointments}
+                    </span>
+                    <span className="rounded-full border border-emerald-100 bg-emerald-50 px-2 py-1 text-emerald-700">
+                      {isAr ? 'مكتمل' : 'Finished'}: {patient.completedAppointments}
+                    </span>
+                    <span className="rounded-full border border-sky-100 bg-sky-50 px-2 py-1 text-sky-700">
+                      {isAr ? 'قادم' : 'Upcoming'}: {patient.upcomingAppointments}
+                    </span>
+                  </div>
+
+                  <ul className="mt-3 space-y-2 border-l-2 border-borderGray pl-3">
+                    {patient.events.slice(0, 5).map((event) => (
+                      <li key={event.id} className="rounded-lg border border-borderGray bg-white px-3 py-2 text-xs">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className={`rounded-full border px-2 py-0.5 font-semibold ${appointmentStatusClass(event.status)}`}>
+                            {appointmentJourneyLabel(event.status, isAr)}
+                          </span>
+                          <span className="text-muted">{formatDateTime(event.start_at, locale)}</span>
+                        </div>
+                        <p className="mt-1 text-muted">
+                          {isAr ? 'تم الإنشاء' : 'Created'}: {formatDateTime(event.created_at, locale)}
+                          {event.status === 'COMPLETED' ? (isAr ? ' • انتهى العلاج' : ' • Treatment finished') : ''}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
                 </article>
               ))}
             </div>
           )}
         </section>
 
-        <TimelineFeed className="mt-6" title="Doctor Timeline" />
-        <MessageCenter className="mt-6" title="Doctor Inbox / Outbox" />
+        <section className="mt-6 rounded-hero border border-borderGray bg-white p-6 shadow-card">
+          <h2 className="text-xl font-black text-textMain">{isAr ? 'تقويم التوفر' : 'Availability Calendar'}</h2>
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={() => void importApplicationScheduleToCalendar()}
+              disabled={busyAction === 'availability_import'}
+              className="rounded-lg border border-borderGray bg-white px-3 py-1.5 text-xs font-semibold text-textMain transition hover:border-primary/40 hover:text-primary disabled:opacity-60"
+            >
+              {busyAction === 'availability_import'
+                ? (isAr ? 'جارٍ الاستيراد...' : 'Importing...')
+                : (isAr ? 'استيراد الأوقات المتاحة من طلب الطبيب' : 'Import Free Time from Doctor Apply')}
+            </button>
+          </div>
+          <div className="mt-4">
+            <AvailabilityCalendarBoard rules={rules} onAddRule={addRuleToCalendar} onRemoveRule={removeRuleFromCalendar} />
+          </div>
+        </section>
+
+        <section className="mt-6 rounded-hero border border-borderGray bg-white p-6 shadow-card">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <h2 className="text-xl font-black text-textMain">{isAr ? 'محادثات الطبيب' : 'Doctor Chats'}</h2>
+              <p className="mt-1 text-sm text-muted">
+                {isAr ? 'افتح صفحة محادثة كاملة مع المرضى الذين لديهم مواعيد.' : 'Open full page chat with your appointment patients.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigateTo('/doctor-chats')}
+              className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-white transition hover:bg-primaryDark"
+            >
+              {isAr ? 'فتح المحادثات' : 'Open Chats'}
+            </button>
+          </div>
+        </section>
       </main>
     </div>
   );

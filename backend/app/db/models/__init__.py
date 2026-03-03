@@ -7,7 +7,7 @@ from app.db.models.doctor_profile_update_request import (
     DoctorProfileUpdateRequest,
     ProfileUpdateStatus,
 )
-from app.db.models.doctor_application import ApplicationStatus, DoctorApplication
+from app.db.models.doctor_application import APPROVED_APPLICATION_STATUSES, ApplicationStatus, DoctorApplication
 from app.db.models.doctor_document import DoctorDocument, DocumentStatus, DocumentType
 from app.db.models.doctor_profile import DoctorProfile
 from app.db.models.message import Message
@@ -28,6 +28,7 @@ __all__ = [
     "AppointmentCallStatus",
     "AppointmentStatus",
     "ApplicationStatus",
+    "APPROVED_APPLICATION_STATUSES",
     "DoctorApplication",
     "DoctorAvailabilityException",
     "DoctorAvailabilityRule",

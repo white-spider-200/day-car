@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 
-from tests.conftest import auth_headers, register
+from tests.conftest import auth_headers, register, submit_psychiatrist_application
 
 
 def _next_weekday(start: date, weekday: int) -> date:
@@ -14,10 +14,10 @@ def _setup_approved_doctor(client, admin_token, email: str):
         "access_token"
     ]
 
-    save = client.post(
-        "/doctor/application/save",
-        headers=auth_headers(doctor_token),
-        json={
+    app = submit_psychiatrist_application(
+        client,
+        doctor_token,
+        save_overrides={
             "display_name": "Admin Users Doctor",
             "headline": "General Therapy",
             "specialties": ["Anxiety"],
@@ -26,12 +26,6 @@ def _setup_approved_doctor(client, admin_token, email: str):
             "pricing_per_session": "70.00",
         },
     )
-    assert save.status_code == 200, save.text
-
-    submit = client.post("/doctor/application/submit", headers=auth_headers(doctor_token))
-    assert submit.status_code == 200, submit.text
-
-    app = client.get("/doctor/application", headers=auth_headers(doctor_token)).json()
     approve = client.post(f"/admin/applications/{app['id']}/approve", headers=auth_headers(admin_token))
     assert approve.status_code == 200, approve.text
 

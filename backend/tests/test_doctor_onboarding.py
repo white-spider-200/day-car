@@ -13,7 +13,13 @@ def test_doctor_can_save_and_submit_and_save_blocked_after_submit(client, admin_
         "/doctor/application/save",
         headers=auth_headers(doctor_token),
         json={
+            "professional_type": "PSYCHIATRIST",
             "display_name": "Dr One",
+            "license_number": "PSY-12345",
+            "license_issuing_authority": "Jordan Medical Council",
+            "license_expiry_date": "2028-12-31",
+            "legal_prescription_declaration": "Authorized to prescribe psychiatric medications.",
+            "psychiatrist_prescription_ack": True,
             "headline": "Trauma therapist",
             "specialties": ["Trauma"],
             "languages": ["English"],
@@ -24,6 +30,15 @@ def test_doctor_can_save_and_submit_and_save_blocked_after_submit(client, admin_
     )
     assert save.status_code == 200, save.text
     assert save.json()["status"] == "DRAFT"
+
+    for doc_type in ["MEDICAL_DEGREE", "PSYCHIATRY_SPECIALIZATION", "ACTIVE_PRACTICE_PROOF"]:
+        upload = client.post(
+            "/doctor/documents/upload",
+            headers=auth_headers(doctor_token),
+            data={"type": doc_type},
+            files={"file": ("proof.pdf", BytesIO(b"%PDF-1.4 test"), "application/pdf")},
+        )
+        assert upload.status_code == 201, upload.text
 
     submit = client.post("/doctor/application/submit", headers=auth_headers(doctor_token))
     assert submit.status_code == 200, submit.text

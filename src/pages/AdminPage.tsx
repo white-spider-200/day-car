@@ -3,7 +3,18 @@ import Header from '../components/Header';
 import { useLanguage } from '../context/LanguageContext';
 import { apiJson } from '../utils/api';
 
-type ApplicationStatus = 'PENDING' | 'DRAFT' | 'SUBMITTED' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED' | 'NEEDS_CHANGES';
+type ApplicationStatus =
+  | 'PENDING'
+  | 'DRAFT'
+  | 'SUBMITTED'
+  | 'IN_REVIEW'
+  | 'UNDER_REVIEW'
+  | 'APPROVED'
+  | 'APPROVED_MD'
+  | 'APPROVED_THERAPIST'
+  | 'REJECTED'
+  | 'NEEDS_CHANGES'
+  | 'NEEDS_MORE_INFO';
 
 type DoctorApplication = {
   id: string;
@@ -34,13 +45,34 @@ type DoctorApplication = {
   admin_note: string | null;
   rejection_reason: string | null;
   reviewed_at: string | null;
+  professional_type: 'PSYCHIATRIST' | 'THERAPIST' | null;
+  license_issuing_authority: string | null;
+  license_expiry_date: string | null;
+  accreditation_body: string | null;
+  legal_prescription_declaration: string | null;
+  no_prescription_declaration: string | null;
+  psychiatrist_prescription_ack: boolean | null;
+  therapist_no_prescription_ack: boolean | null;
+  verification_status: string | null;
+  documents:
+    | Array<{
+        id: string;
+        type: string;
+        file_url: string;
+        status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+        admin_comment: string | null;
+      }>
+    | null;
   created_at: string;
 };
 
 const STATUS_OPTIONS: Array<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'> = ['ALL', 'PENDING', 'APPROVED', 'REJECTED'];
+const APPROVED_STATUSES: ApplicationStatus[] = ['APPROVED', 'APPROVED_MD', 'APPROVED_THERAPIST'];
 
 function statusClass(status: ApplicationStatus): string {
-  if (status === 'APPROVED') return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+  if (status === 'APPROVED' || status === 'APPROVED_MD' || status === 'APPROVED_THERAPIST') {
+    return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+  }
   if (status === 'REJECTED') return 'bg-rose-50 text-rose-700 border-rose-100';
   if (status === 'PENDING') return 'bg-sky-50 text-sky-700 border-sky-100';
   return 'bg-slate-100 text-slate-700 border-slate-200';
@@ -68,6 +100,9 @@ function resolveMediaUrl(url: string | null): string | null {
   }
 
   const path = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  if (typeof window !== 'undefined' && path.startsWith('/images/')) {
+    return `${window.location.origin}${path}`;
+  }
   const env = import.meta.env as Record<string, string | boolean | undefined>;
   const envBase = typeof env.VITE_API_BASE_URL === 'string' ? env.VITE_API_BASE_URL.trim() : '';
   const fallbackBase =
@@ -75,6 +110,12 @@ function resolveMediaUrl(url: string | null): string | null {
   const base = (envBase && envBase !== '/api' ? envBase : fallbackBase).replace(/\/+$/, '').replace(/\/api$/, '');
 
   return `${base}${path}`;
+}
+
+function documentStatusClass(status: 'PENDING' | 'ACCEPTED' | 'REJECTED'): string {
+  if (status === 'ACCEPTED') return 'border-emerald-100 bg-emerald-50 text-emerald-700';
+  if (status === 'REJECTED') return 'border-rose-100 bg-rose-50 text-rose-700';
+  return 'border-slate-200 bg-slate-100 text-slate-700';
 }
 
 export default function AdminPage() {
@@ -156,19 +197,22 @@ export default function AdminPage() {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const query = status === 'ALL' ? '' : `?status=${encodeURIComponent(status)}`;
+      const query =
+        status === 'ALL' || status === 'APPROVED' ? '' : `?status=${encodeURIComponent(status)}`;
       const payload = await apiJson<DoctorApplication[]>(
         `/admin/applications${query}`,
         undefined,
         true,
         isAr ? 'تعذر تحميل الطلبات' : 'Failed to load applications'
       );
-      setApplications(payload);
-      if (payload.length > 0 && !selectedApplicationId) {
-        setSelectedApplicationId(payload[0].id);
+      const normalized =
+        status === 'APPROVED' ? payload.filter((item) => APPROVED_STATUSES.includes(item.status)) : payload;
+      setApplications(normalized);
+      if (normalized.length > 0 && !selectedApplicationId) {
+        setSelectedApplicationId(normalized[0].id);
       }
-      if (selectedApplicationId && !payload.some((item) => item.id === selectedApplicationId)) {
-        setSelectedApplicationId(payload[0]?.id ?? null);
+      if (selectedApplicationId && !normalized.some((item) => item.id === selectedApplicationId)) {
+        setSelectedApplicationId(normalized[0]?.id ?? null);
       }
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : isAr ? 'تعذر تحميل الطلبات' : 'Failed to load applications');
@@ -200,7 +244,7 @@ export default function AdminPage() {
     () => ({
       total: applications.length,
       pending: applications.filter((item) => item.status === 'PENDING').length,
-      approved: applications.filter((item) => item.status === 'APPROVED').length,
+      approved: applications.filter((item) => APPROVED_STATUSES.includes(item.status)).length,
       rejected: applications.filter((item) => item.status === 'REJECTED').length
     }),
     [applications]
@@ -319,7 +363,12 @@ export default function AdminPage() {
     }
   };
 
-  const canReview = selectedApplication && (selectedApplication.status === 'PENDING' || selectedApplication.status === 'IN_REVIEW');
+  const canReview =
+    selectedApplication &&
+    (selectedApplication.status === 'PENDING' ||
+      selectedApplication.status === 'SUBMITTED' ||
+      selectedApplication.status === 'IN_REVIEW' ||
+      selectedApplication.status === 'UNDER_REVIEW');
   const licenseFileUrl = resolveMediaUrl(selectedApplication?.license_document_url ?? null);
   const profilePhotoUrl = resolveMediaUrl(selectedApplication?.photo_url ?? null);
   const nationalIdUrl = resolveMediaUrl(selectedApplication?.national_id ?? null);
@@ -491,7 +540,23 @@ export default function AdminPage() {
                 <article className="min-w-0 rounded-xl border border-borderGray bg-slate-50 p-4">
                   <p className={sectionTitleClass}>{isAr ? 'المعلومات المهنية' : 'Professional'}</p>
                   <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <InfoItem
+                      label={isAr ? 'نوع المختص' : 'Professional Type'}
+                      value={selectedApplication.professional_type ?? 'N/A'}
+                    />
                     <InfoItem label={isAr ? 'رقم الترخيص' : 'License Number'} value={selectedApplication.license_number ?? 'N/A'} />
+                    <InfoItem
+                      label={isAr ? 'جهة إصدار الترخيص' : 'License Issuing Authority'}
+                      value={selectedApplication.license_issuing_authority ?? 'N/A'}
+                    />
+                    <InfoItem
+                      label={isAr ? 'تاريخ انتهاء الترخيص' : 'License Expiry Date'}
+                      value={selectedApplication.license_expiry_date ?? 'N/A'}
+                    />
+                    <InfoItem
+                      label={isAr ? 'جهة الاعتماد' : 'Accreditation Body'}
+                      value={selectedApplication.accreditation_body ?? 'N/A'}
+                    />
                     <InfoItem
                       label={isAr ? 'سنوات الخبرة' : 'Experience Years'}
                       value={selectedApplication.years_experience ?? 'N/A'}
@@ -507,6 +572,30 @@ export default function AdminPage() {
                       label={isAr ? 'التخصصات الفرعية' : 'Sub-specialties'}
                       value={(selectedApplication.sub_specialties ?? []).join(' • ') || 'N/A'}
                       fullWidth
+                    />
+                    <InfoItem
+                      label={isAr ? 'إقرار الوصفات للطبيب النفسي' : 'Psychiatrist Prescription Ack'}
+                      value={
+                        selectedApplication.psychiatrist_prescription_ack == null
+                          ? 'N/A'
+                          : selectedApplication.psychiatrist_prescription_ack
+                          ? copy.yes
+                          : copy.no
+                      }
+                    />
+                    <InfoItem
+                      label={isAr ? 'إقرار عدم الوصف للمعالج' : 'Therapist No Prescription Ack'}
+                      value={
+                        selectedApplication.therapist_no_prescription_ack == null
+                          ? 'N/A'
+                          : selectedApplication.therapist_no_prescription_ack
+                          ? copy.yes
+                          : copy.no
+                      }
+                    />
+                    <InfoItem
+                      label={isAr ? 'حالة التحقق' : 'Verification Status'}
+                      value={selectedApplication.verification_status ?? 'N/A'}
                     />
                     <InfoItem label={isAr ? 'المدينة' : 'City'} value={selectedApplication.location_city ?? 'N/A'} />
                     <InfoItem label={isAr ? 'الدولة' : 'Country'} value={selectedApplication.location_country ?? 'N/A'} />
@@ -524,6 +613,16 @@ export default function AdminPage() {
                         )
                       }
                       breakAll
+                      fullWidth
+                    />
+                    <InfoItem
+                      label={isAr ? 'الإقرار القانوني للوصفات' : 'Legal Prescription Declaration'}
+                      value={selectedApplication.legal_prescription_declaration ?? 'N/A'}
+                      fullWidth
+                    />
+                    <InfoItem
+                      label={isAr ? 'إقرار عدم وصف الأدوية' : 'No-Prescription Declaration'}
+                      value={selectedApplication.no_prescription_declaration ?? 'N/A'}
                       fullWidth
                     />
                   </div>
@@ -609,6 +708,46 @@ export default function AdminPage() {
                     )}
                   </article>
                 </div>
+
+                <article className="rounded-xl border border-borderGray bg-slate-50 p-4">
+                  <p className={sectionTitleClass}>{isAr ? 'كل المستندات المرفوعة' : 'All Uploaded Documents'}</p>
+                  {(selectedApplication.documents ?? []).length === 0 ? (
+                    <p className="mt-2 rounded-lg border border-borderGray bg-white px-3 py-2 text-sm text-muted">N/A</p>
+                  ) : (
+                    <ul className="mt-3 space-y-2">
+                      {(selectedApplication.documents ?? []).map((doc) => {
+                        const fileUrl = resolveMediaUrl(doc.file_url);
+                        return (
+                          <li key={doc.id} className="rounded-lg border border-borderGray bg-white px-3 py-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-sm font-semibold text-textMain">{doc.type}</p>
+                              <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${documentStatusClass(doc.status)}`}>
+                                {doc.status}
+                              </span>
+                            </div>
+                            {fileUrl ? (
+                              <a
+                                href={fileUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mt-1 block break-all text-xs font-semibold text-primary hover:text-primaryDark"
+                              >
+                                {copy.openFile}
+                              </a>
+                            ) : (
+                              <p className="mt-1 text-xs text-muted">N/A</p>
+                            )}
+                            {doc.admin_comment && (
+                              <p className="mt-2 rounded-md border border-borderGray bg-slate-50 px-2 py-1 text-xs text-muted">
+                                {doc.admin_comment}
+                              </p>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </article>
 
                 <article className="min-w-0 rounded-xl border border-borderGray bg-slate-50 px-4 py-3">
                   <p className={sectionTitleClass}>{isAr ? 'التسلسل الزمني' : 'Timeline'}</p>
