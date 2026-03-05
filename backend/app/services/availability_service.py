@@ -224,7 +224,12 @@ def _get_active_appointments(
 
 
 def generate_slots(
-    db: Session, doctor_user_id, date_from: date, date_to: date
+    db: Session,
+    doctor_user_id,
+    date_from: date,
+    date_to: date,
+    *,
+    include_booked: bool = False,
 ) -> list[AvailabilitySlotOut]:
     all_rules = _get_rules(db, doctor_user_id)
     if not all_rules:
@@ -240,7 +245,7 @@ def generate_slots(
         db, doctor_user_id, window_start_utc, window_end_utc
     )
 
-    slots: list[AvailabilitySlotOut] = []
+    slots_by_start: dict[str, AvailabilitySlotOut] = {}
     day = date_from
     while day <= date_to:
         weekday = day.weekday()
@@ -279,18 +284,26 @@ def generate_slots(
                     _slot_overlaps(slot_start_utc, slot_end_utc, appt.start_at, appt.end_at)
                     for appt in active_appointments
                 )
-                if not is_overlapping_active_appointment:
-                    slots.append(
-                        AvailabilitySlotOut(
-                            start_at=slot_start_utc,
-                            end_at=slot_end_utc,
-                            timezone=rule.timezone,
-                        )
+                slot_status: str = "booked" if is_overlapping_active_appointment else "available"
+                if slot_status == "booked" and not include_booked:
+                    slot_start_local += step
+                    continue
+
+                slot_key = slot_start_utc.isoformat()
+                existing = slots_by_start.get(slot_key)
+                # Prefer "booked" over "available" if overlapping rules generate same start.
+                if existing is None or (existing.status == "available" and slot_status == "booked"):
+                    slots_by_start[slot_key] = AvailabilitySlotOut(
+                        start_at=slot_start_utc,
+                        end_at=slot_end_utc,
+                        timezone=rule.timezone,
+                        status=slot_status,
                     )
                 slot_start_local += step
 
         day += timedelta(days=1)
 
+    slots = list(slots_by_start.values())
     slots.sort(key=lambda item: item.start_at)
     return slots
 

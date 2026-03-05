@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -26,11 +28,18 @@ class Settings(BaseSettings):
     payment_provider: str = "STRIPE"
     payment_public_base_url: str = "http://localhost:5173"
     payment_webhook_secret: str = "dev-payment-webhook-secret"
+    sabina_platform_fee_percent: Decimal = Decimal("20.00")
 
     video_provider: str = "TWILIO"
     video_token_secret: str = "dev-video-token-secret"
     video_join_window_minutes_before: int = 15
     video_join_window_minutes_after: int = 120
+    zoom_account_id: str | None = None
+    zoom_client_id: str | None = None
+    zoom_client_secret: str | None = None
+    zoom_host_user_id: str | None = "me"
+    zoom_join_before_host: bool = True
+    zoom_waiting_room: bool = True
 
     sendgrid_api_key: str | None = None
     twilio_account_sid: str | None = None

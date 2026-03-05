@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import { ApiError, apiJson, apiRequest, fetchFirstReachable } from '../utils/api';
+import AvailabilitySection, { type AvailabilitySlot, type AvailabilitySlotSelection } from '../components/profile/AvailabilitySection';
+import { weeklyAvailability as fallbackWeeklyAvailability } from '../data/doctorProfileData';
+import { fetchFirstReachable, getBackendOrigin } from '../utils/api';
 import { getStoredAuthRole, navigateTo } from '../utils/auth';
 
 type DoctorDetails = {
@@ -26,6 +28,19 @@ type DoctorDetails = {
   rating: number | string | null;
   reviews_count: number;
   years_experience: number | null;
+  professional_type: 'PSYCHIATRIST' | 'THERAPIST' | null;
+  can_prescribe_medication: boolean;
+  role_badge: {
+    professional_type: 'PSYCHIATRIST' | 'THERAPIST';
+    title: string;
+    icon: string;
+    color: string;
+    tooltip: string;
+    clarification_note: string;
+    capabilities: string[];
+    medication_authority_warning: string;
+    can_prescribe_medication: boolean;
+  };
   education: Array<string | Record<string, unknown>> | null;
   certifications: string[] | null;
   availability_timezone: string | null;
@@ -33,6 +48,21 @@ type DoctorDetails = {
   availability_preview_slots: string[] | null;
   verification_badges: string[] | null;
 };
+
+type AvailabilityApiSlot = {
+  start_at: string;
+  status?: 'available' | 'booked';
+};
+
+type DoctorReview = {
+  appointment_id: string;
+  rating: number;
+  comment: string | null;
+  submitted_at: string;
+  author: string;
+};
+
+const WEEKDAY_ORDER: Array<'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun'> = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 function getSlugFromPath(pathname: string): string {
   const chunks = pathname.split('/').filter(Boolean);
@@ -77,6 +107,20 @@ function formatAmount(value: number | string | null, currency: string): string {
   return `${amount} ${currency}`;
 }
 
+function roundMoney(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function buildSessionPrices(basePrice: number, sessions: number): number[] {
+  const prices: number[] = [];
+  let current = basePrice;
+  for (let index = 0; index < sessions; index += 1) {
+    prices.push(roundMoney(current));
+    current *= 0.8;
+  }
+  return prices;
+}
+
 function formatDateTime(isoValue: string): string {
   const date = new Date(isoValue);
   if (Number.isNaN(date.getTime())) {
@@ -103,12 +147,112 @@ function resolveMediaUrl(url: string | null): string | null {
   if (typeof window !== 'undefined' && path.startsWith('/images/')) {
     return `${window.location.origin}${path}`;
   }
-  const env = import.meta.env as Record<string, string | boolean | undefined>;
-  const envBase = typeof env.VITE_API_BASE_URL === 'string' ? env.VITE_API_BASE_URL.trim() : '';
-  const fallbackBase =
-    typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8000` : 'http://localhost:8000';
-  const base = (envBase && envBase !== '/api' ? envBase : fallbackBase).replace(/\/+$/, '').replace(/\/api$/, '');
+  const base = getBackendOrigin();
   return `${base}${path}`;
+}
+
+function toIsoDate(value: Date): string {
+  return value.toISOString().slice(0, 10);
+}
+
+function formatDateTimeLocal(date: Date): string {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  const hours = `${date.getHours()}`.padStart(2, '0');
+  const minutes = `${date.getMinutes()}`.padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function nextDateTimeFromWeekdayAndTime(day: string, time: string): string {
+  const [hoursRaw = '0', minutesRaw = '0'] = time.split(':');
+  const hours = Number(hoursRaw);
+  const minutes = Number(minutesRaw);
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+    return '';
+  }
+
+  const dayIndexMap: Record<string, number> = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6
+  };
+
+  const now = new Date();
+  const targetDayIndex = dayIndexMap[day];
+  if (typeof targetDayIndex !== 'number') {
+    const fallback = new Date();
+    fallback.setHours(hours, minutes, 0, 0);
+    if (fallback.getTime() < now.getTime()) {
+      fallback.setDate(fallback.getDate() + 1);
+    }
+    return formatDateTimeLocal(fallback);
+  }
+
+  const candidate = new Date(now);
+  candidate.setHours(hours, minutes, 0, 0);
+
+  let daysAhead = (targetDayIndex - candidate.getDay() + 7) % 7;
+  if (daysAhead === 0 && candidate.getTime() <= now.getTime()) {
+    daysAhead = 7;
+  }
+  candidate.setDate(candidate.getDate() + daysAhead);
+  return formatDateTimeLocal(candidate);
+}
+
+function toWeeklyAvailabilityFromApiSlots(
+  slots: AvailabilityApiSlot[],
+  timezone = 'Asia/Amman'
+): Record<string, AvailabilitySlot[]> {
+  const dayFormatter = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: timezone });
+  const timeFormatter = new Intl.DateTimeFormat('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: timezone
+  });
+
+  const grouped = new Map<string, AvailabilitySlot[]>();
+  for (const day of WEEKDAY_ORDER) {
+    grouped.set(day, []);
+  }
+
+  for (const item of slots) {
+    const date = new Date(item.start_at);
+    if (Number.isNaN(date.getTime())) {
+      continue;
+    }
+    const day = dayFormatter.format(date);
+    const time = timeFormatter.format(date);
+    const status: AvailabilitySlot['status'] = item.status === 'booked' ? 'booked' : 'available';
+    const existing = grouped.get(day);
+    if (!existing) {
+      continue;
+    }
+    const existingIndex = existing.findIndex((slot) => slot.time === time);
+    if (existingIndex === -1) {
+      existing.push({ time, status });
+      continue;
+    }
+    if (existing[existingIndex].status !== 'booked' && status === 'booked') {
+      existing[existingIndex] = { time, status };
+    }
+  }
+
+  const output: Record<string, AvailabilitySlot[]> = {};
+  for (const day of WEEKDAY_ORDER) {
+    const sorted = (grouped.get(day) ?? []).sort((a, b) => a.time.localeCompare(b.time));
+    output[day] = sorted.slice(0, 4);
+  }
+  return output;
+}
+
+function hasAnyLiveAvailability(weeklyMap: Record<string, AvailabilitySlot[]>): boolean {
+  return Object.values(weeklyMap).some((daySlots) => daySlots.length > 0);
 }
 
 export default function DoctorDetailsPage() {
@@ -117,18 +261,14 @@ export default function DoctorDetailsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isNotFound, setIsNotFound] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [selectedStartAt, setSelectedStartAt] = useState('');
-  const [bookingMessage, setBookingMessage] = useState<string | null>(null);
+  const [selectedStartAts, setSelectedStartAts] = useState<string[]>([]);
+  const [selectedSlotKeys, setSelectedSlotKeys] = useState<string[]>([]);
+  const [packageSessions, setPackageSessions] = useState<1 | 2 | 3 | 4 | 5 | 6>(1);
   const [bookingError, setBookingError] = useState<string | null>(null);
-  const [bookingBusy, setBookingBusy] = useState(false);
-  const [conflictingAppointmentId, setConflictingAppointmentId] = useState<string | null>(null);
-  const [waitingListPosition, setWaitingListPosition] = useState<number | null>(null);
-  const [treatmentMessage, setTreatmentMessage] = useState('');
-  const [treatmentBusy, setTreatmentBusy] = useState(false);
-  const [treatmentStatus, setTreatmentStatus] = useState<string | null>(null);
-  const [directMessageBody, setDirectMessageBody] = useState('');
-  const [directMessageBusy, setDirectMessageBusy] = useState(false);
-  const [directMessageStatus, setDirectMessageStatus] = useState<string | null>(null);
+  const [liveWeeklyAvailability, setLiveWeeklyAvailability] = useState<Record<string, AvailabilitySlot[]>>(fallbackWeeklyAvailability);
+  const [slotDateTimeMap, setSlotDateTimeMap] = useState<Record<string, string>>({});
+  const [reviews, setReviews] = useState<DoctorReview[]>([]);
+  const [isReviewsLoading, setIsReviewsLoading] = useState(false);
   const authRole = getStoredAuthRole();
 
   useEffect(() => {
@@ -195,182 +335,230 @@ export default function DoctorDetailsPage() {
     };
   }, [slug]);
 
+  useEffect(() => {
+    let active = true;
+
+    const loadAvailability = async () => {
+      if (!doctor?.doctor_user_id) {
+        if (active) {
+          setLiveWeeklyAvailability(fallbackWeeklyAvailability);
+        }
+        return;
+      }
+
+      const timezone = doctor.availability_timezone ?? 'Asia/Amman';
+
+      try {
+        const dateFrom = new Date();
+        const dateTo = new Date(dateFrom.getTime() + 13 * 24 * 60 * 60 * 1000);
+        const query = new URLSearchParams({
+          date_from: toIsoDate(dateFrom),
+          date_to: toIsoDate(dateTo)
+        });
+        const response = await fetchFirstReachable(
+          `/doctors/${doctor.doctor_user_id}/availability?${query.toString()}`
+        );
+
+        if (response.ok) {
+          const payload = (await response.json()) as AvailabilityApiSlot[];
+          const dayFormatter = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: timezone });
+          const timeFormatter = new Intl.DateTimeFormat('en-GB', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+            timeZone: timezone
+          });
+          const nextSlotMap: Record<string, string> = {};
+          payload.forEach((item) => {
+            const date = new Date(item.start_at);
+            if (Number.isNaN(date.getTime())) {
+              return;
+            }
+            const day = dayFormatter.format(date);
+            const slotTime = timeFormatter.format(date);
+            const key = `${day}-${slotTime}`;
+            if (!nextSlotMap[key]) {
+              nextSlotMap[key] = formatDateTimeLocal(date);
+            }
+          });
+          if (active) {
+            setSlotDateTimeMap(nextSlotMap);
+          }
+          const fromApi = toWeeklyAvailabilityFromApiSlots(payload, timezone);
+          if (active && hasAnyLiveAvailability(fromApi)) {
+            setLiveWeeklyAvailability(fromApi);
+            return;
+          }
+        }
+      } catch {
+        // Fallback to preview slots below.
+      }
+
+      const previewIsoSlots = doctor.availability_preview_slots && doctor.availability_preview_slots.length > 0
+        ? doctor.availability_preview_slots
+        : doctor.next_available_at
+          ? [doctor.next_available_at]
+          : [];
+      const fromPreview = toWeeklyAvailabilityFromApiSlots(
+        previewIsoSlots.map((start_at) => ({ start_at, status: 'available' })),
+        timezone
+      );
+      if (active) {
+        const dayFormatter = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: timezone });
+        const timeFormatter = new Intl.DateTimeFormat('en-GB', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+          timeZone: timezone
+        });
+        const nextSlotMap: Record<string, string> = {};
+        previewIsoSlots.forEach((value) => {
+          const date = new Date(value);
+          if (Number.isNaN(date.getTime())) {
+            return;
+          }
+          const day = dayFormatter.format(date);
+          const slotTime = timeFormatter.format(date);
+          const key = `${day}-${slotTime}`;
+          if (!nextSlotMap[key]) {
+            nextSlotMap[key] = formatDateTimeLocal(date);
+          }
+        });
+        setSlotDateTimeMap(nextSlotMap);
+        setLiveWeeklyAvailability(hasAnyLiveAvailability(fromPreview) ? fromPreview : fallbackWeeklyAvailability);
+      }
+    };
+
+    void loadAvailability();
+    return () => {
+      active = false;
+    };
+  }, [doctor?.doctor_user_id, doctor?.availability_timezone, doctor?.availability_preview_slots, doctor?.next_available_at]);
+
+  useEffect(() => {
+    setSelectedStartAts((prev) => prev.slice(0, packageSessions));
+    setSelectedSlotKeys((prev) => prev.slice(0, packageSessions));
+  }, [packageSessions]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadReviews = async () => {
+      if (!doctor?.doctor_user_id) {
+        if (active) {
+          setReviews([]);
+        }
+        return;
+      }
+
+      setIsReviewsLoading(true);
+      try {
+        const response = await fetchFirstReachable(`/doctors/${doctor.doctor_user_id}/reviews`);
+        if (!response.ok) {
+          throw new Error(`Failed to load doctor reviews (${response.status})`);
+        }
+        const payload = (await response.json()) as DoctorReview[];
+        if (active) {
+          setReviews(payload);
+        }
+      } catch {
+        if (active) {
+          setReviews([]);
+        }
+      } finally {
+        if (active) {
+          setIsReviewsLoading(false);
+        }
+      }
+    };
+
+    void loadReviews();
+    return () => {
+      active = false;
+    };
+  }, [doctor?.doctor_user_id]);
+
   const educationLines = useMemo(() => toDisplayLines(doctor?.education), [doctor?.education]);
   const certifications = useMemo(() => doctor?.certifications ?? [], [doctor?.certifications]);
   const specialties = useMemo(() => doctor?.specialties ?? [], [doctor?.specialties]);
   const languages = useMemo(() => doctor?.languages ?? [], [doctor?.languages]);
   const sessionTypes = useMemo(() => doctor?.session_types ?? [], [doctor?.session_types]);
   const doctorPhotoUrl = useMemo(() => resolveMediaUrl(doctor?.photo_url ?? null), [doctor?.photo_url]);
-  const availabilitySlots = useMemo(() => {
-    if (doctor?.availability_preview_slots && doctor.availability_preview_slots.length > 0) {
-      return doctor.availability_preview_slots;
+  const packagePricing = useMemo(() => {
+    const base = Number(doctor?.pricing_per_session ?? 0);
+    if (Number.isNaN(base) || base <= 0) {
+      return {
+        currency: doctor?.pricing_currency ?? 'JOD',
+        sessionPrices: [] as number[],
+        total: 0,
+        savings: 0
+      };
     }
-    if (doctor?.next_available_at) {
-      return [doctor.next_available_at];
+    const sessionPrices = buildSessionPrices(base, packageSessions);
+    const total = roundMoney(sessionPrices.reduce((sum, value) => sum + value, 0));
+    const original = roundMoney(base * packageSessions);
+    const savings = roundMoney(original - total);
+    return {
+      currency: doctor?.pricing_currency ?? 'JOD',
+      sessionPrices,
+      total,
+      savings
+    };
+  }, [doctor?.pricing_currency, doctor?.pricing_per_session, packageSessions]);
+  const handleAvailabilitySlotSelect = ({ day, time }: AvailabilitySlotSelection) => {
+    const key = `${day}-${time}`;
+    const mapped = slotDateTimeMap[key];
+    const startAt = mapped || nextDateTimeFromWeekdayAndTime(day, time);
+    if (!startAt) {
+      return;
     }
-    return [];
-  }, [doctor?.availability_preview_slots, doctor?.next_available_at]);
+    setSelectedSlotKeys((prev) => {
+      const existingIndex = prev.indexOf(key);
+      if (existingIndex >= 0) {
+        setSelectedStartAts((current) => current.filter((_, index) => index !== existingIndex));
+        setBookingError(null);
+        return prev.filter((_, index) => index !== existingIndex);
+      }
+      if (prev.length >= packageSessions) {
+        setBookingError(`You can select up to ${packageSessions} slot${packageSessions === 1 ? '' : 's'}.`);
+        return prev;
+      }
+      setSelectedStartAts((current) => [...current, startAt]);
+      setBookingError(null);
+      return [...prev, key];
+    });
+  };
 
-  const createBooking = async () => {
+  const continueToBookingFlow = () => {
     if (!doctor) {
       return;
     }
-    const localDate = new Date(selectedStartAt);
-    if (Number.isNaN(localDate.getTime())) {
-      setBookingError('Please choose a valid date and time.');
+    if (selectedStartAts.length !== packageSessions) {
+      setBookingError(`Please select ${packageSessions} slot${packageSessions === 1 ? '' : 's'} from Availability.`);
       return;
     }
-    setBookingBusy(true);
-    setBookingMessage(null);
-    setBookingError(null);
-    setConflictingAppointmentId(null);
-    setWaitingListPosition(null);
-
-    try {
-      const response = await apiRequest(
-        '/appointments/request',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            doctor_user_id: doctor.doctor_user_id,
-            start_at: localDate.toISOString(),
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-          })
-        },
-        true
-      );
-
-      if (response.ok) {
-        setBookingMessage('Appointment request sent. The doctor will confirm shortly.');
-        return;
-      }
-
-      const responseBody = (await response.json().catch(() => null)) as
-        | { detail?: string | { message?: string; conflicting_appointment_id?: string | null } }
-        | null;
-      if (
-        response.status === 409 &&
-        responseBody &&
-        typeof responseBody.detail === 'object' &&
-        responseBody.detail !== null
-      ) {
-        const conflictId = responseBody.detail.conflicting_appointment_id;
-        if (typeof conflictId === 'string' && conflictId) {
-          setConflictingAppointmentId(conflictId);
-          setBookingError('This slot is full. You can join the waiting list for this appointment.');
-          return;
-        }
-      }
-      const detail =
-        typeof responseBody?.detail === 'string'
-          ? responseBody.detail
-          : typeof responseBody?.detail === 'object' && responseBody?.detail?.message
-            ? responseBody.detail.message
-            : `Booking failed (${response.status})`;
-      setBookingError(detail);
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 401) {
-        setBookingError('Please sign in as a user to book an appointment.');
-      } else {
-        setBookingError(error instanceof Error ? error.message : 'Booking failed');
-      }
-    } finally {
-      setBookingBusy(false);
-    }
-  };
-
-  const joinWaitingList = async () => {
-    if (!conflictingAppointmentId) {
+    const firstSelected = selectedStartAts[0];
+    if (!firstSelected || !firstSelected.includes('T')) {
+      setBookingError('Please choose valid date and time slots.');
       return;
     }
-    setBookingBusy(true);
-    setBookingError(null);
-    setBookingMessage(null);
-    try {
-      const payload = await apiJson<{ position: number }>(
-        `/appointments/${conflictingAppointmentId}/waiting-list`,
-        { method: 'POST' },
-        true,
-        'Failed to join waiting list'
-      );
-      setWaitingListPosition(payload.position);
-      setBookingMessage(`Joined waiting list successfully. Your position is ${payload.position}.`);
-    } catch (error) {
-      setBookingError(error instanceof Error ? error.message : 'Failed to join waiting list');
-    } finally {
-      setBookingBusy(false);
-    }
-  };
-
-  const submitTreatmentRequest = async () => {
-    if (!doctor) {
-      return;
-    }
-    const message = treatmentMessage.trim();
-    if (message.length < 5) {
-      setTreatmentStatus('Please enter at least 5 characters.');
-      return;
-    }
-    setTreatmentBusy(true);
-    setTreatmentStatus(null);
-    try {
-      await apiJson(
-        '/treatment-requests',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            doctor_id: doctor.doctor_user_id,
-            message
-          })
-        },
-        true,
-        'Failed to submit treatment request'
-      );
-      setTreatmentMessage('');
-      setTreatmentStatus('Treatment request sent successfully.');
-    } catch (error) {
-      setTreatmentStatus(error instanceof Error ? error.message : 'Failed to submit treatment request');
-    } finally {
-      setTreatmentBusy(false);
-    }
-  };
-
-  const sendDirectMessage = async () => {
-    if (!doctor) {
-      return;
-    }
-    const body = directMessageBody.trim();
-    if (body.length < 3) {
-      setDirectMessageStatus('Please write at least 3 characters.');
+    const [datePart, timePartRaw] = firstSelected.split('T');
+    const timePart = timePartRaw?.slice(0, 5) ?? '';
+    if (!datePart || timePart.length < 5) {
+      setBookingError('Please choose valid date and time slots.');
       return;
     }
 
-    setDirectMessageBusy(true);
-    setDirectMessageStatus(null);
-    try {
-      await apiJson(
-        '/messages',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            receiver_user_id: doctor.doctor_user_id,
-            subject: `Message from profile: ${doctor.display_name}`,
-            body,
-          }),
-        },
-        true,
-        'Failed to send message'
-      );
-      setDirectMessageBody('');
-      setDirectMessageStatus('Message sent successfully.');
-    } catch (error) {
-      setDirectMessageStatus(error instanceof Error ? error.message : 'Failed to send message');
-    } finally {
-      setDirectMessageBusy(false);
-    }
+    const query = new URLSearchParams({
+      date: datePart,
+      time: timePart,
+      doctor_user_id: doctor.doctor_user_id,
+      doctor_slug: doctor.slug,
+      package_sessions: String(packageSessions),
+      slot_starts: selectedStartAts.join(','),
+      doctor_preferences: (sessionTypes.length > 0 ? sessionTypes : ['Not specified']).join('|')
+    });
+    navigateTo(`/booking/confirm?${query.toString()}`);
   };
 
   return (
@@ -429,6 +617,32 @@ export default function DoctorDetailsPage() {
                   <p className="mt-2 text-base font-semibold text-primary break-words [overflow-wrap:anywhere]">
                     {doctor.headline ?? 'Therapist'}
                   </p>
+                  <article className="mt-4 rounded-2xl border border-borderGray bg-slate-50 px-4 py-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-black tracking-wide ${
+                          doctor.role_badge.color === 'blue'
+                            ? 'bg-sky-100 text-sky-700'
+                            : 'bg-emerald-100 text-emerald-700'
+                        }`}
+                      >
+                        {doctor.role_badge.icon} {doctor.role_badge.title}
+                      </span>
+                      <span className="rounded-full border border-borderGray bg-white px-3 py-1 text-xs font-semibold text-muted">
+                        {doctor.professional_type ?? 'N/A'}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-sm text-muted break-words [overflow-wrap:anywhere]">
+                      {doctor.role_badge.clarification_note}
+                    </p>
+                    <ul className="mt-2 flex flex-wrap gap-2">
+                      {doctor.role_badge.capabilities.map((capability) => (
+                        <li key={capability} className="rounded-full border border-borderGray bg-white px-3 py-1 text-xs text-textMain">
+                          {capability}
+                        </li>
+                      ))}
+                    </ul>
+                  </article>
 
                   <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     {[
@@ -464,6 +678,35 @@ export default function DoctorDetailsPage() {
                   <p className="mt-3 text-sm leading-7 text-muted break-words [overflow-wrap:anywhere]">
                     {doctor.approach_text ?? 'No approach details provided yet.'}
                   </p>
+                </section>
+
+                <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card">
+                  <h2 className="text-xl font-black text-textMain">Patient Feedback</h2>
+                  <p className="mt-2 text-sm text-muted">
+                    {doctor.rating ? `${doctor.rating} / 5 average` : 'No rating yet'} • {doctor.reviews_count} reviews
+                  </p>
+                  {isReviewsLoading ? (
+                    <p className="mt-4 text-sm text-muted">Loading feedback...</p>
+                  ) : reviews.length === 0 ? (
+                    <p className="mt-4 text-sm text-muted">No feedback comments yet.</p>
+                  ) : (
+                    <div className="mt-4 space-y-3">
+                      {reviews.map((review) => (
+                        <article key={review.appointment_id} className="rounded-xl border border-borderGray bg-slate-50 p-4">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-sm font-bold text-textMain">{review.author}</p>
+                            <p className="text-xs font-semibold text-amber-700">
+                              {'★'.repeat(Math.max(1, Math.min(5, Math.round(review.rating))))}
+                              <span className="ml-2 text-muted">{formatDateTime(review.submitted_at)}</span>
+                            </p>
+                          </div>
+                          <p className="mt-2 text-sm text-muted break-words [overflow-wrap:anywhere]">
+                            {review.comment?.trim() ? review.comment : 'No written comment.'}
+                          </p>
+                        </article>
+                      ))}
+                    </div>
+                  )}
                 </section>
 
                 <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card">
@@ -503,19 +746,11 @@ export default function DoctorDetailsPage() {
                   </div>
                 </section>
 
-                <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card">
-                  <h2 className="text-xl font-black text-textMain">Availability Preview</h2>
-                  <p className="mt-2 text-sm text-muted">
-                    Timezone: {doctor.availability_timezone ?? 'Not specified'}
-                  </p>
-                  <ul className="mt-3 space-y-2">
-                    {(availabilitySlots.length > 0 ? availabilitySlots : ['No upcoming slots']).map((slot) => (
-                      <li key={slot} className="rounded-lg border border-borderGray bg-slate-50 px-3 py-2 text-sm text-muted">
-                        {slot.includes('T') ? formatDateTime(slot) : slot}
-                      </li>
-                    ))}
-                  </ul>
-                </section>
+                <AvailabilitySection
+                  weeklyAvailability={liveWeeklyAvailability}
+                  onSlotSelect={handleAvailabilitySlotSelect}
+                  selectedSlotKeys={selectedSlotKeys}
+                />
               </div>
 
               <aside className="space-y-6 lg:sticky lg:top-24">
@@ -554,28 +789,71 @@ export default function DoctorDetailsPage() {
                 </section>
 
                 <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card">
-                  <h2 className="text-xl font-black text-textMain">Book Appointment</h2>
+                  <h2 className="text-xl font-black text-textMain">Number of Appointments</h2>
                   <p className="mt-2 text-sm text-muted">
-                    Select your preferred session time. If a slot is full, you can join the waiting list.
+                    Choose how many sessions you want, then confirm date to continue to payment.
                   </p>
                   <div className="mt-4 grid gap-3">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-muted">
-                      Start At
-                      <input
-                        type="datetime-local"
-                        value={selectedStartAt}
-                        onChange={(event) => setSelectedStartAt(event.target.value)}
-                        className="mt-1 h-11 w-full rounded-xl border border-borderGray bg-white px-3 text-sm text-textMain"
-                      />
-                    </label>
+                    <fieldset>
+                      <legend className="text-xs font-semibold uppercase tracking-wide text-muted">Appointments</legend>
+                      <div className="mt-2 grid grid-cols-3 gap-2">
+                        {([1, 2, 3, 4, 5, 6] as const).map((count) => (
+                          <button
+                            key={count}
+                            type="button"
+                            onClick={() => setPackageSessions(count)}
+                            className={`focus-outline h-11 rounded-xl border text-sm font-semibold transition ${
+                              packageSessions === count
+                                ? 'border-primary bg-primary/10 text-primary'
+                                : 'border-borderGray bg-white text-textMain hover:border-primary/40'
+                            }`}
+                          >
+                            {count} {count === 1 ? 'Session' : 'Sessions'}
+                          </button>
+                        ))}
+                      </div>
+                    </fieldset>
+                    <div className="rounded-xl border border-borderGray bg-slate-50 px-3 py-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                        Selected Slots ({selectedStartAts.length}/{packageSessions})
+                      </p>
+                      {selectedStartAts.length > 0 ? (
+                        <ul className="mt-2 space-y-1">
+                          {selectedStartAts.map((slot) => (
+                            <li key={slot} className="text-sm text-textMain">
+                              {formatDateTime(slot)}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="mt-2 text-sm text-muted">Select your slots from the Availability section.</p>
+                      )}
+                    </div>
+                    <div className="rounded-xl border border-borderGray bg-slate-50 px-3 py-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted">Selected Package</p>
+                      <p className="mt-1 text-sm font-semibold text-textMain">
+                        {packageSessions} {packageSessions === 1 ? 'Session' : 'Sessions'}
+                      </p>
+                      {packagePricing.sessionPrices.length > 0 && (
+                        <>
+                          <p className="mt-1 text-sm text-textMain">
+                            Total: {packagePricing.total.toFixed(2)} {packagePricing.currency}
+                          </p>
+                          {packageSessions > 1 && (
+                            <p className="mt-1 text-xs text-emerald-700">
+                              Savings: {packagePricing.savings.toFixed(2)} {packagePricing.currency}
+                            </p>
+                          )}
+                        </>
+                      )}
+                    </div>
                     {authRole === 'USER' ? (
                       <button
                         type="button"
-                        onClick={() => void createBooking()}
-                        disabled={bookingBusy}
-                        className="focus-outline inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-semibold text-white transition hover:bg-primaryDark disabled:opacity-60"
+                        onClick={continueToBookingFlow}
+                        className="focus-outline inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-semibold text-white transition hover:bg-primaryDark"
                       >
-                        {bookingBusy ? 'Submitting...' : 'Request Appointment'}
+                        Confirm Date & Continue to Payment
                       </button>
                     ) : (
                       <button
@@ -587,99 +865,9 @@ export default function DoctorDetailsPage() {
                       </button>
                     )}
                   </div>
-
-                  {conflictingAppointmentId && authRole === 'USER' && (
-                    <button
-                      type="button"
-                      onClick={() => void joinWaitingList()}
-                      disabled={bookingBusy}
-                      className="mt-3 rounded-xl border border-primary/30 bg-primary-50 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary-100 disabled:opacity-60"
-                    >
-                      {bookingBusy ? 'Joining...' : 'Join Waiting List'}
-                    </button>
-                  )}
-
-                  {waitingListPosition !== null && (
-                    <p className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-                      Your waiting list position is {waitingListPosition}.
-                    </p>
-                  )}
-                  {bookingMessage && (
-                    <p className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-                      {bookingMessage}
-                    </p>
-                  )}
                   {bookingError && (
                     <p className="mt-3 rounded-lg border border-rose-100 bg-rose-50 px-3 py-2 text-sm text-rose-700">
                       {bookingError}
-                    </p>
-                  )}
-                </section>
-
-                <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card">
-                  <h2 className="text-xl font-black text-textMain">Treatment Request</h2>
-                  <textarea
-                    rows={4}
-                    value={treatmentMessage}
-                    onChange={(event) => setTreatmentMessage(event.target.value)}
-                    placeholder="Briefly describe your treatment goals..."
-                    className="mt-3 w-full rounded-xl border border-borderGray bg-white px-3 py-2 text-sm text-textMain"
-                  />
-                  {authRole === 'USER' ? (
-                    <button
-                      type="button"
-                      onClick={() => void submitTreatmentRequest()}
-                      disabled={treatmentBusy}
-                      className="mt-3 w-full rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primaryDark disabled:opacity-60"
-                    >
-                      {treatmentBusy ? 'Sending...' : 'Send Treatment Request'}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => navigateTo('/login')}
-                      className="mt-3 w-full rounded-xl border border-borderGray px-4 py-2 text-sm font-semibold text-textMain transition hover:border-primary/40 hover:text-primary"
-                    >
-                      Sign In as User
-                    </button>
-                  )}
-                  {treatmentStatus && (
-                    <p className="mt-3 rounded-lg border border-borderGray bg-slate-50 px-3 py-2 text-sm text-textMain">
-                      {treatmentStatus}
-                    </p>
-                  )}
-                </section>
-
-                <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card">
-                  <h2 className="text-xl font-black text-textMain">Message Doctor</h2>
-                  <textarea
-                    rows={4}
-                    value={directMessageBody}
-                    onChange={(event) => setDirectMessageBody(event.target.value)}
-                    placeholder="Write your message..."
-                    className="mt-3 w-full rounded-xl border border-borderGray bg-white px-3 py-2 text-sm text-textMain"
-                  />
-                  {authRole === 'USER' ? (
-                    <button
-                      type="button"
-                      onClick={() => void sendDirectMessage()}
-                      disabled={directMessageBusy}
-                      className="mt-3 w-full rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primaryDark disabled:opacity-60"
-                    >
-                      {directMessageBusy ? 'Sending...' : 'Send Message'}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => navigateTo('/login')}
-                      className="mt-3 w-full rounded-xl border border-borderGray px-4 py-2 text-sm font-semibold text-textMain transition hover:border-primary/40 hover:text-primary"
-                    >
-                      Sign In as User
-                    </button>
-                  )}
-                  {directMessageStatus && (
-                    <p className="mt-3 rounded-lg border border-borderGray bg-slate-50 px-3 py-2 text-sm text-textMain">
-                      {directMessageStatus}
                     </p>
                   )}
                 </section>

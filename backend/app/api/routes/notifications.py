@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 from app.core.deps import get_current_user
 from app.db.models import User
 from app.db.session import get_db
-from app.schemas.notification import NotificationMarkReadOut, NotificationOut
-from app.services.notification_service import list_notifications, mark_notifications_read
+from app.schemas.notification import NotificationDeleteOut, NotificationMarkReadOut, NotificationOut
+from app.services.notification_service import delete_notifications, list_notifications, mark_notifications_read
 
 router = APIRouter(tags=["notifications"])
 
@@ -34,3 +34,21 @@ def mark_read(
         notification_ids=notification_ids,
     )
     return NotificationMarkReadOut(marked=marked)
+
+
+@router.delete("/notifications", response_model=NotificationDeleteOut)
+def clear_notifications(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    deleted = delete_notifications(db, user_id=current_user.id)
+    return NotificationDeleteOut(deleted=deleted)
+
+
+@router.post("/notifications/clear", response_model=NotificationDeleteOut)
+def clear_notifications_post(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    deleted = delete_notifications(db, user_id=current_user.id)
+    return NotificationDeleteOut(deleted=deleted)

@@ -22,3 +22,7 @@ class NotificationOut(BaseModel):
 
 class NotificationMarkReadOut(BaseModel):
     marked: int
+
+
+class NotificationDeleteOut(BaseModel):
+    deleted: int

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
-import { getStoredAuthRole, logout, roleHomePath, type AuthRole } from '../utils/auth';
-import { apiJson } from '../utils/api';
+import { getStoredAuthRole, isDoctorLikeRole, logout, roleHomePath, type AuthRole } from '../utils/auth';
+import { ApiError, apiJson } from '../utils/api';
 import sabinaLogo from '../assets/sabina-logo.png';
 
 type HeaderNavItem = {
@@ -32,6 +32,22 @@ const defaultNavItems: HeaderNavItem[] = [
   { labelKey: 'nav.about', href: '/about' }
 ];
 
+const staticUserNavItems: HeaderNavItem[] = [
+  { labelKey: 'nav.home', href: '/home' },
+  { labelKey: 'nav.dashboard', href: '/dashboard' },
+  { labelKey: 'nav.doctors', href: '/home#featured-doctors' },
+  { labelKey: 'nav.complaints', href: '/complaints' },
+  { labelKey: 'nav.about', href: '/about' }
+];
+
+const staticDoctorNavItems: HeaderNavItem[] = [
+  { labelKey: 'nav.home', href: '/home' },
+  { labelKey: 'nav.dashboard', href: '/doctor-dashboard' },
+  { labelKey: 'nav.complaints', href: '/complaints' },
+  { labelKey: 'nav.doctors', href: '/home#featured-doctors' },
+  { labelKey: 'nav.about', href: '/about' }
+];
+
 export default function Header({
   brandHref = '/home',
   navItems,
@@ -42,9 +58,11 @@ export default function Header({
   const { lang, setLang, t } = useLanguage();
   const [isScrolled, setIsScrolled] = useState(false);
   const [authRole, setAuthRole] = useState<AuthRole | null>(() => getStoredAuthRole());
+  const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
+  const [isClearingNotifications, setIsClearingNotifications] = useState(false);
 
   const navigateTo = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
     e.preventDefault();
@@ -54,6 +72,14 @@ export default function Header({
   };
 
   const items = useMemo(() => {
+    if (authRole === 'USER') {
+      return staticUserNavItems;
+    }
+
+    if (isDoctorLikeRole(authRole)) {
+      return staticDoctorNavItems;
+    }
+
     const baseItems = navItems ?? defaultNavItems;
     if (!authRole) {
       return baseItems;
@@ -85,12 +111,17 @@ export default function Header({
     const onStorage = () => {
       setAuthRole(getStoredAuthRole());
     };
+    const onPopState = () => {
+      setCurrentPath(window.location.pathname);
+    };
 
     window.addEventListener('auth-changed', onAuthChanged);
     window.addEventListener('storage', onStorage);
+    window.addEventListener('popstate', onPopState);
     return () => {
       window.removeEventListener('auth-changed', onAuthChanged);
       window.removeEventListener('storage', onStorage);
+      window.removeEventListener('popstate', onPopState);
     };
   }, []);
 
@@ -121,6 +152,25 @@ export default function Header({
 
   const unreadCount = notifications.filter((item) => !item.is_read).length;
 
+  const clearNotifications = async () => {
+    if (isClearingNotifications) return;
+    setIsClearingNotifications(true);
+    try {
+      try {
+        await apiJson('/notifications/clear', { method: 'POST' }, true, 'Failed to clear notifications');
+      } catch (error) {
+        if (error instanceof ApiError && (error.status === 404 || error.status === 405)) {
+          await apiJson('/notifications', { method: 'DELETE' }, true, 'Failed to clear notifications');
+        } else {
+          throw error;
+        }
+      }
+      setNotifications([]);
+    } finally {
+      setIsClearingNotifications(false);
+    }
+  };
+
   return (
     <header
       className={`sticky top-0 z-50 border-b border-transparent transition-all duration-300 ${
@@ -144,17 +194,25 @@ export default function Header({
         </a>
 
         <nav className="hidden items-center gap-6 md:flex" aria-label="Main navigation">
-          {items.map((item) => (
-            <a
-              key={item.labelKey}
-              href={item.href}
-              className={`focus-outline rounded-lg px-2 py-1 text-sm font-medium text-muted transition ${
-                isTeal ? 'hover:text-teal-600' : 'hover:text-primary'
-              }`}
-            >
-              {t(item.labelKey)}
-            </a>
-          ))}
+          {items.map((item) => {
+            const itemPath = item.href.split('#')[0] || '/';
+            const isActive = currentPath === itemPath;
+            return (
+              <a
+                key={item.labelKey}
+                href={item.href}
+                className={`focus-outline rounded-lg px-2 py-1 text-sm font-medium transition ${
+                  isActive
+                    ? isTeal
+                      ? 'bg-teal-50 text-teal-700'
+                      : 'bg-primaryBg text-primary'
+                    : `text-muted ${isTeal ? 'hover:text-teal-600' : 'hover:text-primary'}`
+                }`}
+              >
+                {t(item.labelKey)}
+              </a>
+            );
+          })}
         </nav>
 
         <div className="flex items-center gap-3">
@@ -189,11 +247,21 @@ export default function Header({
                     <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white">
                       {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
-                  )}
-                </button>
-                {isNotificationsOpen && (
-                  <div className="absolute right-0 mt-2 w-80 rounded-xl border border-borderGray bg-white p-3 shadow-card">
-                    <p className="text-xs font-black uppercase tracking-wide text-muted">Notifications</p>
+                )}
+              </button>
+              {isNotificationsOpen && (
+                  <div className="absolute left-0 mt-2 w-80 rounded-xl border border-borderGray bg-white p-3 shadow-card">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-black uppercase tracking-wide text-muted">Notifications</p>
+                      <button
+                        type="button"
+                        onClick={() => void clearNotifications()}
+                        disabled={isClearingNotifications || notifications.length === 0}
+                        className="rounded-md border border-borderGray px-2 py-1 text-[11px] font-semibold text-muted transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isClearingNotifications ? 'Clearing...' : 'Clear'}
+                      </button>
+                    </div>
                     {isLoadingNotifications ? (
                       <p className="mt-2 text-xs text-muted">Loading...</p>
                     ) : notifications.length === 0 ? (

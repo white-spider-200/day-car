@@ -1,5 +1,6 @@
 import uuid
 from datetime import date, datetime, time
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -70,6 +71,7 @@ class AvailabilitySlotOut(BaseModel):
     start_at: datetime
     end_at: datetime
     timezone: str
+    status: Literal["available", "booked"] = "available"
 
 
 class AvailabilityBulkIn(BaseModel):

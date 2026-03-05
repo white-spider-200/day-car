@@ -41,10 +41,12 @@ function findActiveTabByScroll(sectionRefs: Record<ProfileTabKey, RefObject<HTML
 
 type PublicTopDoctor = {
   doctor_user_id: string;
+  slug?: string;
 };
 
 type AvailabilityApiSlot = {
   start_at: string;
+  status?: 'available' | 'booked';
 };
 
 const WEEKDAY_ORDER: Array<'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun'> = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -62,7 +64,7 @@ function toWeeklyAvailabilityFromApi(slots: AvailabilityApiSlot[], timezone = 'A
     timeZone: timezone
   });
 
-  const grouped = new Map<string, string[]>();
+  const grouped = new Map<string, AvailabilitySlot[]>();
   for (const day of WEEKDAY_ORDER) {
     grouped.set(day, []);
   }
@@ -77,17 +79,24 @@ function toWeeklyAvailabilityFromApi(slots: AvailabilityApiSlot[], timezone = 'A
     if (!grouped.has(day)) {
       continue;
     }
+    const status: AvailabilitySlot['status'] = item.status === 'booked' ? 'booked' : 'available';
     const existing = grouped.get(day) ?? [];
-    if (!existing.includes(time)) {
-      existing.push(time);
+    const existingIndex = existing.findIndex((slot) => slot.time === time);
+    if (existingIndex === -1) {
+      existing.push({ time, status });
+      grouped.set(day, existing);
+      continue;
+    }
+    if (existing[existingIndex].status !== 'booked' && status === 'booked') {
+      existing[existingIndex] = { time, status };
       grouped.set(day, existing);
     }
   }
 
   const output: Record<string, AvailabilitySlot[]> = {};
   for (const day of WEEKDAY_ORDER) {
-    const sorted = (grouped.get(day) ?? []).sort();
-    output[day] = sorted.slice(0, 4).map((time) => ({ time, status: 'available' }));
+    const sorted = (grouped.get(day) ?? []).sort((a, b) => a.time.localeCompare(b.time));
+    output[day] = sorted.slice(0, 4);
   }
   return output;
 }
@@ -114,6 +123,8 @@ export default function DoctorProfilePage() {
 
   const [activeTab, setActiveTab] = useState<ProfileTabKey>('about');
   const [liveWeeklyAvailability, setLiveWeeklyAvailability] = useState<Record<string, AvailabilitySlot[]>>(fallbackWeeklyAvailability);
+  const [bookingDoctorUserId, setBookingDoctorUserId] = useState<string | undefined>(undefined);
+  const [bookingDoctorSlug, setBookingDoctorSlug] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     const onScroll = () => {
@@ -138,6 +149,10 @@ export default function DoctorProfilePage() {
         const topDoctor = (await topDoctorResponse.json()) as PublicTopDoctor | null;
         if (!topDoctor?.doctor_user_id) {
           return;
+        }
+        if (active) {
+          setBookingDoctorUserId(topDoctor.doctor_user_id);
+          setBookingDoctorSlug(topDoctor.slug);
         }
 
         const dateFrom = new Date();
@@ -203,7 +218,12 @@ export default function DoctorProfilePage() {
             </section>
           </div>
 
-          <QuickBookingSidebar services={services} similarDoctors={similarDoctors} />
+          <QuickBookingSidebar
+            services={services}
+            similarDoctors={similarDoctors}
+            doctorUserId={bookingDoctorUserId}
+            doctorSlug={bookingDoctorSlug}
+          />
         </div>
       </main>
     </div>

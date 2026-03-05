@@ -9,6 +9,7 @@ from app.core.professional_roles import ProfessionalType
 from app.db.models import (
     APPROVED_APPLICATION_STATUSES,
     ApplicationStatus,
+    Appointment,
     DoctorApplication,
     DoctorProfile,
     User,
@@ -16,7 +17,7 @@ from app.db.models import (
 )
 from app.db.session import get_db
 from app.schemas.availability import AvailabilitySlotOut
-from app.schemas.doctor_profile import DoctorProfileListItem, DoctorProfileOut
+from app.schemas.doctor_profile import DoctorProfileListItem, DoctorProfileOut, DoctorReviewOut
 from app.services.availability_service import generate_slots
 from app.services.doctor_directory_service import getDoctorBySlug, getTopDoctor
 
@@ -321,6 +322,36 @@ def get_doctor_profile(doctor_user_id: uuid.UUID, db: Session = Depends(get_db))
     return profile
 
 
+@router.get("/doctors/{doctor_user_id}/reviews", response_model=list[DoctorReviewOut])
+def get_doctor_reviews(doctor_user_id: uuid.UUID, db: Session = Depends(get_db)):
+    profile = db.scalar(_base_public_query().where(DoctorProfile.doctor_user_id == doctor_user_id))
+    if not profile:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Doctor not found")
+
+    rows = list(
+        db.scalars(
+            select(Appointment)
+            .where(
+                Appointment.doctor_user_id == doctor_user_id,
+                Appointment.feedback_rating.is_not(None),
+            )
+            .order_by(Appointment.feedback_submitted_at.desc().nullslast(), Appointment.created_at.desc())
+            .limit(100)
+        )
+    )
+
+    return [
+        DoctorReviewOut(
+            appointment_id=row.id,
+            rating=int(row.feedback_rating or 0),
+            comment=row.feedback_comment,
+            submitted_at=row.feedback_submitted_at or row.created_at,
+            author="Anonymous Patient",
+        )
+        for row in rows
+    ]
+
+
 @router.get("/doctors/{doctor_user_id}/availability", response_model=list[AvailabilitySlotOut])
 def get_doctor_availability(
     doctor_user_id: uuid.UUID,
@@ -337,4 +368,10 @@ def get_doctor_availability(
     if not profile:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Doctor not found")
 
-    return generate_slots(db, doctor_user_id=doctor_user_id, date_from=date_from, date_to=date_to)
+    return generate_slots(
+        db,
+        doctor_user_id=doctor_user_id,
+        date_from=date_from,
+        date_to=date_to,
+        include_booked=True,
+    )

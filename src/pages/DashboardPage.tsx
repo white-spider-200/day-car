@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import Header from '../components/Header';
-import MessageCenter from '../components/MessageCenter';
 import TimelineFeed from '../components/TimelineFeed';
 import { ApiError, apiJson } from '../utils/api';
 import { getStoredAuthEmail, navigateTo } from '../utils/auth';
 
 type AppointmentStatus = 'REQUESTED' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'NO_SHOW';
 type AppointmentCallStatus = 'NOT_READY' | 'READY' | 'LIVE' | 'ENDED';
+type TreatmentRequestStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED';
 
 type Appointment = {
   id: string;
@@ -22,12 +22,25 @@ type Appointment = {
   call_status: AppointmentCallStatus;
   fee_paid: boolean;
   notes: string | null;
+  feedback_rating: number | null;
+  feedback_comment: string | null;
+  feedback_submitted_at: string | null;
   created_at: string;
 };
 
 type PaymentInitResponse = {
   payment: {
     id: string;
+  };
+  quote: {
+    package_sessions: number;
+    discount_percent: string | number;
+    base_session_price: string | number;
+    currency: string;
+    original_total: string | number;
+    discounted_total: string | number;
+    total_savings: string | number;
+    session_prices: Array<string | number>;
   };
   checkout_url: string;
   client_token: string;
@@ -41,7 +54,54 @@ type PublicDoctor = {
   specialties: string[] | null;
   location_city: string | null;
   location_country: string | null;
+  pricing_currency: string;
+  pricing_per_session: string | number | null;
 };
+
+type PackageSessions = 1 | 4;
+
+function toMoney(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function computePackagePricing(basePrice: number, sessions: PackageSessions) {
+  const sessionPrices: number[] = [];
+  let current = basePrice;
+  for (let i = 0; i < sessions; i += 1) {
+    sessionPrices.push(toMoney(current));
+    current *= 0.8;
+  }
+  const originalTotal = toMoney(basePrice * sessions);
+  const discountedTotal = toMoney(sessionPrices.reduce((sum, price) => sum + price, 0));
+  const totalSavings = toMoney(originalTotal - discountedTotal);
+  return { sessionPrices, originalTotal, discountedTotal, totalSavings };
+}
+
+type TreatmentRequest = {
+  id: string;
+  doctor_id: string;
+  user_id: string;
+  status: TreatmentRequestStatus;
+  message: string;
+  doctor_note: string | null;
+  doctor_display_name: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type MessageItem = {
+  id: string;
+  sender_user_id: string;
+  receiver_user_id: string;
+  body: string;
+  created_at: string;
+};
+
+const DISMISSED_USER_CANCELLED_APPOINTMENTS_KEY = 'user_dashboard_dismissed_cancelled_appointments';
+
+function filterDismissedCancelledAppointments(items: Appointment[], dismissedIds: Set<string>): Appointment[] {
+  return items.filter((item) => !(item.status === 'CANCELLED' && dismissedIds.has(item.id)));
+}
 
 function statusClass(status: AppointmentStatus): string {
   if (status === 'CONFIRMED') return 'bg-emerald-50 text-emerald-700 border-emerald-100';
@@ -70,10 +130,11 @@ function timelineDotClass(status: AppointmentStatus): string {
 }
 
 function formatDate(isoValue: string): string {
-  const date = new Date(isoValue);
-  if (Number.isNaN(date.getTime())) {
+  const ms = toTime(isoValue);
+  if (Number.isNaN(ms)) {
     return isoValue;
   }
+  const date = new Date(ms);
   return date.toLocaleString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -87,9 +148,21 @@ function canCancel(status: AppointmentStatus): boolean {
   return status === 'REQUESTED' || status === 'CONFIRMED';
 }
 
+function toTime(value: string): number {
+  const raw = value.trim();
+  const parsed = Date.parse(raw);
+  if (!Number.isNaN(parsed)) {
+    return parsed;
+  }
+
+  // Some backends emit "YYYY-MM-DD HH:mm:ss+00:00"; normalize to ISO.
+  const normalized = raw.replace(' ', 'T');
+  return Date.parse(normalized);
+}
+
 function canJoinVideoNow(appointment: Appointment): boolean {
-  const start = new Date(appointment.start_at).getTime();
-  const end = new Date(appointment.end_at).getTime();
+  const start = toTime(appointment.start_at);
+  const end = toTime(appointment.end_at);
   const now = Date.now();
   if (Number.isNaN(start) || Number.isNaN(end)) {
     return false;
@@ -97,21 +170,78 @@ function canJoinVideoNow(appointment: Appointment): boolean {
   return now >= start - 15 * 60 * 1000 && now <= end + 120 * 60 * 1000;
 }
 
+function isZoomAppointment(appointment: Appointment): boolean {
+  return (appointment.call_provider ?? '').toUpperCase() === 'ZOOM' && Boolean(appointment.meeting_link);
+}
+
+function treatmentStatusClass(status: TreatmentRequestStatus): string {
+  if (status === 'ACCEPTED') return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+  if (status === 'DECLINED') return 'bg-rose-50 text-rose-700 border-rose-100';
+  return 'bg-amber-50 text-amber-700 border-amber-100';
+}
+
 export default function DashboardPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [doctors, setDoctors] = useState<PublicDoctor[]>([]);
+  const [treatmentRequests, setTreatmentRequests] = useState<TreatmentRequest[]>([]);
+  const [inboxMessages, setInboxMessages] = useState<MessageItem[]>([]);
+  const [outboxMessages, setOutboxMessages] = useState<MessageItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [busyAppointmentId, setBusyAppointmentId] = useState<string | null>(null);
   const [busyPaymentId, setBusyPaymentId] = useState<string | null>(null);
   const [busyVideoId, setBusyVideoId] = useState<string | null>(null);
-  const [videoJoinInfo, setVideoJoinInfo] = useState<Record<string, { provider: string; room_id: string; token: string }>>({});
+  const [busyEndId, setBusyEndId] = useState<string | null>(null);
+  const [paymentTarget, setPaymentTarget] = useState<Appointment | null>(null);
+  const [paymentPlan, setPaymentPlan] = useState<PackageSessions>(1);
+  const [feedbackTarget, setFeedbackTarget] = useState<Appointment | null>(null);
+  const [feedbackRating, setFeedbackRating] = useState<number>(5);
+  const [feedbackComment, setFeedbackComment] = useState<string>('');
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [dismissedCancelledAppointmentIds, setDismissedCancelledAppointmentIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(DISMISSED_USER_CANCELLED_APPOINTMENTS_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        setDismissedCancelledAppointmentIds(new Set(parsed.filter((value): value is string => typeof value === 'string')));
+      }
+    } catch {
+      // Ignore invalid local storage value.
+    }
+  }, []);
 
   const doctorById = useMemo(() => {
     return new Map(doctors.map((doctor) => [doctor.doctor_user_id, doctor]));
   }, [doctors]);
+  const doctorChatPartners = useMemo(() => {
+    const map = new Map<string, string>();
 
+    for (const request of treatmentRequests) {
+      if (request.status !== 'ACCEPTED') continue;
+      const fromRequest = request.doctor_display_name?.trim();
+      const fromDirectory = doctorById.get(request.doctor_id)?.display_name;
+      map.set(request.doctor_id, fromRequest || fromDirectory || `Doctor ${request.doctor_id.slice(0, 8)}`);
+    }
+
+    const partnerIds = new Set<string>();
+    for (const item of inboxMessages) {
+      partnerIds.add(item.sender_user_id);
+    }
+    for (const item of outboxMessages) {
+      partnerIds.add(item.receiver_user_id);
+    }
+    for (const partnerId of partnerIds) {
+      if (!map.has(partnerId)) {
+        const fromDirectory = doctorById.get(partnerId)?.display_name;
+        map.set(partnerId, fromDirectory || `Doctor ${partnerId.slice(0, 8)}`);
+      }
+    }
+
+    return map;
+  }, [treatmentRequests, inboxMessages, outboxMessages, doctorById]);
   const upcomingCount = useMemo(
     () => appointments.filter((item) => item.status === 'REQUESTED' || item.status === 'CONFIRMED').length,
     [appointments]
@@ -128,20 +258,26 @@ export default function DashboardPage() {
   );
 
   const sortedAppointments = useMemo(
-    () => [...appointments].sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime()),
+    () => [...appointments].sort((a, b) => toTime(a.start_at) - toTime(b.start_at)),
     [appointments]
   );
 
   const latestCancelledAppointment = useMemo(() => {
     return [...appointments]
       .filter((item) => item.status === 'CANCELLED')
-      .sort((a, b) => new Date(b.start_at).getTime() - new Date(a.start_at).getTime())[0];
+      .sort((a, b) => toTime(b.start_at) - toTime(a.start_at))[0];
   }, [appointments]);
 
   const nextUpcomingAppointment = useMemo(() => {
     return [...appointments]
-      .filter((item) => canCancel(item.status) && new Date(item.start_at).getTime() > nowMs)
-      .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())[0];
+      .filter((item) => {
+        if (!canCancel(item.status)) return false;
+        const start = toTime(item.start_at);
+        const end = toTime(item.end_at);
+        if (Number.isNaN(start) || Number.isNaN(end)) return false;
+        return end >= nowMs;
+      })
+      .sort((a, b) => toTime(a.start_at) - toTime(b.start_at))[0];
   }, [appointments, nowMs]);
 
   const loadDashboard = async () => {
@@ -149,13 +285,19 @@ export default function DashboardPage() {
     setErrorMessage(null);
 
     try {
-      const [appointmentPayload, doctorsPayload] = await Promise.all([
+      const [appointmentPayload, doctorsPayload, requestPayload, inboxPayload, outboxPayload] = await Promise.all([
         apiJson<Appointment[]>('/appointments/my', undefined, true, 'Failed to load your appointments'),
-        apiJson<PublicDoctor[]>('/doctors', undefined, false, 'Failed to load doctors')
+        apiJson<PublicDoctor[]>('/doctors', undefined, false, 'Failed to load doctors'),
+        apiJson<TreatmentRequest[]>('/treatment-requests/my', undefined, true, 'Failed to load doctor feedback'),
+        apiJson<MessageItem[]>('/messages?box=inbox', undefined, true, 'Failed to load inbox messages'),
+        apiJson<MessageItem[]>('/messages?box=outbox', undefined, true, 'Failed to load outbox messages'),
       ]);
 
-      setAppointments(appointmentPayload);
+      setAppointments(filterDismissedCancelledAppointments(appointmentPayload, dismissedCancelledAppointmentIds));
       setDoctors(doctorsPayload);
+      setTreatmentRequests(requestPayload);
+      setInboxMessages(inboxPayload);
+      setOutboxMessages(outboxPayload);
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         setErrorMessage('Please log in again to load your dashboard.');
@@ -169,7 +311,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     void loadDashboard();
-  }, []);
+  }, [dismissedCancelledAppointmentIds]);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
@@ -194,7 +336,10 @@ export default function DashboardPage() {
         'Failed to cancel appointment'
       );
 
-      setAppointments((previous) => previous.map((item) => (item.id === updated.id ? updated : item)));
+      setAppointments((previous) => {
+        const next = previous.map((item) => (item.id === updated.id ? updated : item));
+        return filterDismissedCancelledAppointments(next, dismissedCancelledAppointmentIds);
+      });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to cancel appointment');
     } finally {
@@ -202,11 +347,10 @@ export default function DashboardPage() {
     }
   };
 
-  const payForAppointment = async (appointment: Appointment) => {
+  const payForAppointment = async (appointment: Appointment, plan: PackageSessions) => {
     setBusyPaymentId(appointment.id);
     setErrorMessage(null);
     try {
-      const amount = doctorById.get(appointment.doctor_user_id)?.headline ? 40 : 30;
       const payment = await apiJson<PaymentInitResponse>(
         '/payments',
         {
@@ -214,8 +358,8 @@ export default function DashboardPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             appointment_id: appointment.id,
-            amount,
-            method: 'CARD'
+            method: 'CARD',
+            package_sessions: plan
           })
         },
         true,
@@ -228,6 +372,7 @@ export default function DashboardPage() {
         'Failed to confirm payment'
       );
       await loadDashboard();
+      setPaymentTarget(null);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to complete payment');
     } finally {
@@ -239,13 +384,18 @@ export default function DashboardPage() {
     setBusyVideoId(appointment.id);
     setErrorMessage(null);
     try {
-      const payload = await apiJson<{ provider: string; room_id: string; token: string }>(
+      const payload = await apiJson<{ provider: string; room_id: string; token: string; meeting_link?: string | null }>(
         `/appointments/${appointment.id}/video-join`,
         { method: 'POST' },
         true,
         'Failed to join video call'
       );
-      setVideoJoinInfo((previous) => ({ ...previous, [appointment.id]: payload }));
+      const meetingUrl = payload.meeting_link ?? appointment.meeting_link;
+      if (meetingUrl) {
+        window.open(meetingUrl, '_blank', 'noopener,noreferrer');
+      } else {
+        setErrorMessage('Meeting link is not available yet. Ask admin to enable Zoom provider.');
+      }
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to join video call');
     } finally {
@@ -253,8 +403,69 @@ export default function DashboardPage() {
     }
   };
 
+  const endVideoCall = async (appointment: Appointment) => {
+    setBusyEndId(appointment.id);
+    setErrorMessage(null);
+    try {
+      const updated = await apiJson<Appointment>(
+        `/appointments/${appointment.id}/video-end`,
+        { method: 'POST' },
+        true,
+        'Failed to end call'
+      );
+      setAppointments((previous) => {
+        const next = previous.map((item) => (item.id === updated.id ? updated : item));
+        return filterDismissedCancelledAppointments(next, dismissedCancelledAppointmentIds);
+      });
+      setFeedbackTarget(updated);
+      setFeedbackRating(5);
+      setFeedbackComment('');
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to end call');
+    } finally {
+      setBusyEndId(null);
+    }
+  };
+
+  const submitFeedback = async () => {
+    if (!feedbackTarget) return;
+    setErrorMessage(null);
+    try {
+      const updated = await apiJson<Appointment>(
+        `/appointments/${feedbackTarget.id}/feedback`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            rating: feedbackRating,
+            comment: feedbackComment.trim() || null
+          })
+        },
+        true,
+        'Failed to submit feedback'
+      );
+      setAppointments((previous) => {
+        const next = previous.map((item) => (item.id === updated.id ? updated : item));
+        return filterDismissedCancelledAppointments(next, dismissedCancelledAppointmentIds);
+      });
+      setFeedbackTarget(null);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to submit feedback');
+    }
+  };
+
   const currentEmail = getStoredAuthEmail() ?? 'User';
   const shortNowLabel = new Date(nowMs).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+  const dismissCancelledAppointment = (appointmentId: string) => {
+    setDismissedCancelledAppointmentIds((previous) => {
+      const next = new Set(previous);
+      next.add(appointmentId);
+      window.localStorage.setItem(DISMISSED_USER_CANCELLED_APPOINTMENTS_KEY, JSON.stringify([...next]));
+      return next;
+    });
+    setAppointments((previous) => previous.filter((item) => item.id !== appointmentId));
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary-50/30 via-white to-white text-textMain">
@@ -262,6 +473,7 @@ export default function DashboardPage() {
         brandHref="/dashboard"
         navItems={[
           { labelKey: 'nav.dashboard', href: '/dashboard' },
+          { labelKey: 'nav.complaints', href: '/complaints' },
           { labelKey: 'nav.doctors', href: '/home#featured-doctors' },
           { labelKey: 'nav.about', href: '/about' }
         ]}
@@ -370,15 +582,8 @@ export default function DashboardPage() {
                               rel="noreferrer"
                               className="mt-2 inline-block text-xs font-semibold text-primary hover:text-primaryDark"
                             >
-                              Open meeting link
+                              Join Zoom Meeting
                             </a>
-                          )}
-                          {videoJoinInfo[appointment.id] && (
-                            <div className="mt-2 rounded-lg border border-borderGray bg-white p-2 text-xs text-muted">
-                              <p>Provider: {videoJoinInfo[appointment.id].provider}</p>
-                              <p>Room: {videoJoinInfo[appointment.id].room_id}</p>
-                              <p className="break-all">Token: {videoJoinInfo[appointment.id].token}</p>
-                            </div>
                           )}
                         </div>
 
@@ -386,6 +591,17 @@ export default function DashboardPage() {
                           <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusClass(appointment.status)}`}>
                             {statusLabel(appointment.status)}
                           </span>
+                          {appointment.status === 'CANCELLED' && (
+                            <button
+                              type="button"
+                              onClick={() => dismissCancelledAppointment(appointment.id)}
+                              className="rounded-full border border-rose-200 bg-white px-2 py-0.5 text-sm font-bold leading-none text-rose-700 transition hover:bg-rose-50"
+                              aria-label="Remove cancelled appointment from list"
+                              title="Remove from list"
+                            >
+                              ×
+                            </button>
+                          )}
 
                           {canCancel(appointment.status) && (
                             <button
@@ -401,25 +617,49 @@ export default function DashboardPage() {
                           {!appointment.fee_paid && canCancel(appointment.status) && (
                             <button
                               type="button"
-                              onClick={() => void payForAppointment(appointment)}
+                              onClick={() => {
+                                setPaymentTarget(appointment);
+                                setPaymentPlan(1);
+                              }}
                               disabled={busyPaymentId === appointment.id}
                               className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:border-emerald-300 disabled:opacity-60"
                             >
-                              {busyPaymentId === appointment.id ? 'Processing...' : 'Pay for Video'}
+                              {busyPaymentId === appointment.id ? 'Processing...' : 'Pay for Session/Package'}
                             </button>
                           )}
 
-                          {appointment.fee_paid && canCancel(appointment.status) && canJoinVideoNow(appointment) && (
+                          {appointment.fee_paid && canCancel(appointment.status) && appointment.call_status !== 'ENDED' && isZoomAppointment(appointment) && appointment.meeting_link && (
+                            <a
+                              href={appointment.meeting_link}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="rounded-lg border border-primary/30 bg-primary-50 px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary-100"
+                            >
+                              Join Zoom Meeting
+                            </a>
+                          )}
+
+                          {appointment.fee_paid && canCancel(appointment.status) && appointment.call_status !== 'ENDED' && !isZoomAppointment(appointment) && canJoinVideoNow(appointment) && (
                             <button
                               type="button"
                               onClick={() => void joinVideoCall(appointment)}
                               disabled={busyVideoId === appointment.id}
                               className="rounded-lg border border-primary/30 bg-primary-50 px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary-100 disabled:opacity-60"
                             >
-                              {busyVideoId === appointment.id ? 'Joining...' : 'Join Video Call'}
+                              {busyVideoId === appointment.id ? 'Joining...' : 'Join Meeting'}
                             </button>
                           )}
-                          {appointment.fee_paid && canCancel(appointment.status) && !canJoinVideoNow(appointment) && (
+                          {appointment.fee_paid && appointment.status === 'CONFIRMED' && appointment.call_status !== 'ENDED' && canJoinVideoNow(appointment) && (
+                            <button
+                              type="button"
+                              onClick={() => void endVideoCall(appointment)}
+                              disabled={busyEndId === appointment.id}
+                              className="rounded-lg border border-slate-300 bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-200 disabled:opacity-60"
+                            >
+                              {busyEndId === appointment.id ? 'Ending...' : 'End Call'}
+                            </button>
+                          )}
+                          {appointment.fee_paid && canCancel(appointment.status) && appointment.call_status !== 'ENDED' && !isZoomAppointment(appointment) && !canJoinVideoNow(appointment) && (
                             <p className="text-[11px] text-muted">Video join opens near session start time.</p>
                           )}
                         </div>
@@ -433,6 +673,17 @@ export default function DashboardPage() {
                       {appointment.status === 'CANCELLED' && (
                         <p className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-xs font-medium text-rose-800">
                           This appointment was cancelled.
+                        </p>
+                      )}
+                      {appointment.feedback_rating && (
+                        <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800">
+                          Feedback: {'⭐'.repeat(Math.max(1, Math.min(5, appointment.feedback_rating)))}
+                          {appointment.feedback_comment ? ` — ${appointment.feedback_comment}` : ''}
+                        </p>
+                      )}
+                      {appointment.notes?.trim() && (
+                        <p className="mt-3 rounded-lg bg-sky-50 px-3 py-2 text-xs font-medium text-sky-800">
+                          Doctor session note: {appointment.notes}
                         </p>
                       )}
                     </div>
@@ -451,13 +702,13 @@ export default function DashboardPage() {
           ) : (
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {doctors.slice(0, 6).map((doctor) => (
-                <article key={doctor.doctor_user_id} className="rounded-2xl border border-borderGray bg-slate-50 p-4">
-                  <h3 className="text-sm font-bold text-textMain">{doctor.display_name}</h3>
-                  <p className="mt-1 text-xs text-muted">{doctor.headline ?? 'Therapist'}</p>
-                  <p className="mt-2 text-xs text-muted">
+                <article key={doctor.doctor_user_id} className="min-w-0 rounded-2xl border border-borderGray bg-slate-50 p-4">
+                  <h3 className="text-sm font-bold text-textMain break-words [overflow-wrap:anywhere]">{doctor.display_name}</h3>
+                  <p className="mt-1 text-xs text-muted break-words [overflow-wrap:anywhere]">{doctor.headline ?? 'Therapist'}</p>
+                  <p className="mt-2 text-xs text-muted break-words [overflow-wrap:anywhere]">
                     {[doctor.location_city, doctor.location_country].filter(Boolean).join(', ') || 'Location not specified'}
                   </p>
-                  <p className="mt-2 text-xs text-muted">
+                  <p className="mt-2 text-xs text-muted break-words [overflow-wrap:anywhere]">
                     {(doctor.specialties ?? []).slice(0, 2).join(' • ') || 'General therapy'}
                   </p>
                   <button
@@ -473,9 +724,192 @@ export default function DashboardPage() {
           )}
         </section>
 
+        <section className="mt-6 rounded-hero border border-borderGray bg-white p-6 shadow-card">
+          <h2 className="text-xl font-black text-textMain">Doctor Feedback</h2>
+          {treatmentRequests.length === 0 ? (
+            <p className="mt-4 text-sm text-muted">No feedback yet from doctors.</p>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {treatmentRequests.map((request) => (
+                <article key={request.id} className="rounded-xl border border-borderGray bg-slate-50 p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-bold text-textMain">
+                        {request.doctor_display_name ?? `Doctor ${request.doctor_id.slice(0, 8)}`}
+                      </p>
+                      <p className="mt-1 text-xs text-muted">Updated: {formatDate(request.updated_at)}</p>
+                    </div>
+                    <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${treatmentStatusClass(request.status)}`}>
+                      {request.status}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 rounded-lg border border-borderGray bg-white p-3">
+                    <p className="text-[11px] font-black uppercase tracking-wide text-muted">Doctor Feedback</p>
+                    <p className="mt-1 text-sm text-textMain whitespace-pre-wrap break-words">
+                      {request.doctor_note?.trim() ? request.doctor_note : 'No written feedback yet.'}
+                    </p>
+                    {request.status === 'ACCEPTED' && (
+                      <button
+                        type="button"
+                        onClick={() => navigateTo(`/user-chats?doctor_id=${encodeURIComponent(request.doctor_id)}`)}
+                        className="mt-3 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-primaryDark"
+                      >
+                        Message Doctor
+                      </button>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="mt-6 rounded-hero border border-borderGray bg-white p-6 shadow-card">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <h2 className="text-xl font-black text-textMain">User Chats</h2>
+              <p className="mt-1 text-sm text-muted">Click a doctor to open your direct chat page.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigateTo('/user-chats')}
+              className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-white transition hover:bg-primaryDark"
+            >
+              Open Chats
+            </button>
+          </div>
+          {doctorChatPartners.size === 0 ? (
+            <p className="mt-4 text-sm text-muted">No doctor chats yet.</p>
+          ) : (
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              {Array.from(doctorChatPartners.entries()).map(([doctorId, doctorName]) => (
+                <button
+                  key={doctorId}
+                  type="button"
+                  onClick={() => navigateTo(`/user-chats?doctor_id=${encodeURIComponent(doctorId)}`)}
+                  className="rounded-lg border border-borderGray bg-slate-50 px-3 py-2 text-left text-sm font-semibold text-textMain transition hover:border-primary/40 hover:text-primary"
+                >
+                  {doctorName}
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+
         <TimelineFeed className="mt-6" title="Therapy Community Feed" />
-        <MessageCenter className="mt-6" title="Doctor-Patient Messages" />
       </main>
+
+      {feedbackTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-borderGray bg-white p-5 shadow-card">
+            <h3 className="text-lg font-black text-textMain">Session Feedback</h3>
+            <p className="mt-1 text-sm text-muted">How was your Zoom session?</p>
+            <label className="mt-4 block text-sm font-semibold text-textMain">
+              Rating
+              <select
+                value={feedbackRating}
+                onChange={(event) => setFeedbackRating(Number(event.target.value))}
+                className="mt-2 w-full rounded-lg border border-borderGray bg-white px-3 py-2 text-sm"
+              >
+                <option value={5}>5 - Excellent</option>
+                <option value={4}>4 - Good</option>
+                <option value={3}>3 - Okay</option>
+                <option value={2}>2 - Poor</option>
+                <option value={1}>1 - Bad</option>
+              </select>
+            </label>
+            <label className="mt-3 block text-sm font-semibold text-textMain">
+              Comment (optional)
+              <textarea
+                rows={4}
+                value={feedbackComment}
+                onChange={(event) => setFeedbackComment(event.target.value)}
+                className="mt-2 w-full rounded-lg border border-borderGray bg-white px-3 py-2 text-sm"
+                placeholder="Share your feedback..."
+              />
+            </label>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setFeedbackTarget(null)}
+                className="rounded-lg border border-borderGray bg-white px-3 py-1.5 text-xs font-semibold text-textMain"
+              >
+                Skip
+              </button>
+              <button
+                type="button"
+                onClick={() => void submitFeedback()}
+                className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-primaryDark"
+              >
+                Submit Feedback
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {paymentTarget && (() => {
+        const doctor = doctorById.get(paymentTarget.doctor_user_id);
+        const basePrice = Number(doctor?.pricing_per_session ?? 40);
+        const currency = doctor?.pricing_currency ?? 'JOD';
+        const single = computePackagePricing(basePrice, 1);
+        const pack4 = computePackagePricing(basePrice, 4);
+        const active = paymentPlan === 1 ? single : pack4;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+            <div className="w-full max-w-lg rounded-2xl border border-borderGray bg-white p-5 shadow-card">
+              <h3 className="text-lg font-black text-textMain">Choose Payment Plan</h3>
+              <p className="mt-1 text-sm text-muted">Select one session or a 4-session bundle with progressive 20% discount.</p>
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setPaymentPlan(1)}
+                  className={`rounded-lg border px-3 py-2 text-left text-sm ${paymentPlan === 1 ? 'border-primary bg-primary-50 text-primary' : 'border-borderGray bg-white text-textMain'}`}
+                >
+                  <p className="font-bold">1 Session</p>
+                  <p className="text-xs">Total: {single.discountedTotal.toFixed(2)} {currency}</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentPlan(4)}
+                  className={`rounded-lg border px-3 py-2 text-left text-sm ${paymentPlan === 4 ? 'border-primary bg-primary-50 text-primary' : 'border-borderGray bg-white text-textMain'}`}
+                >
+                  <p className="font-bold">4 Sessions (20% progressive)</p>
+                  <p className="text-xs">Total: {pack4.discountedTotal.toFixed(2)} {currency}</p>
+                </button>
+              </div>
+              <div className="mt-4 rounded-lg border border-borderGray bg-slate-50 p-3 text-sm">
+                <p className="font-semibold text-textMain">Price breakdown</p>
+                <p className="mt-1 text-muted">Base/session: {basePrice.toFixed(2)} {currency}</p>
+                <p className="mt-1 text-muted">
+                  Sessions: {active.sessionPrices.map((price, idx) => `#${idx + 1} ${price.toFixed(2)}`).join(' • ')} {currency}
+                </p>
+                <p className="mt-1 text-muted">Original total: {active.originalTotal.toFixed(2)} {currency}</p>
+                <p className="mt-1 font-semibold text-emerald-700">Discounted total: {active.discountedTotal.toFixed(2)} {currency}</p>
+                <p className="mt-1 text-emerald-700">You save: {active.totalSavings.toFixed(2)} {currency}</p>
+              </div>
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPaymentTarget(null)}
+                  className="rounded-lg border border-borderGray bg-white px-3 py-1.5 text-xs font-semibold text-textMain"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void payForAppointment(paymentTarget, paymentPlan)}
+                  disabled={busyPaymentId === paymentTarget.id}
+                  className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-primaryDark disabled:opacity-60"
+                >
+                  {busyPaymentId === paymentTarget.id ? 'Processing...' : `Pay ${active.discountedTotal.toFixed(2)} ${currency}`}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

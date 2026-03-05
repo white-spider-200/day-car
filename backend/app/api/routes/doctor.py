@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from app.core.deps import require_roles
 from app.db.models import (
     ApplicationStatus,
+    Appointment,
+    AppointmentStatus,
     DoctorApplication,
     DoctorDocument,
     DocumentType,
@@ -15,7 +17,7 @@ from app.db.models import (
     UserRole,
 )
 from app.db.session import get_db
-from app.schemas.appointment import AppointmentOut, AppointmentRescheduleIn
+from app.schemas.appointment import AppointmentOut, AppointmentRescheduleIn, DoctorEndCallIn
 from app.schemas.availability import (
     AvailabilityBulkIn,
     AvailabilityBulkOut,
@@ -25,12 +27,14 @@ from app.schemas.availability import (
     AvailabilityRuleOut,
     AvailabilitySlotOut,
 )
+from app.schemas.doctor_financial import DoctorFinancialSummaryOut
 from app.schemas.doctor_application import (
     ApplicationOut,
     ApplicationSaveRequest,
     SubmitApplicationResponse,
 )
 from app.schemas.doctor_document import DoctorDocumentOut
+from app.schemas.users import DoctorPatientProfileOut
 from app.services.appointment_service import (
     cancel_appointment,
     confirm_appointment,
@@ -40,9 +44,30 @@ from app.services.appointment_service import (
 from app.services.availability_service import generate_slots, replace_exceptions, replace_rules
 from app.services.doctor_directory_service import filter_doctors
 from app.services.professional_type_service import validate_application_by_professional_type
+from app.services.payment_service import doctor_financial_summary
 from app.services.storage_service import save_document
+from app.services.video_call_service import end_video_call_with_doctor_feedback
 
 router = APIRouter(prefix="/doctor", tags=["doctor"])
+
+
+def _attach_patient_info(appointment, user: User | None):
+    appointment.patient_name = user.name if user else None
+    appointment.patient_age = user.age if user else None
+    appointment.patient_country = user.country if user else None
+    return appointment
+
+
+def _attach_patient_info_batch(db: Session, appointments: list):
+    if not appointments:
+        return appointments
+
+    user_ids = {item.user_id for item in appointments}
+    users = list(db.scalars(select(User).where(User.id.in_(user_ids))))
+    users_by_id = {item.id: item for item in users}
+    for item in appointments:
+        _attach_patient_info(item, users_by_id.get(item.user_id))
+    return appointments
 
 
 def _get_or_create_application(db: Session, doctor_user_id) -> DoctorApplication:
@@ -224,7 +249,17 @@ def my_doctor_appointments(
     current_user: User = Depends(require_roles(UserRole.DOCTOR)),
     db: Session = Depends(get_db),
 ):
-    return doctor_appointments(db, doctor_user_id=current_user.id)
+    appointments = doctor_appointments(db, doctor_user_id=current_user.id)
+    return _attach_patient_info_batch(db, appointments)
+
+
+@router.get("/financial-summary", response_model=DoctorFinancialSummaryOut)
+def get_doctor_financial_summary(
+    current_user: User = Depends(require_roles(UserRole.DOCTOR)),
+    db: Session = Depends(get_db),
+):
+    payload = doctor_financial_summary(db, doctor_user_id=current_user.id)
+    return DoctorFinancialSummaryOut.model_validate(payload)
 
 
 @router.post("/appointments/{appointment_id}/confirm", response_model=AppointmentOut)
@@ -233,7 +268,9 @@ def confirm_doctor_appointment(
     current_user: User = Depends(require_roles(UserRole.DOCTOR)),
     db: Session = Depends(get_db),
 ):
-    return confirm_appointment(db, appointment_id=appointment_id, doctor_user=current_user)
+    appointment = confirm_appointment(db, appointment_id=appointment_id, doctor_user=current_user)
+    patient = db.scalar(select(User).where(User.id == appointment.user_id))
+    return _attach_patient_info(appointment, patient)
 
 
 @router.post("/appointments/{appointment_id}/cancel", response_model=AppointmentOut)
@@ -242,9 +279,11 @@ def cancel_doctor_appointment(
     current_user: User = Depends(require_roles(UserRole.DOCTOR)),
     db: Session = Depends(get_db),
 ):
-    return cancel_appointment(
+    appointment = cancel_appointment(
         db, appointment_id=appointment_id, actor_user_id=current_user.id, doctor_user_id=current_user.id
     )
+    patient = db.scalar(select(User).where(User.id == appointment.user_id))
+    return _attach_patient_info(appointment, patient)
 
 
 @router.post("/appointments/{appointment_id}/reschedule", response_model=AppointmentOut)
@@ -254,7 +293,7 @@ def reschedule_doctor_appointment(
     current_user: User = Depends(require_roles(UserRole.DOCTOR)),
     db: Session = Depends(get_db),
 ):
-    return reschedule_appointment(
+    appointment = reschedule_appointment(
         db,
         appointment_id=appointment_id,
         actor_user_id=current_user.id,
@@ -262,6 +301,25 @@ def reschedule_doctor_appointment(
         new_start_at=payload.start_at,
         timezone=payload.timezone,
     )
+    patient = db.scalar(select(User).where(User.id == appointment.user_id))
+    return _attach_patient_info(appointment, patient)
+
+
+@router.post("/appointments/{appointment_id}/video-end", response_model=AppointmentOut)
+def end_doctor_video_call_with_feedback(
+    appointment_id: uuid.UUID,
+    payload: DoctorEndCallIn,
+    current_user: User = Depends(require_roles(UserRole.DOCTOR)),
+    db: Session = Depends(get_db),
+):
+    appointment = end_video_call_with_doctor_feedback(
+        db,
+        appointment_id=appointment_id,
+        actor_user=current_user,
+        feedback_note=payload.feedback_note,
+    )
+    patient = db.scalar(select(User).where(User.id == appointment.user_id))
+    return _attach_patient_info(appointment, patient)
 
 
 @router.get("/referral-directory")
@@ -272,3 +330,69 @@ def referral_directory(
 ):
     _ = current_user
     return filter_doctors(db, specialty=specialty, public_only=True)
+
+
+@router.get("/patients/{patient_user_id}/profile", response_model=DoctorPatientProfileOut)
+def get_patient_profile_for_doctor(
+    patient_user_id: uuid.UUID,
+    current_user: User = Depends(require_roles(UserRole.DOCTOR)),
+    db: Session = Depends(get_db),
+):
+    allowed = db.scalar(
+        select(Appointment.id).where(
+            Appointment.doctor_user_id == current_user.id,
+            Appointment.user_id == patient_user_id,
+            Appointment.status.in_([AppointmentStatus.CONFIRMED, AppointmentStatus.COMPLETED, AppointmentStatus.NO_SHOW]),
+        )
+    )
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Patient profile is available only after appointment confirmation.",
+        )
+
+    patient = db.scalar(
+        select(User).where(
+            User.id == patient_user_id,
+            User.role == UserRole.USER,
+        )
+    )
+    if not patient:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
+
+    shared_rows = db.execute(
+        select(
+            Appointment.id,
+            Appointment.doctor_user_id,
+            Appointment.notes,
+            Appointment.end_at,
+            User.name,
+        )
+        .join(User, User.id == Appointment.doctor_user_id)
+        .where(
+            Appointment.user_id == patient_user_id,
+            Appointment.status == AppointmentStatus.COMPLETED,
+            Appointment.notes.is_not(None),
+        )
+        .order_by(Appointment.end_at.desc())
+    ).all()
+
+    shared_notes = [
+        {
+            "appointment_id": row.id,
+            "doctor_user_id": row.doctor_user_id,
+            "doctor_name": row.name or f"Doctor {str(row.doctor_user_id)[:8]}",
+            "noted_at": row.end_at,
+            "note": row.notes,
+        }
+        for row in shared_rows
+        if row.notes and str(row.notes).strip()
+    ]
+
+    return {
+        "id": patient.id,
+        "name": patient.name,
+        "age": patient.age,
+        "country": patient.country,
+        "shared_session_notes": shared_notes,
+    }
