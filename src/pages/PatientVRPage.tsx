@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import VR360Player, { VR360PlayerHandle } from '../components/VR360Player';
-import { getBackendOrigin } from '../utils/api';
+import { buildWebSocketUrls } from '../utils/api';
 import { vrExamples } from '../data/vrExamples';
 
 export default function PatientVRPage() {
@@ -18,55 +18,71 @@ export default function PatientVRPage() {
   useEffect(() => {
     if (!sessionId) return;
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    let base = getBackendOrigin().replace(/^http/, 'ws');
-    if (!base) {
-         base = `${protocol}//${window.location.host}`;
-    }
-    
-    const wsUrl = `${base}/vr-sessions/${sessionId}/patient`;
-    const ws = new WebSocket(wsUrl);
+    const wsCandidates = buildWebSocketUrls(`/vr-sessions/${sessionId}/patient`);
+    let ws: WebSocket | null = null;
+    let attemptIndex = 0;
+    let stopped = false;
 
-    ws.onopen = () => {
-      setStatus('connected');
-      setMessage('Connected. Waiting for doctor to select a scenario.');
-    };
-
-    ws.onmessage = async (event) => {
-      const msg = JSON.parse(event.data);
-      console.log('Patient received:', msg);
-
-      if (msg.type === 'SYNC_STATE') {
-          // Initial state
-          if (msg.payload.video_id) {
-             const example = vrExamples.find(e => e.id === msg.payload.video_id);
-             if (example) {
-                 setCurrentVideoSrc(example.videoSrc);
-             }
-          }
-      } else if (msg.type === 'SET_VIDEO') {
-          const { video_id, src } = msg.payload;
-          setCurrentVideoSrc(src); // Or look up by ID if src not passed
-          setMessage('');
-      } else if (msg.type === 'CONTROL') {
-          const { command, time } = msg.payload;
-          if (command === 'play') {
-              await playerRef.current?.play();
-          } else if (command === 'pause') {
-              playerRef.current?.pause();
-          } else if (command === 'seek') {
-              playerRef.current?.seekTo(time);
-          }
+    const connect = () => {
+      if (stopped || attemptIndex >= wsCandidates.length) {
+        setStatus('disconnected');
+        setMessage('Session disconnected.');
+        return;
       }
+
+      const wsUrl = wsCandidates[attemptIndex++];
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        setStatus('connected');
+        setMessage('Connected. Waiting for doctor to select a scenario.');
+      };
+
+      ws.onmessage = async (event) => {
+        const msg = JSON.parse(event.data);
+        console.log('Patient received:', msg);
+
+        if (msg.type === 'SYNC_STATE') {
+            // Initial state
+            if (msg.payload.video_id) {
+               const example = vrExamples.find(e => e.id === msg.payload.video_id);
+               if (example) {
+                   setCurrentVideoSrc(example.videoSrc);
+               }
+            }
+        } else if (msg.type === 'SET_VIDEO') {
+            const { src } = msg.payload;
+            setCurrentVideoSrc(src); // Or look up by ID if src not passed
+            setMessage('');
+        } else if (msg.type === 'CONTROL') {
+            const { command, time } = msg.payload;
+            if (command === 'play') {
+                await playerRef.current?.play();
+            } else if (command === 'pause') {
+                playerRef.current?.pause();
+            } else if (command === 'seek') {
+                playerRef.current?.seekTo(time);
+            }
+        }
+      };
+
+      ws.onerror = () => {
+        ws?.close();
+      };
+
+      ws.onclose = () => {
+        if (stopped) {
+          return;
+        }
+        connect();
+      };
     };
 
-    ws.onclose = () => {
-      setStatus('disconnected');
-      setMessage('Session disconnected.');
-    };
+    connect();
 
     return () => {
-      ws.close();
+      stopped = true;
+      ws?.close();
     };
   }, [sessionId]);
 

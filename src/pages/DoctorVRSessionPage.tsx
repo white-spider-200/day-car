@@ -3,7 +3,7 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { useLanguage } from '../context/LanguageContext';
 import { vrExamples } from '../data/vrExamples';
-import { apiJson, getBackendOrigin } from '../utils/api';
+import { apiJson, buildWebSocketUrls } from '../utils/api';
 
 type SessionResponse = {
   session_id: string;
@@ -36,45 +36,57 @@ export default function DoctorVRSessionPage() {
   useEffect(() => {
     if (!session) return;
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    // If backend origin is relative or starts with /, handle it. 
-    // Usually getBackendOrigin returns http://localhost:8000 or similar.
-    let base = getBackendOrigin().replace(/^http/, 'ws');
-    if (!base) {
-         base = `${protocol}//${window.location.host}`;
-    }
-    
-    const wsUrl = `${base}/vr-sessions/${session.session_id}/doctor`;
-    const ws = new WebSocket(wsUrl);
+    const wsCandidates = buildWebSocketUrls(`/vr-sessions/${session.session_id}/doctor`);
+    let ws: WebSocket | null = null;
+    let attemptIndex = 0;
+    let stopped = false;
 
-    ws.onopen = () => {
-      setStatus('connected');
-      console.log('Doctor connected to VR session');
-    };
-
-    ws.onmessage = (event) => {
-      const msg = JSON.parse(event.data);
-      if (msg.type === 'SYNC_STATE') {
-          // Initial sync if needed
-      } else if (msg.type === 'USER_LEFT') {
-          if (msg.role === 'patient') setPatientStatus('offline');
-      } else if (msg.type === 'USER_JOINED') {
-          // We might need to implement USER_JOINED on backend to be precise, 
-          // but for now we can infer online if we get any msg from patient or just assume
-          // Actually backend doesn't send USER_JOINED yet.
+    const connect = () => {
+      if (stopped || attemptIndex >= wsCandidates.length) {
+        setStatus('disconnected');
+        return;
       }
-      // For now, let's assume if we are connected, we are good.
-      // Real implementation would have handshake.
-    };
-    
-    ws.onclose = () => {
-      setStatus('disconnected');
+
+      ws = new WebSocket(wsCandidates[attemptIndex++]);
+
+      ws.onopen = () => {
+        setStatus('connected');
+        setSocket(ws);
+        console.log('Doctor connected to VR session');
+      };
+
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'SYNC_STATE') {
+            // Initial sync if needed
+        } else if (msg.type === 'USER_LEFT') {
+            if (msg.role === 'patient') setPatientStatus('offline');
+        } else if (msg.type === 'USER_JOINED') {
+            // We might need to implement USER_JOINED on backend to be precise,
+            // but for now we can infer online if we get any msg from patient or just assume
+            // Actually backend doesn't send USER_JOINED yet.
+        }
+      };
+
+      ws.onerror = () => {
+        ws?.close();
+      };
+
+      ws.onclose = () => {
+        if (stopped) {
+          return;
+        }
+        setStatus('disconnected');
+        connect();
+      };
     };
 
-    setSocket(ws);
+    connect();
 
     return () => {
-      ws.close();
+      stopped = true;
+      ws?.close();
+      setSocket(null);
     };
   }, [session]);
 
