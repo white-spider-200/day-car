@@ -62,7 +62,7 @@ export default function HeroSearch() {
           autoPlay
           muted
           playsInline
-          preload="auto"
+          preload="metadata"
           onEnded={scheduleNextVideo}
           onError={scheduleNextVideo}
         >
