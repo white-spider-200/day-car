@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
-import VR360Player, { VR360PlayerHandle } from '../components/VR360Player';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import type { VR360PlayerHandle } from '../components/VR360Player';
 import { buildWebSocketUrls } from '../utils/api';
 import { vrExamples } from '../data/vrExamples';
+
+const VR360Player = lazy(() => import('../components/VR360Player'));
 
 export default function PatientVRPage() {
   const sessionId = (() => {
@@ -118,7 +120,9 @@ export default function PatientVRPage() {
     };
   }, [sessionId]);
 
-  if (!currentVideoSrc) {
+  const canMountPlayer = status === 'connected' && Boolean(currentVideoSrc);
+
+  if (!canMountPlayer) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center text-white">
         <div className="text-center">
@@ -132,12 +136,20 @@ export default function PatientVRPage() {
 
   return (
     <div className="w-screen h-screen bg-black overflow-hidden">
-        <VR360Player 
-            ref={playerRef}
-            src={currentVideoSrc} 
-            title="VR Session" 
-            className="w-full h-full"
-        />
+        <Suspense
+          fallback={
+            <div className="flex h-full items-center justify-center text-sm text-slate-300">
+              Loading VR player...
+            </div>
+          }
+        >
+          <VR360Player
+              ref={playerRef}
+              src={currentVideoSrc as string}
+              title="VR Session"
+              className="w-full h-full"
+          />
+        </Suspense>
         {/* Overlay for status (optional, maybe hidden in VR) */}
         <div className="absolute top-4 left-4 bg-black/50 text-white text-xs px-2 py-1 rounded pointer-events-none">
             {status}

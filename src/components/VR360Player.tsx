@@ -68,7 +68,7 @@ function formatTime(value: number): string {
 }
 
 const VR360Player = forwardRef<VR360PlayerHandle, VR360PlayerProps>(
-  ({ src, title, className = '', onTimeUpdate, onPlayStateChange }, ref) => {
+  ({ src, title, className = '', onTimeUpdate: onExternalTimeUpdate, onPlayStateChange }, ref) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const rendererRef = useRef<any | null>(null);
@@ -239,16 +239,16 @@ const VR360Player = forwardRef<VR360PlayerHandle, VR360PlayerProps>(
             setDuration(video.duration);
             setIsReady(true);
           };
-          const onTimeUpdate = () => {
+          const handleTimeUpdate = () => {
             setCurrentTime(video.currentTime);
-            if (onTimeUpdate) onTimeUpdate(video.currentTime);
+            if (onExternalTimeUpdate) onExternalTimeUpdate(video.currentTime);
           };
           const onPlay = () => setIsPlaying(true);
           const onPause = () => setIsPlaying(false);
           const onVolumeChange = () => setIsMuted(video.muted || video.volume === 0);
 
           video.addEventListener('loadedmetadata', onLoadedMetadata);
-          video.addEventListener('timeupdate', onTimeUpdate);
+          video.addEventListener('timeupdate', handleTimeUpdate);
           video.addEventListener('play', onPlay);
           video.addEventListener('pause', onPause);
           video.addEventListener('volumechange', onVolumeChange);
@@ -263,11 +263,21 @@ const VR360Player = forwardRef<VR360PlayerHandle, VR360PlayerProps>(
           window.addEventListener('resize', handleResize);
           handleResize();
 
-          const animate = () => {
+          let lastFrameTime = 0;
+          const animate = (time: number) => {
             const activeCamera = cameraRef.current;
             const activeRenderer = rendererRef.current;
             const activeScene = sceneRef.current;
             if (!activeCamera || !activeRenderer || !activeScene) return;
+            if (document.visibilityState !== 'visible') {
+              frameRef.current = requestAnimationFrame(animate);
+              return;
+            }
+            if (time - lastFrameTime < 33) {
+              frameRef.current = requestAnimationFrame(animate);
+              return;
+            }
+            lastFrameTime = time;
 
             lat = Math.max(-85, Math.min(85, lat));
             const phi = THREE.MathUtils.degToRad(90 - lat);
@@ -289,7 +299,7 @@ const VR360Player = forwardRef<VR360PlayerHandle, VR360PlayerProps>(
             video.removeAttribute('src');
             video.load();
             video.removeEventListener('loadedmetadata', onLoadedMetadata);
-            video.removeEventListener('timeupdate', onTimeUpdate);
+            video.removeEventListener('timeupdate', handleTimeUpdate);
             video.removeEventListener('play', onPlay);
             video.removeEventListener('pause', onPause);
             video.removeEventListener('volumechange', onVolumeChange);
@@ -334,20 +344,20 @@ const VR360Player = forwardRef<VR360PlayerHandle, VR360PlayerProps>(
              setDuration(video.duration);
              setIsReady(true);
           };
-          const onTimeUpdate = () => {
+          const handleTimeUpdate = () => {
             setCurrentTime(video.currentTime);
-            if (onTimeUpdate) onTimeUpdate(video.currentTime);
+            if (onExternalTimeUpdate) onExternalTimeUpdate(video.currentTime);
           };
           const onPlay = () => setIsPlaying(true);
           const onPause = () => setIsPlaying(false);
           video.addEventListener('loadedmetadata', onLoadedMetadata);
-          video.addEventListener('timeupdate', onTimeUpdate);
+          video.addEventListener('timeupdate', handleTimeUpdate);
           video.addEventListener('play', onPlay);
           video.addEventListener('pause', onPause);
 
            cleanup = () => {
               video.removeEventListener('loadedmetadata', onLoadedMetadata);
-              video.removeEventListener('timeupdate', onTimeUpdate);
+              video.removeEventListener('timeupdate', handleTimeUpdate);
               video.removeEventListener('play', onPlay);
               video.removeEventListener('pause', onPause);
               container.innerHTML = '';

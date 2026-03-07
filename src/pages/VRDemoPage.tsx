@@ -1,11 +1,11 @@
-import { useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import VR360Player from '../components/VR360Player';
 import { useLanguage } from '../context/LanguageContext';
 import { vrExamples } from '../data/vrExamples';
 
 type PlayerMode = 'interactive' | 'standard';
+const VR360Player = lazy(() => import('../components/VR360Player'));
 
 const pageNavItems = [
   { labelKey: 'nav.doctors', href: '/home#featured-doctors' },
@@ -133,7 +133,15 @@ export default function VRDemoPage() {
 
             <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-black">
               {playerMode === 'interactive' ? (
-                <VR360Player src={activeExample.videoSrc} title={title} />
+                <Suspense
+                  fallback={
+                    <div className="flex aspect-video items-center justify-center text-sm text-slate-500">
+                      Loading interactive player...
+                    </div>
+                  }
+                >
+                  <VR360Player src={activeExample.videoSrc} title={title} />
+                </Suspense>
               ) : (
                 <video
                   key={activeExample.videoSrc}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { useLanguage } from '../context/LanguageContext';
@@ -17,7 +17,6 @@ export default function DoctorVRSessionPage() {
   const [session, setSession] = useState<SessionResponse | null>(null);
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [status, setStatus] = useState<'disconnected' | 'connected'>('disconnected');
-  const [patientStatus, setPatientStatus] = useState<'offline' | 'online'>('offline');
   const [currentVideoId, setCurrentVideoId] = useState<string | null>(null);
 
   const createSession = async () => {
@@ -82,7 +81,9 @@ export default function DoctorVRSessionPage() {
         if (msg.type === 'SYNC_STATE') {
             // Initial sync if needed
         } else if (msg.type === 'USER_LEFT') {
-            if (msg.role === 'patient') setPatientStatus('offline');
+            if (msg.role === 'patient') {
+              // Placeholder for patient presence indicator in upcoming UI revision.
+            }
         } else if (msg.type === 'USER_JOINED') {
             // We might need to implement USER_JOINED on backend to be precise,
             // but for now we can infer online if we get any msg from patient or just assume
