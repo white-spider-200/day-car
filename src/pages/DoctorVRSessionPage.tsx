@@ -39,17 +39,39 @@ export default function DoctorVRSessionPage() {
     const wsCandidates = buildWebSocketUrls(`/vr-sessions/${session.session_id}/doctor`);
     let ws: WebSocket | null = null;
     let attemptIndex = 0;
+    let activeIndex = 0;
+    let hadSuccessfulConnection = false;
+    let reconnectDelayMs = 800;
+    let reconnectTimer: number | null = null;
     let stopped = false;
 
-    const connect = () => {
-      if (stopped || attemptIndex >= wsCandidates.length) {
+    const scheduleReconnect = () => {
+      if (stopped) {
+        return;
+      }
+      if (reconnectTimer !== null) {
+        window.clearTimeout(reconnectTimer);
+      }
+      reconnectTimer = window.setTimeout(() => {
+        connect(activeIndex);
+      }, reconnectDelayMs);
+      reconnectDelayMs = Math.min(reconnectDelayMs * 2, 5000);
+    };
+
+    const connect = (index: number) => {
+      if (stopped || wsCandidates.length === 0) {
         setStatus('disconnected');
         return;
       }
 
-      ws = new WebSocket(wsCandidates[attemptIndex++]);
+      setStatus('disconnected');
+      attemptIndex = index + 1;
+      ws = new WebSocket(wsCandidates[index]);
 
       ws.onopen = () => {
+        activeIndex = index;
+        hadSuccessfulConnection = true;
+        reconnectDelayMs = 800;
         setStatus('connected');
         setSocket(ws);
         console.log('Doctor connected to VR session');
@@ -77,14 +99,22 @@ export default function DoctorVRSessionPage() {
           return;
         }
         setStatus('disconnected');
-        connect();
+        setSocket(null);
+        if (!hadSuccessfulConnection && attemptIndex < wsCandidates.length) {
+          connect(attemptIndex);
+          return;
+        }
+        scheduleReconnect();
       };
     };
 
-    connect();
+    connect(0);
 
     return () => {
       stopped = true;
+      if (reconnectTimer !== null) {
+        window.clearTimeout(reconnectTimer);
+      }
       ws?.close();
       setSocket(null);
     };

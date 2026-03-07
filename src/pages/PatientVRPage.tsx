@@ -21,19 +21,41 @@ export default function PatientVRPage() {
     const wsCandidates = buildWebSocketUrls(`/vr-sessions/${sessionId}/patient`);
     let ws: WebSocket | null = null;
     let attemptIndex = 0;
+    let activeIndex = 0;
+    let hadSuccessfulConnection = false;
+    let reconnectDelayMs = 800;
+    let reconnectTimer: number | null = null;
     let stopped = false;
 
-    const connect = () => {
-      if (stopped || attemptIndex >= wsCandidates.length) {
+    const scheduleReconnect = () => {
+      if (stopped) {
+        return;
+      }
+      if (reconnectTimer !== null) {
+        window.clearTimeout(reconnectTimer);
+      }
+      reconnectTimer = window.setTimeout(() => {
+        connect(activeIndex);
+      }, reconnectDelayMs);
+      reconnectDelayMs = Math.min(reconnectDelayMs * 2, 5000);
+    };
+
+    const connect = (index: number) => {
+      if (stopped || wsCandidates.length === 0) {
         setStatus('disconnected');
         setMessage('Session disconnected.');
         return;
       }
 
-      const wsUrl = wsCandidates[attemptIndex++];
+      setStatus('connecting');
+      const wsUrl = wsCandidates[index];
+      attemptIndex = index + 1;
       ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
+        activeIndex = index;
+        hadSuccessfulConnection = true;
+        reconnectDelayMs = 800;
         setStatus('connected');
         setMessage('Connected. Waiting for doctor to select a scenario.');
       };
@@ -47,13 +69,16 @@ export default function PatientVRPage() {
             if (msg.payload.video_id) {
                const example = vrExamples.find(e => e.id === msg.payload.video_id);
                if (example) {
-                   setCurrentVideoSrc(example.videoSrc);
+                   setCurrentVideoSrc((prev) => (prev === example.videoSrc ? prev : example.videoSrc));
                }
             }
         } else if (msg.type === 'SET_VIDEO') {
-            const { src } = msg.payload;
-            setCurrentVideoSrc(src); // Or look up by ID if src not passed
-            setMessage('');
+            const { video_id, src } = msg.payload;
+            const resolvedSrc = src || vrExamples.find((e) => e.id === video_id)?.videoSrc || null;
+            if (resolvedSrc) {
+              setCurrentVideoSrc((prev) => (prev === resolvedSrc ? prev : resolvedSrc));
+              setMessage('');
+            }
         } else if (msg.type === 'CONTROL') {
             const { command, time } = msg.payload;
             if (command === 'play') {
@@ -74,14 +99,21 @@ export default function PatientVRPage() {
         if (stopped) {
           return;
         }
-        connect();
+        if (!hadSuccessfulConnection && attemptIndex < wsCandidates.length) {
+          connect(attemptIndex);
+          return;
+        }
+        scheduleReconnect();
       };
     };
 
-    connect();
+    connect(0);
 
     return () => {
       stopped = true;
+      if (reconnectTimer !== null) {
+        window.clearTimeout(reconnectTimer);
+      }
       ws?.close();
     };
   }, [sessionId]);
