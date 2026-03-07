@@ -4,6 +4,7 @@ import { fromClientStatus, toClientStatus } from "@/lib/status";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { updateAppointmentStatus } from "@/lib/appointments";
+import { decodeNotesAndSessionMode } from "@/lib/session-mode";
 import { updateAppointmentStatusSchema } from "@/lib/validation";
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
@@ -32,11 +33,13 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       where: { id: updated.id },
       include: { zoomMeeting: true }
     });
+    const { sessionMode } = decodeNotesAndSessionMode(withZoom?.notes);
 
     return NextResponse.json({
       appointment: {
         ...updated,
         status: toClientStatus(updated.status),
+        sessionMode,
         hasZoom: Boolean(withZoom?.zoomMeeting)
       }
     });

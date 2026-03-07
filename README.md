@@ -200,8 +200,59 @@ docker compose down
 
 ```bash
 npm install
-npm run dev
+npm run dev -- --host 0.0.0.0
 ```
+
+Set API base for your environment:
+
+```bash
+# Same-host reverse proxy (recommended)
+VITE_API_BASE_URL=/api
+
+# Or direct backend host/IP
+VITE_API_BASE_URL=http://192.168.1.50:8000
+```
+
+If you run frontend in Docker with `/api` proxy, set:
+
+```bash
+VITE_PROXY_TARGET=http://app:8000
+```
+
+### 4) Production reverse proxy (Nginx)
+
+Use this if frontend and backend are on the same host and you want clean URLs with:
+- frontend: `/`
+- backend API: `/api/*`
+- media: `/uploads/*`, `/images/*`
+
+1. Build frontend:
+
+```bash
+npm install
+npm run build
+```
+
+2. Copy frontend build:
+
+```bash
+sudo mkdir -p /var/www/sabina
+sudo rsync -av --delete dist/ /var/www/sabina/dist/
+```
+
+3. Install Nginx config:
+
+```bash
+sudo cp deploy/nginx/sabina.conf /etc/nginx/sites-available/sabina.conf
+sudo ln -sf /etc/nginx/sites-available/sabina.conf /etc/nginx/sites-enabled/sabina.conf
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+4. Keep backend running on `127.0.0.1:8000` (or adjust `proxy_pass` in config).
+
+Important:
+- Set frontend env to `VITE_API_BASE_URL=/api` for production builds.
+- The Nginx config is at [deploy/nginx/sabina.conf](/home/whitespider/Desktop/work_project/sabina/deploy/nginx/sabina.conf).
 
 ### 3) Backend only
 

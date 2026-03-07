@@ -25,7 +25,7 @@ type DoctorProfileResponse = {
     photoUrl: string;
     user: { name: string };
     verification: { verificationBadge: boolean; licenseNumber: string } | null;
-    scheduleSlots: { id: string; startAt: string; endAt: string }[];
+    scheduleSlots: { id: string; startAt: string; endAt: string; isBooked: boolean }[];
     reviews: { id: string; rating: number; comment?: string | null; user: { name: string } }[];
   };
 };
@@ -33,6 +33,7 @@ type DoctorProfileResponse = {
 export function DoctorProfileClient({ id }: { id: string }) {
   const { data: session } = useSession();
   const [selectedSlot, setSelectedSlot] = useState("");
+  const [sessionMode, setSessionMode] = useState<"zoom" | "vr">("zoom");
   const [contactEmail, setContactEmail] = useState("");
   const [notes, setNotes] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -53,13 +54,14 @@ export function DoctorProfileClient({ id }: { id: string }) {
         body: JSON.stringify({
           doctorId: doctorQuery.data.doctor.id,
           slotId: selectedSlot,
+          sessionMode,
           contactEmail,
           notes
         })
       });
     },
     onSuccess: (data) => {
-      setMessage(`Appointment created (${data.appointment.status}).`);
+      setMessage(`Appointment created (${data.appointment.status}) with ${sessionMode.toUpperCase()} session.`);
       setSelectedSlot("");
       doctorQuery.refetch();
     },
@@ -110,14 +112,21 @@ export function DoctorProfileClient({ id }: { id: string }) {
                   <button
                     key={slot.id}
                     type="button"
-                    onClick={() => setSelectedSlot(slot.id)}
+                    onClick={() => {
+                      if (slot.isBooked) return;
+                      setSelectedSlot(slot.id);
+                    }}
+                    disabled={slot.isBooked}
                     className={`rounded-md border p-3 text-left text-sm transition ${
-                      selectedSlot === slot.id
+                      slot.isBooked
+                        ? "cursor-not-allowed border-red-500 bg-red-500 text-white"
+                        : selectedSlot === slot.id
                         ? "border-medical-600 bg-medical-50 text-medical-700"
                         : "border-slate-200 hover:border-medical-300"
                     }`}
                   >
                     {toAmmanLabel(new Date(slot.startAt))}
+                    {slot.isBooked ? <span className="ml-2 font-semibold">(Booked)</span> : null}
                   </button>
                 ))}
               </div>
@@ -156,6 +165,18 @@ export function DoctorProfileClient({ id }: { id: string }) {
               <p className="text-sm text-slate-600">Only patient accounts can book appointments.</p>
             ) : (
               <div className="space-y-3">
+                <div>
+                  <Label htmlFor="sessionMode">Session Type</Label>
+                  <select
+                    id="sessionMode"
+                    value={sessionMode}
+                    onChange={(e) => setSessionMode(e.target.value === "vr" ? "vr" : "zoom")}
+                    className="mt-1 h-10 w-full rounded-md border border-slate-200 px-3 text-sm"
+                  >
+                    <option value="zoom">Zoom Session</option>
+                    <option value="vr">VR Session (Special VR page)</option>
+                  </select>
+                </div>
                 <div>
                   <Label htmlFor="contactEmail">Contact Email (optional)</Label>
                   <Input

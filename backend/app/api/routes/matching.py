@@ -99,12 +99,30 @@ def _apply_filters(query, filters: MatchingFiltersIn | None):
 
     if filters.session_type:
         normalized = filters.session_type.strip().upper()
-        query = query.where(
-            or_(
-                DoctorProfile.session_types.contains([filters.session_type]),
-                DoctorProfile.session_types.contains([normalized]),
+        if normalized == "ONLINE":
+            query = query.where(
+                or_(
+                    DoctorProfile.session_types.contains(["VIDEO"]),
+                    DoctorProfile.session_types.contains(["AUDIO"]),
+                    DoctorProfile.session_types.contains(["CHAT"]),
+                    DoctorProfile.session_types.contains(["ONLINE"]),
+                    DoctorProfile.session_types.contains(["Online"]),
+                )
             )
-        )
+        elif normalized == "CALL":
+            query = query.where(
+                or_(
+                    DoctorProfile.session_types.contains(["AUDIO"]),
+                    DoctorProfile.session_types.contains(["CALL"]),
+                )
+            )
+        else:
+            query = query.where(
+                or_(
+                    DoctorProfile.session_types.contains([filters.session_type]),
+                    DoctorProfile.session_types.contains([normalized]),
+                )
+            )
 
     if filters.location:
         value = filters.location.strip()

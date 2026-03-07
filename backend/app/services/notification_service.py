@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.db.models import Notification, NotificationChannel
+from app.services.notification_realtime import notification_realtime_hub
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +73,7 @@ def create_notification(
         notification.channel.value,
         source,
     )
+    notification_realtime_hub.publish_notification(notification)
 
     if channel in {NotificationChannel.EMAIL, NotificationChannel.SMS}:
         _emit_external_notification(channel, destination, body)

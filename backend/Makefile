@@ -17,7 +17,7 @@ db-reset:
 	docker compose up -d postgres
 
 seed-local:
-	docker compose exec -T postgres psql -U postgres -d doctrs < sql/user_doctor_admin_schema.sql
+	docker compose exec -T app alembic upgrade head
 	docker compose exec -T postgres psql -U postgres -d doctrs < sql/seed_user_doctor_admin.sql
 
 setup-local:

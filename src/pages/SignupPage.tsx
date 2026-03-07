@@ -8,6 +8,9 @@ type RegisterResponse = {
   id: string;
   email: string | null;
   phone: string | null;
+  name: string | null;
+  age: number | null;
+  country: string | null;
   role: AuthRole;
   status: string;
   created_at: string;
@@ -23,6 +26,9 @@ type MeResponse = {
   id: string;
   email: string | null;
   phone: string | null;
+  name: string | null;
+  age: number | null;
+  country: string | null;
   role: AuthRole;
   status: string;
   created_at: string;
@@ -39,6 +45,9 @@ export default function SignupPage() {
 
   const [role, setRole] = useState<'USER' | 'DOCTOR'>('USER');
   const [formData, setFormData] = useState({
+    name: '',
+    age: '',
+    country: '',
     email: '',
     phone: '',
     password: ''
@@ -55,11 +64,32 @@ export default function SignupPage() {
 
     const email = formData.email.trim().toLowerCase();
     const phone = normalizePhone(formData.phone.trim());
+    const name = formData.name.trim();
+    const country = formData.country.trim();
+    const age = Number.parseInt(formData.age, 10);
 
     if (!email && !phone) {
       setIsSubmitting(false);
       setErrorMessage(isAr ? 'أدخل البريد الإلكتروني أو رقم الهاتف.' : 'Provide email or phone number.');
       return;
+    }
+
+    if (role === 'USER') {
+      if (!name) {
+        setIsSubmitting(false);
+        setErrorMessage(isAr ? 'الاسم مطلوب للمستخدم الجديد.' : 'Name is required for new users.');
+        return;
+      }
+      if (!formData.age.trim() || Number.isNaN(age) || age < 1 || age > 120) {
+        setIsSubmitting(false);
+        setErrorMessage(isAr ? 'أدخل عمرًا صحيحًا.' : 'Enter a valid age.');
+        return;
+      }
+      if (!country) {
+        setIsSubmitting(false);
+        setErrorMessage(isAr ? 'الدولة مطلوبة للمستخدم الجديد.' : 'Country is required for new users.');
+        return;
+      }
     }
 
     try {
@@ -71,6 +101,9 @@ export default function SignupPage() {
           body: JSON.stringify({
             email: email || undefined,
             phone: phone || undefined,
+            name: role === 'USER' ? name : undefined,
+            age: role === 'USER' ? age : undefined,
+            country: role === 'USER' ? country : undefined,
             password: formData.password,
             role
           })
@@ -165,6 +198,51 @@ export default function SignupPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            {role === 'USER' && (
+              <>
+                <div>
+                  <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2 px-1">
+                    {isAr ? 'الاسم' : 'Name'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full px-5 py-4 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl outline-none transition-all font-bold text-slate-900"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2 px-1">
+                    {isAr ? 'العمر' : 'Age'}
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={120}
+                    required
+                    className="w-full px-5 py-4 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl outline-none transition-all font-bold text-slate-900"
+                    value={formData.age}
+                    onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2 px-1">
+                    {isAr ? 'الدولة' : 'Country'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full px-5 py-4 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl outline-none transition-all font-bold text-slate-900"
+                    value={formData.country}
+                    onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                  />
+                </div>
+              </>
+            )}
+
             <div>
               <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2 px-1">
                 {isAr ? 'البريد الإلكتروني (اختياري)' : 'Email Address (optional)'}

@@ -19,6 +19,7 @@ from app.db.models import (
 )
 from app.services.availability_service import resolve_slot
 from app.services.notification_service import create_notification
+from app.services.zoom_service import create_zoom_meeting_for_appointment, zoom_is_configured
 
 ACTIVE_APPOINTMENT_STATUSES = (
     AppointmentStatus.REQUESTED,
@@ -135,6 +136,18 @@ def _promote_first_waiting_user(db: Session, *, released_appointment) -> Appoint
             "new_appointment_id": str(promoted_appointment.id),
         },
     )
+    create_notification(
+        db,
+        user_id=promoted_appointment.doctor_user_id,
+        event_type="WAITING_LIST_PROMOTION_CREATED",
+        title="Waiting list patient promoted",
+        body="A waiting-list user was promoted to a new appointment request.",
+        metadata_json={
+            "source_appointment_id": str(released_appointment.id),
+            "new_appointment_id": str(promoted_appointment.id),
+            "user_id": str(promoted_appointment.user_id),
+        },
+    )
     return promoted_appointment
 
 
@@ -193,6 +206,14 @@ def request_appointment(
         body="A patient requested an appointment slot.",
         metadata_json={"appointment_id": str(appointment.id), "user_id": str(user.id)},
     )
+    create_notification(
+        db,
+        user_id=user.id,
+        event_type="APPOINTMENT_REQUEST_SUBMITTED",
+        title="Appointment request sent",
+        body="Your appointment request was sent to the doctor.",
+        metadata_json={"appointment_id": str(appointment.id), "doctor_user_id": str(doctor_user_id)},
+    )
     db.commit()
     db.refresh(appointment)
     return appointment
@@ -231,6 +252,22 @@ def confirm_appointment(db: Session, appointment_id, doctor_user: User) -> Appoi
         )
 
     appointment.status = AppointmentStatus.CONFIRMED
+    if zoom_is_configured() and not appointment.meeting_link:
+        try:
+            zoom_meeting = create_zoom_meeting_for_appointment(
+                appointment_id=str(appointment.id),
+                doctor_user_id=str(appointment.doctor_user_id),
+                patient_user_id=str(appointment.user_id),
+                start_at=appointment.start_at,
+                end_at=appointment.end_at,
+            )
+            if zoom_meeting:
+                appointment.meeting_link = zoom_meeting["meeting_link"]
+                appointment.call_provider = zoom_meeting["provider"]
+                appointment.call_room_id = zoom_meeting["room_id"]
+        except Exception:
+            # Keep appointment confirmation successful even if Zoom API is temporarily unavailable.
+            pass
     create_notification(
         db,
         user_id=appointment.user_id,
@@ -238,6 +275,14 @@ def confirm_appointment(db: Session, appointment_id, doctor_user: User) -> Appoi
         title="Appointment confirmed",
         body="Your appointment has been confirmed by the doctor.",
         metadata_json={"appointment_id": str(appointment.id)},
+    )
+    create_notification(
+        db,
+        user_id=doctor_user.id,
+        event_type="APPOINTMENT_CONFIRMATION_SENT",
+        title="Appointment confirmation sent",
+        body="You confirmed this appointment request.",
+        metadata_json={"appointment_id": str(appointment.id), "user_id": str(appointment.user_id)},
     )
     db.commit()
     db.refresh(appointment)
@@ -258,7 +303,7 @@ def cancel_appointment(db: Session, appointment_id, actor_user_id, doctor_user_i
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Appointment cannot be cancelled")
 
     appointment.status = AppointmentStatus.CANCELLED
-    promoted = _promote_first_waiting_user(db, released_appointment=appointment)
+    _promote_first_waiting_user(db, released_appointment=appointment)
     create_notification(
         db,
         user_id=appointment.user_id,
@@ -267,18 +312,14 @@ def cancel_appointment(db: Session, appointment_id, actor_user_id, doctor_user_i
         body="Your appointment has been cancelled.",
         metadata_json={"appointment_id": str(appointment.id)},
     )
-    if promoted:
-        create_notification(
-            db,
-            user_id=appointment.doctor_user_id,
-            event_type="WAITING_LIST_PROMOTION_CREATED",
-            title="Waiting list patient promoted",
-            body="The top waiting-list user has been promoted to a new appointment request.",
-            metadata_json={
-                "source_appointment_id": str(appointment.id),
-                "new_appointment_id": str(promoted.id),
-            },
-        )
+    create_notification(
+        db,
+        user_id=appointment.doctor_user_id,
+        event_type="APPOINTMENT_CANCELLED",
+        title="Appointment cancelled",
+        body="This appointment has been cancelled.",
+        metadata_json={"appointment_id": str(appointment.id), "cancelled_by_user_id": str(actor_user_id)},
+    )
     db.commit()
     db.refresh(appointment)
     return appointment
@@ -352,7 +393,15 @@ def reschedule_appointment(
         event_type="APPOINTMENT_RESCHEDULED",
         title="Appointment rescheduled",
         body="Your appointment time was updated.",
-        metadata_json={"appointment_id": str(appointment.id)},
+        metadata_json={"appointment_id": str(appointment.id), "rescheduled_by_user_id": str(actor_user_id)},
+    )
+    create_notification(
+        db,
+        user_id=appointment.doctor_user_id,
+        event_type="APPOINTMENT_RESCHEDULED",
+        title="Appointment rescheduled",
+        body="This appointment time was updated.",
+        metadata_json={"appointment_id": str(appointment.id), "rescheduled_by_user_id": str(actor_user_id)},
     )
     db.commit()
     db.refresh(appointment)
@@ -394,6 +443,14 @@ def join_waiting_list(db: Session, *, appointment_id, user: User) -> WaitingList
         title="User joined waiting list",
         body="A user joined the waiting list for one of your appointments.",
         metadata_json={"appointment_id": str(appointment_id), "user_id": str(user.id), "position": entry.position},
+    )
+    create_notification(
+        db,
+        user_id=user.id,
+        event_type="WAITING_LIST_JOIN_CONFIRMED",
+        title="Added to waiting list",
+        body="You were added to the waiting list.",
+        metadata_json={"appointment_id": str(appointment_id), "position": entry.position},
     )
     db.commit()
     db.refresh(entry)

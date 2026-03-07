@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import { useLanguage } from '../context/LanguageContext';
 
 const aboutNavItems = [
   { labelKey: 'nav.doctors', href: '/home#featured-doctors' },
@@ -48,70 +49,152 @@ function Reveal({ children, className = '', delay = 0 }: RevealProps) {
   );
 }
 
-const trustBadges = ['مختصون مرخصون', 'جلسات آمنة وسرية', 'استشارة من أي مكان'];
-
-const stackedCards = [
-  {
-    title: 'الرؤية',
-    icon: 'brain',
-    points: ['ريادة العلاج النفسي الرقمي في العالم العربي.', 'ربط المرضى بمختصين موثوقين.', 'تجربة علاجية حديثة وسهلة الوصول.']
+const aboutContent = {
+  ar: {
+    heroTitle: 'مساحة آمنة لدعم صحتك النفسية',
+    heroSubtitle: 'في Sabina Therapy، نرافقك بخطوات هادئة نحو توازن نفسي أفضل، مع رعاية إنسانية تحترم خصوصيتك وتفهم احتياجك.',
+    trustBadges: ['مختصون مرخصون', 'جلسات آمنة وسرية', 'استشارة من أي مكان'],
+    stackedCards: [
+      {
+        title: 'الرؤية',
+        icon: 'brain',
+        points: ['ريادة العلاج النفسي الرقمي في العالم العربي.', 'ربط المرضى بمختصين موثوقين.', 'تجربة علاجية حديثة وسهلة الوصول.']
+      },
+      {
+        title: 'نبذة عن المنصة',
+        icon: 'book',
+        points: ['منصة علاج نفسي رقمية مع بيئة داعمة.', 'جلسات فيديو مباشرة وأدوات متابعة واضحة.', 'خصوصية عالية وتنظيم بسيط للمواعيد.']
+      },
+      {
+        title: 'الرسالة',
+        icon: 'shield',
+        points: ['دعم نفسي بجودة عالية وسعر مناسب.', 'تمكين المختص بأدوات تقنية فعالة.', 'جعل طلب المساعدة النفسية أقرب وأسهل.']
+      }
+    ],
+    whyTitle: 'لماذا Sabina Therapy؟',
+    whyChooseUs: [
+      { title: 'حماية وخصوصية عالية', desc: 'بيئتنا مصممة للحفاظ على سرية كل جلسة وبيان.', icon: 'shield' },
+      { title: 'جلسات فيديو آمنة', desc: 'اتصال واضح وآمن يضمن راحة التواصل بين المراجع والمختص.', icon: 'video' },
+      { title: 'مختصون معتمدون', desc: 'نعمل مع مختصين مرخّصين بعد مراجعة دقيقة للمؤهلات.', icon: 'doctor' },
+      { title: 'تقنيات حديثة مثل VR', desc: 'خيارات علاج متقدمة تساعد على تجربة أكثر تفاعلا.', icon: 'spark' }
+    ],
+    audienceTitle: 'الفئات المستهدفة',
+    audienceSubtitle: 'كل دور في المنصة واضح، لضمان رحلة علاجية منظمة، موثوقة، ومريحة لجميع الأطراف.',
+    audienceCards: [
+      {
+        role: 'أطباء نفسيون',
+        badge: 'Psychiatrist',
+        badgeClass: 'bg-sky-100 text-sky-700',
+        icon: 'doctor',
+        points: ['تشخيص الحالات النفسية المعقدة.', 'وصف الأدوية عند الحاجة الطبية.', 'متابعة الخطة العلاجية عبر المنصة.']
+      },
+      {
+        role: 'معالجون نفسيون',
+        badge: 'Therapist',
+        badgeClass: 'bg-emerald-100 text-emerald-700',
+        icon: 'brain',
+        points: ['جلسات سلوكية ومعرفية وأسرية.', 'دعم نفسي منتظم دون وصف أدوية.', 'خطط علاجية عملية ومناسبة للأهداف.']
+      },
+      {
+        role: 'مرضى ومستخدمون',
+        badge: 'User',
+        badgeClass: 'bg-slate-100 text-slate-700',
+        icon: 'user',
+        points: ['من يواجهون قلقا أو ضغوطا يومية.', 'من يبحثون عن دعم نفسي مرن وسريع.', 'من يفضّلون جلسات علاج عبر الإنترنت.']
+      },
+      {
+        role: 'إدارة المنصة',
+        badge: 'Admin',
+        badgeClass: 'bg-slate-800 text-slate-100',
+        icon: 'settings',
+        points: ['إدارة حسابات المختصين والمراجعين.', 'التحقق من التراخيص وطلبات الانضمام.', 'مراقبة الجودة وتحليل الأداء باستمرار.']
+      }
+    ],
+    safetyTitle: 'الخصوصية والأمان أولويتنا',
+    trustSafety: [
+      'تواصل مشفّر بين المراجع والمختص.',
+      'تخزين بيانات آمن بمعايير حماية حديثة.',
+      'اعتماد مهني موثّق قبل الانضمام للمنصة.',
+      'نظام وصف دوائي مضبوط وتحت إشراف طبي.'
+    ],
+    ctaTitle: 'ابدأ رحلتك النفسية اليوم',
+    ctaSubtitle: 'خطوة بسيطة اليوم قد تصنع فرقا كبيرا في توازنك النفسي وجودة حياتك.',
+    ctaFind: 'احجز جلسة',
+    ctaJoin: 'انضم كمختص'
   },
-  {
-    title: 'نبذة عن المنصة',
-    icon: 'book',
-    points: ['منصة علاج نفسي رقمية مع بيئة داعمة.', 'جلسات فيديو مباشرة وأدوات متابعة واضحة.', 'خصوصية عالية وتنظيم بسيط للمواعيد.']
-  },
-  {
-    title: 'الرسالة',
-    icon: 'shield',
-    points: ['دعم نفسي بجودة عالية وسعر مناسب.', 'تمكين المختص بأدوات تقنية فعالة.', 'جعل طلب المساعدة النفسية أقرب وأسهل.']
+  en: {
+    heroTitle: 'A safe space for your mental well-being',
+    heroSubtitle: 'At Sabina Therapy, we guide you with calm, practical support toward better balance, with care that respects your privacy and your needs.',
+    trustBadges: ['Licensed specialists', 'Secure & private sessions', 'Consult from anywhere'],
+    stackedCards: [
+      {
+        title: 'Vision',
+        icon: 'brain',
+        points: ['Lead digital mental health care in the Arab world.', 'Connect clients with trusted specialists.', 'Provide a modern and accessible care experience.']
+      },
+      {
+        title: 'About the Platform',
+        icon: 'book',
+        points: ['A digital therapy platform built around supportive care.', 'Live video sessions with clear follow-up tools.', 'Strong privacy with simple scheduling flow.']
+      },
+      {
+        title: 'Mission',
+        icon: 'shield',
+        points: ['Deliver high-quality support at fair pricing.', 'Equip specialists with effective digital tools.', 'Make mental health support easier to reach.']
+      }
+    ],
+    whyTitle: 'Why Sabina Therapy?',
+    whyChooseUs: [
+      { title: 'High privacy and protection', desc: 'Our environment is designed to keep every session and record confidential.', icon: 'shield' },
+      { title: 'Secure video sessions', desc: 'Reliable and protected communication that supports comfort for both client and specialist.', icon: 'video' },
+      { title: 'Verified professionals', desc: 'We onboard licensed specialists only after a careful credential review.', icon: 'doctor' },
+      { title: 'Modern tools including VR', desc: 'Advanced therapy options that can make the experience more engaging.', icon: 'spark' }
+    ],
+    audienceTitle: 'Who We Serve',
+    audienceSubtitle: 'Each role in the platform is clear, helping create a structured, trusted, and smooth care journey for everyone.',
+    audienceCards: [
+      {
+        role: 'Psychiatrists',
+        badge: 'Psychiatrist',
+        badgeClass: 'bg-sky-100 text-sky-700',
+        icon: 'doctor',
+        points: ['Diagnose complex mental health conditions.', 'Prescribe medication when clinically needed.', 'Follow treatment plans through the platform.']
+      },
+      {
+        role: 'Therapists',
+        badge: 'Therapist',
+        badgeClass: 'bg-emerald-100 text-emerald-700',
+        icon: 'brain',
+        points: ['Provide CBT, counseling, and family therapy sessions.', 'Offer consistent support without medication prescribing.', 'Build practical treatment plans aligned with goals.']
+      },
+      {
+        role: 'Clients & Users',
+        badge: 'User',
+        badgeClass: 'bg-slate-100 text-slate-700',
+        icon: 'user',
+        points: ['People facing anxiety or daily stress.', 'People seeking flexible, fast support.', 'People who prefer online therapy sessions.']
+      },
+      {
+        role: 'Platform Admin',
+        badge: 'Admin',
+        badgeClass: 'bg-slate-800 text-slate-100',
+        icon: 'settings',
+        points: ['Manage specialist and client accounts.', 'Verify licenses and onboarding applications.', 'Track quality and monitor performance continuously.']
+      }
+    ],
+    safetyTitle: 'Privacy and safety are our priority',
+    trustSafety: [
+      'Encrypted communication between client and specialist.',
+      'Secure data storage with modern protection standards.',
+      'Verified professional credentials before onboarding.',
+      'Medication workflow under qualified medical oversight.'
+    ],
+    ctaTitle: 'Start your mental wellness journey today',
+    ctaSubtitle: 'One simple step today can make a meaningful difference in your well-being and quality of life.',
+    ctaFind: 'Book a session',
+    ctaJoin: 'Join as a specialist'
   }
-] as const;
-
-const whyChooseUs = [
-  { title: 'حماية وخصوصية عالية', desc: 'بيئتنا مصممة للحفاظ على سرية كل جلسة وبيان.', icon: 'shield' },
-  { title: 'جلسات فيديو آمنة', desc: 'اتصال واضح وآمن يضمن راحة التواصل بين المراجع والمختص.', icon: 'video' },
-  { title: 'مختصون معتمدون', desc: 'نعمل مع مختصين مرخّصين بعد مراجعة دقيقة للمؤهلات.', icon: 'doctor' },
-  { title: 'تقنيات حديثة مثل VR', desc: 'خيارات علاج متقدمة تساعد على تجربة أكثر تفاعلا.', icon: 'spark' }
-] as const;
-
-const audienceCards = [
-  {
-    role: 'أطباء نفسيون',
-    badge: 'Psychiatrist',
-    badgeClass: 'bg-sky-100 text-sky-700',
-    icon: 'doctor',
-    points: ['تشخيص الحالات النفسية المعقدة.', 'وصف الأدوية عند الحاجة الطبية.', 'متابعة الخطة العلاجية عبر المنصة.']
-  },
-  {
-    role: 'معالجون نفسيون',
-    badge: 'Therapist',
-    badgeClass: 'bg-emerald-100 text-emerald-700',
-    icon: 'brain',
-    points: ['جلسات سلوكية ومعرفية وأسرية.', 'دعم نفسي منتظم دون وصف أدوية.', 'خطط علاجية عملية ومناسبة للأهداف.']
-  },
-  {
-    role: 'مرضى ومستخدمون',
-    badge: 'User',
-    badgeClass: 'bg-slate-100 text-slate-700',
-    icon: 'user',
-    points: ['من يواجهون قلقا أو ضغوطا يومية.', 'من يبحثون عن دعم نفسي مرن وسريع.', 'من يفضّلون جلسات علاج عبر الإنترنت.']
-  },
-  {
-    role: 'إدارة المنصة',
-    badge: 'Admin',
-    badgeClass: 'bg-slate-800 text-slate-100',
-    icon: 'settings',
-    points: ['إدارة حسابات المختصين والمراجعين.', 'التحقق من التراخيص وطلبات الانضمام.', 'مراقبة الجودة وتحليل الأداء باستمرار.']
-  }
-] as const;
-
-const trustSafety = [
-  'تواصل مشفّر بين المراجع والمختص.',
-  'تخزين بيانات آمن بمعايير حماية حديثة.',
-  'اعتماد مهني موثّق قبل الانضمام للمنصة.',
-  'نظام وصف دوائي مضبوط وتحت إشراف طبي.'
-];
+} as const;
 
 function Icon({ kind, className = 'h-5 w-5' }: { kind: string; className?: string }) {
   if (kind === 'brain') {
@@ -228,11 +311,15 @@ function SideIllustration() {
 }
 
 export default function AboutPage() {
+  const { lang } = useLanguage();
+  const isAr = lang === 'ar';
+  const content = aboutContent[lang];
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary-50/40 via-white to-white text-textMain">
       <Header brandHref="/home" navItems={aboutNavItems} />
 
-      <main dir="rtl" style={{ fontFamily: 'Noto Sans Arabic, sans-serif' }}>
+      <main dir={isAr ? 'rtl' : 'ltr'} style={{ fontFamily: isAr ? 'Noto Sans Arabic, sans-serif' : 'inherit' }}>
         <section className="relative overflow-hidden bg-gradient-to-br from-white via-primaryBg/50 to-primaryBg/80 py-12 sm:py-16">
           <div className="section-shell">
             <div className="grid items-center gap-8 lg:grid-cols-[1.05fr_0.95fr]">
@@ -240,13 +327,13 @@ export default function AboutPage() {
                 <div className="relative overflow-hidden rounded-[28px] border border-primary/15 bg-white p-6 shadow-soft sm:p-8">
                   <div className="pointer-events-none absolute inset-0 opacity-40" style={{ backgroundImage: 'radial-gradient(circle at 15% 15%, rgba(48,213,200,0.18), transparent 38%)' }} />
                   <h1 className="relative text-4xl font-black leading-tight tracking-tight text-textMain sm:text-5xl">
-                    مساحة آمنة لدعم صحتك النفسية
+                    {content.heroTitle}
                   </h1>
                   <p className="relative mt-4 max-w-xl text-sm leading-relaxed text-muted sm:text-lg">
-                    في Sabina Therapy، نرافقك بخطوات هادئة نحو توازن نفسي أفضل، مع رعاية إنسانية تحترم خصوصيتك وتفهم احتياجك.
+                    {content.heroSubtitle}
                   </p>
                   <ul className="relative mt-6 grid gap-2 sm:grid-cols-3">
-                    {trustBadges.map((item) => (
+                    {content.trustBadges.map((item) => (
                       <li key={item} className="inline-flex items-center gap-2 rounded-xl bg-primaryBg px-3 py-2 text-xs font-bold text-black sm:text-sm">
                         <svg aria-hidden="true" viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2">
                           <path d="m4 10 3 3 9-9" strokeLinecap="round" strokeLinejoin="round" />
@@ -276,7 +363,7 @@ export default function AboutPage() {
             </Reveal>
 
             <div className="space-y-4">
-              {stackedCards.map((card, index) => (
+              {content.stackedCards.map((card, index) => (
                 <Reveal key={card.title} delay={70 + index * 80}>
                   <article className="rounded-hero border border-borderGray bg-white p-5 shadow-card transition duration-200 hover:-translate-y-1 hover:shadow-soft sm:p-6">
                     <header className="mb-3 flex items-center gap-3">
@@ -285,7 +372,7 @@ export default function AboutPage() {
                       </span>
                       <h2 className="text-xl font-black text-textMain sm:text-2xl">{card.title}</h2>
                     </header>
-                    <ul className="list-disc space-y-1 pr-6 text-sm leading-7 text-muted sm:text-base">
+                    <ul className={`list-disc space-y-1 text-sm leading-7 text-muted sm:text-base ${isAr ? 'pr-6' : 'pl-6'}`}>
                       {card.points.map((point) => (
                         <li key={point}>{point}</li>
                       ))}
@@ -300,9 +387,9 @@ export default function AboutPage() {
         <section className="section-shell py-14 sm:py-16">
           <Reveal>
             <div className="rounded-hero border border-primary-100 bg-gradient-to-br from-white to-primary-50/60 p-6 shadow-soft sm:p-8">
-              <h2 className="text-3xl font-black tracking-tight text-textMain sm:text-4xl">لماذا Sabina Therapy؟</h2>
+              <h2 className="text-3xl font-black tracking-tight text-textMain sm:text-4xl">{content.whyTitle}</h2>
               <div className="mt-7 grid gap-4 sm:grid-cols-2">
-                {whyChooseUs.map((item, index) => (
+                {content.whyChooseUs.map((item, index) => (
                   <Reveal key={item.title} delay={80 + index * 60}>
                     <article className="rounded-card bg-white p-5 shadow-card transition duration-200 hover:-translate-y-1 hover:shadow-soft">
                       <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-primaryBg text-primary">
@@ -321,13 +408,13 @@ export default function AboutPage() {
         <section className="section-shell py-14 sm:py-16">
           <Reveal>
             <div className="rounded-hero border border-borderGray bg-white p-6 shadow-soft sm:p-8">
-              <h2 className="text-3xl font-black tracking-tight text-textMain sm:text-4xl">الفئات المستهدفة</h2>
+              <h2 className="text-3xl font-black tracking-tight text-textMain sm:text-4xl">{content.audienceTitle}</h2>
               <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted sm:text-base">
-                كل دور في المنصة واضح، لضمان رحلة علاجية منظمة، موثوقة، ومريحة لجميع الأطراف.
+                {content.audienceSubtitle}
               </p>
 
               <div className="mt-8 grid gap-4 sm:grid-cols-2">
-                {audienceCards.map((item, index) => (
+                {content.audienceCards.map((item, index) => (
                   <Reveal key={item.role} delay={90 + index * 70}>
                     <article className="rounded-card border border-borderGray bg-gradient-to-br from-white to-slate-50 p-5 shadow-card transition duration-200 hover:-translate-y-1 hover:shadow-soft">
                       <div className="flex items-center justify-between gap-3">
@@ -340,7 +427,7 @@ export default function AboutPage() {
                         <span className={`rounded-full px-3 py-1 text-xs font-bold ${item.badgeClass}`}>{item.badge}</span>
                       </div>
 
-                      <ul className="mt-3 list-disc space-y-1 pr-6 text-sm leading-7 text-muted">
+                      <ul className={`mt-3 list-disc space-y-1 text-sm leading-7 text-muted ${isAr ? 'pr-6' : 'pl-6'}`}>
                         {item.points.map((point) => (
                           <li key={point}>{point}</li>
                         ))}
@@ -356,9 +443,9 @@ export default function AboutPage() {
         <section className="section-shell py-14 sm:py-16" id="trust-safety">
           <Reveal>
             <div className="rounded-hero border border-primary-100 bg-gradient-to-r from-primary-50/70 to-white p-6 shadow-soft sm:p-8">
-              <h2 className="text-3xl font-black tracking-tight text-textMain sm:text-4xl">الخصوصية والأمان أولويتنا</h2>
+              <h2 className="text-3xl font-black tracking-tight text-textMain sm:text-4xl">{content.safetyTitle}</h2>
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                {trustSafety.map((item, index) => (
+                {content.trustSafety.map((item, index) => (
                   <Reveal key={item} delay={70 + index * 60}>
                     <div className="flex items-start gap-3 rounded-xl bg-white px-4 py-3 shadow-card">
                       <span className="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-primaryBg text-primary">
@@ -384,22 +471,22 @@ export default function AboutPage() {
             >
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_25%_20%,rgba(255,255,255,0.18),transparent_35%)]" />
               <div className="relative z-10">
-                <h2 className="text-3xl font-black tracking-tight sm:text-4xl">ابدأ رحلتك النفسية اليوم</h2>
+                <h2 className="text-3xl font-black tracking-tight sm:text-4xl">{content.ctaTitle}</h2>
                 <p className="mt-2 max-w-2xl text-sm text-primary-50 sm:text-base">
-                  خطوة بسيطة اليوم قد تصنع فرقا كبيرا في توازنك النفسي وجودة حياتك.
+                  {content.ctaSubtitle}
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <a
                     href="/home#featured-doctors"
                     className="focus-outline inline-flex h-11 items-center justify-center rounded-xl bg-white px-5 text-sm font-semibold text-primary transition hover:bg-primary-50"
                   >
-                    احجز جلسة
+                    {content.ctaFind}
                   </a>
                   <a
                     href="/apply-doctor"
                     className="focus-outline inline-flex h-11 items-center justify-center rounded-xl border border-white/40 px-5 text-sm font-semibold text-white transition hover:bg-white/10"
                   >
-                    انضم كمختص
+                    {content.ctaJoin}
                   </a>
                 </div>
               </div>

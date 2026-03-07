@@ -17,7 +17,11 @@ const pageNavItems = [
 export default function VRDemoPage() {
   const { lang } = useLanguage();
   const isAr = lang === 'ar';
-  const [activeId, setActiveId] = useState(vrExamples[0]?.id ?? '');
+  const [activeId, setActiveId] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    return id || (vrExamples[0]?.id ?? '');
+  });
   const [playerMode, setPlayerMode] = useState<PlayerMode>('interactive');
 
   const activeExample = useMemo(

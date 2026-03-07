@@ -14,3 +14,5 @@ pytest==8.4.1
 pytest-asyncio==1.1.0
 ruff==0.12.12
 email-validator==2.2.0
+qrcode[pil]==7.4.2
+reportlab==4.2.2

@@ -1,4 +1,4 @@
-export type AuthRole = 'ADMIN' | 'DOCTOR' | 'USER';
+export type AuthRole = 'ADMIN' | 'DOCTOR' | 'PSYCHIATRIST' | 'THERAPIST' | 'USER';
 
 type AuthSessionInput = {
   role: AuthRole;
@@ -11,7 +11,17 @@ const AUTH_ROLE_KEY = 'auth_role';
 const AUTH_EMAIL_KEY = 'auth_email';
 
 function isAuthRole(value: string | null): value is AuthRole {
-  return value === 'ADMIN' || value === 'DOCTOR' || value === 'USER';
+  return (
+    value === 'ADMIN' ||
+    value === 'DOCTOR' ||
+    value === 'PSYCHIATRIST' ||
+    value === 'THERAPIST' ||
+    value === 'USER'
+  );
+}
+
+export function isDoctorLikeRole(role: AuthRole | null): boolean {
+  return role === 'DOCTOR' || role === 'PSYCHIATRIST' || role === 'THERAPIST';
 }
 
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
@@ -64,7 +74,7 @@ export function roleHomePath(role: AuthRole): string {
   if (role === 'ADMIN') {
     return '/admin';
   }
-  if (role === 'DOCTOR') {
+  if (isDoctorLikeRole(role)) {
     return '/doctor-dashboard';
   }
   return '/dashboard';

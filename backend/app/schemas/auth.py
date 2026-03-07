@@ -26,6 +26,9 @@ def normalize_email_allow_local(value: Optional[str]) -> Optional[str]:
 class RegisterRequest(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = Field(None, pattern=r"^\+?[1-9]\d{1,14}$")
+    name: Optional[str] = Field(default=None, min_length=2, max_length=255)
+    age: Optional[int] = Field(default=None, ge=1, le=120)
+    country: Optional[str] = Field(default=None, min_length=2, max_length=120)
     password: str = Field(min_length=8, max_length=128)
     role: UserRole
 
@@ -34,10 +37,25 @@ class RegisterRequest(BaseModel):
     def validate_email(cls, value: Optional[str]) -> Optional[str]:
         return normalize_email_allow_local(value)
 
+    @field_validator("name", "country")
+    @classmethod
+    def normalize_optional_text(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
+
     @model_validator(mode='after')
     def check_id_provided(self):
         if not self.email and not self.phone:
             raise ValueError('Either email or phone must be provided')
+        if self.role == UserRole.USER:
+            if not self.name:
+                raise ValueError("Name is required for USER registration")
+            if self.age is None:
+                raise ValueError("Age is required for USER registration")
+            if not self.country:
+                raise ValueError("Country is required for USER registration")
         return self
 
 

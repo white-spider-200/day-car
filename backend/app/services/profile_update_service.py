@@ -13,6 +13,7 @@ from app.db.models import (
     User,
     UserRole,
 )
+from app.services.notification_service import create_notification
 
 _ALLOWED_PROFILE_FIELDS = {
     "display_name",
@@ -50,6 +51,16 @@ def submit_profile_update_request(
         status=ProfileUpdateStatus.PENDING,
     )
     db.add(request)
+    db.flush()
+
+    create_notification(
+        db,
+        user_id=doctor_user.id,
+        event_type="PROFILE_UPDATE_REQUEST_SUBMITTED",
+        title="Profile update request sent",
+        body="Your profile update request was submitted for review.",
+        metadata_json={"profile_update_request_id": str(request.id)},
+    )
     db.commit()
     db.refresh(request)
     return request
@@ -103,6 +114,30 @@ def review_profile_update_request(
         for field, value in request.payload_json.items():
             if field in _ALLOWED_PROFILE_FIELDS:
                 setattr(profile, field, value)
+
+    create_notification(
+        db,
+        user_id=request.doctor_user_id,
+        event_type="PROFILE_UPDATE_REQUEST_REVIEWED",
+        title="Profile update request reviewed",
+        body=f"Your profile update request is now {status_update.value}.",
+        metadata_json={
+            "profile_update_request_id": str(request.id),
+            "status": status_update.value,
+        },
+    )
+    create_notification(
+        db,
+        user_id=admin_user.id,
+        event_type="PROFILE_UPDATE_REVIEW_SUBMITTED",
+        title="Review submitted",
+        body=f"You set profile update request status to {status_update.value}.",
+        metadata_json={
+            "profile_update_request_id": str(request.id),
+            "doctor_user_id": str(request.doctor_user_id),
+            "status": status_update.value,
+        },
+    )
 
     db.commit()
     db.refresh(request)

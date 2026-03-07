@@ -26,6 +26,16 @@ export function SiteHeader() {
           <Link href="/doctors" className="text-sm text-slate-600 hover:text-medical-700">
             {dictionary.viewDoctors}
           </Link>
+          {session?.user.role === "DOCTOR" ? (
+            <Link href="/doctor/vr" className="text-sm text-slate-600 hover:text-medical-700">
+              VR 360
+            </Link>
+          ) : null}
+          {session?.user.role === "ADMIN" ? (
+            <Link href="/admin/vr-scenarios" className="text-sm text-slate-600 hover:text-medical-700">
+              VR Admin
+            </Link>
+          ) : null}
         </div>
 
         <div className="flex items-center gap-2">
@@ -40,6 +50,11 @@ export function SiteHeader() {
 
           {session?.user ? (
             <>
+              <a href="/account">
+                <Button size="sm" variant="outline">
+                  Account
+                </Button>
+              </a>
               <Link href={roleDashboardPath(session.user.role)}>
                 <Button size="sm">{dictionary.dashboard}</Button>
               </Link>

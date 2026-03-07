@@ -17,6 +17,7 @@ from app.db.models import (
     UserStatus,
 )
 from app.services.professional_type_service import validate_application_by_professional_type
+from app.services.notification_service import create_notification
 from app.core.professional_roles import ProfessionalType
 
 
@@ -246,6 +247,23 @@ def approve_application(
         metadata={"doctor_user_id": str(doctor_user.id)},
     )
 
+    create_notification(
+        db,
+        user_id=doctor_user.id,
+        event_type="APPLICATION_APPROVED",
+        title="Application approved",
+        body="Your doctor application has been approved.",
+        metadata_json={"application_id": str(application.id)},
+    )
+    create_notification(
+        db,
+        user_id=admin.id,
+        event_type="APPLICATION_APPROVAL_COMPLETED",
+        title="Application approved",
+        body="You approved this doctor application.",
+        metadata_json={"application_id": str(application.id), "doctor_user_id": str(doctor_user.id)},
+    )
+
     db.commit()
     db.refresh(application)
     return application
@@ -270,6 +288,24 @@ def reject_application(
         metadata={"reason": reason},
     )
 
+    if application.doctor_user_id is not None:
+        create_notification(
+            db,
+            user_id=application.doctor_user_id,
+            event_type="APPLICATION_REJECTED",
+            title="Application rejected",
+            body="Your doctor application was rejected.",
+            metadata_json={"application_id": str(application.id), "reason": reason},
+        )
+    create_notification(
+        db,
+        user_id=admin.id,
+        event_type="APPLICATION_REJECTION_COMPLETED",
+        title="Application rejected",
+        body="You rejected this doctor application.",
+        metadata_json={"application_id": str(application.id)},
+    )
+
     db.commit()
     db.refresh(application)
     return application
@@ -290,6 +326,24 @@ def request_changes(
         action_type="APPLICATION_NEEDS_CHANGES",
         target_id=application.id,
         metadata={"notes": notes},
+    )
+
+    if application.doctor_user_id is not None:
+        create_notification(
+            db,
+            user_id=application.doctor_user_id,
+            event_type="APPLICATION_CHANGES_REQUESTED",
+            title="Changes requested",
+            body="An admin requested changes to your application.",
+            metadata_json={"application_id": str(application.id)},
+        )
+    create_notification(
+        db,
+        user_id=admin.id,
+        event_type="APPLICATION_CHANGES_REQUESTED",
+        title="Changes requested",
+        body="You requested changes for this application.",
+        metadata_json={"application_id": str(application.id)},
     )
 
     db.commit()

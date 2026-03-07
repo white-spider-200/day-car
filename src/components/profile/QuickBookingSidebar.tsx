@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import type { ServiceItem, SimilarDoctor } from '../../data/doctorProfileData';
+import { navigateTo } from '../../utils/auth';
 
 type QuickBookingSidebarProps = {
   services: ServiceItem[];
   similarDoctors: SimilarDoctor[];
+  doctorUserId?: string;
+  doctorSlug?: string;
 };
 
 const quickTimes = ['10:30', '12:00', '14:30', '18:00'];
 
-export default function QuickBookingSidebar({ services, similarDoctors }: QuickBookingSidebarProps) {
+export default function QuickBookingSidebar({ services, similarDoctors, doctorUserId, doctorSlug }: QuickBookingSidebarProps) {
   const { t } = useLanguage();
   const [selectedService, setSelectedService] = useState(services[0]?.id ?? '');
   const [selectedDate, setSelectedDate] = useState('2026-02-26');
@@ -72,6 +75,24 @@ export default function QuickBookingSidebar({ services, similarDoctors }: QuickB
 
           <button
             type="button"
+            onClick={() => {
+              if (!selectedService || !selectedDate || !selectedTime) {
+                return;
+              }
+
+              const query = new URLSearchParams({
+                service: selectedService,
+                date: selectedDate,
+                time: selectedTime
+              });
+              if (doctorUserId) {
+                query.set('doctor_user_id', doctorUserId);
+              }
+              if (doctorSlug) {
+                query.set('doctor_slug', doctorSlug);
+              }
+              navigateTo(`/booking/confirm?${query.toString()}`);
+            }}
             className="focus-outline inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primaryDark shadow-lg shadow-primary/20"
           >
             {t('booking.continue')}

@@ -1,5 +1,6 @@
 import uuid
 from datetime import UTC, datetime
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import String, case, cast, func, or_, select
@@ -14,6 +15,7 @@ from app.db.models import (
     DoctorDocument,
     DoctorProfile,
     DocumentStatus,
+    TreatmentRequest,
     User,
     UserRole,
     UserStatus,
@@ -32,6 +34,7 @@ from app.schemas.admin_users import (
     AdminUserAppointmentOut,
     AdminUserDetailOut,
     AdminUserListItem,
+    AdminUserTreatmentRequestOut,
 )
 from app.schemas.doctor_application import ApplicationOut
 from app.schemas.doctor_document import DoctorDocumentOut
@@ -55,6 +58,25 @@ def _to_application_out(db: Session, app: DoctorApplication) -> ApplicationOut:
     payload["documents"] = [DoctorDocumentOut.model_validate(doc).model_dump() for doc in documents]
     payload["verification_status"] = get_application_verification_status(db, application_id=app.id)
     return ApplicationOut.model_validate(payload)
+
+
+def _refresh_doctor_rating_stats(db: Session, *, doctor_user_id: uuid.UUID) -> None:
+    profile = db.scalar(select(DoctorProfile).where(DoctorProfile.doctor_user_id == doctor_user_id))
+    if not profile:
+        return
+    row = db.execute(
+        select(
+            func.count(Appointment.id),
+            func.avg(Appointment.feedback_rating),
+        ).where(
+            Appointment.doctor_user_id == doctor_user_id,
+            Appointment.feedback_rating.is_not(None),
+        )
+    ).one()
+    reviews_count = int(row[0] or 0)
+    avg_rating = row[1]
+    profile.reviews_count = reviews_count
+    profile.rating = None if avg_rating is None else Decimal(str(round(float(avg_rating), 2)))
 
 
 @router.get("/applications", response_model=list[ApplicationOut])
@@ -366,6 +388,28 @@ def get_user_details(
             )
         )
 
+    treatment_request_rows = db.execute(
+        select(TreatmentRequest, DoctorProfile.display_name)
+        .outerjoin(DoctorProfile, DoctorProfile.doctor_user_id == TreatmentRequest.doctor_id)
+        .where(TreatmentRequest.user_id == user_id)
+        .order_by(TreatmentRequest.created_at.desc())
+    ).all()
+
+    treatment_requests: list[AdminUserTreatmentRequestOut] = []
+    for request, doctor_display_name in treatment_request_rows:
+        treatment_requests.append(
+            AdminUserTreatmentRequestOut(
+                id=request.id,
+                doctor_user_id=request.doctor_id,
+                doctor_display_name=doctor_display_name,
+                status=request.status,
+                message=request.message,
+                doctor_note=request.doctor_note,
+                created_at=request.created_at,
+                updated_at=request.updated_at,
+            )
+        )
+
     upcoming_count = sum(
         1 for appointment in appointments if appointment.status in {AppointmentStatus.REQUESTED, AppointmentStatus.CONFIRMED}
     )
@@ -380,6 +424,7 @@ def get_user_details(
         cancelled_count=cancelled_count,
         last_appointment_at=appointments[0].start_at if appointments else None,
         appointments=appointments,
+        treatment_requests=treatment_requests,
     )
 
 
@@ -393,7 +438,23 @@ def delete_user_account(
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
+    affected_doctor_ids = list(
+        db.scalars(
+            select(Appointment.doctor_user_id)
+            .where(
+                Appointment.user_id == user_id,
+                Appointment.feedback_rating.is_not(None),
+            )
+            .distinct()
+        )
+    )
+
     db.delete(user)
+    db.flush()
+
+    for doctor_user_id in affected_doctor_ids:
+        _refresh_doctor_rating_stats(db, doctor_user_id=doctor_user_id)
+
     db.commit()
 
     return {"message": "User account deleted", "user_id": str(user_id), "deleted_by": str(current_user.id)}

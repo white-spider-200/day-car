@@ -65,3 +65,15 @@ async def save_application_photo(file: UploadFile) -> str:
 
 async def save_license_document(file: UploadFile) -> str:
     return await save_uploaded_file(file, allowed_content_types=LICENSE_CONTENT_TYPES, label="license")
+
+
+def save_generated_document_bytes(content: bytes, *, extension: str = ".pdf") -> str:
+    upload_dir = ensure_upload_dir()
+    suffix = extension if extension.startswith(".") else f".{extension}"
+    file_name = f"{uuid.uuid4()}{suffix}"
+    full_path = upload_dir / file_name
+
+    with full_path.open("wb") as out:
+        out.write(content)
+
+    return f"{settings.upload_base_url}/{file_name}"

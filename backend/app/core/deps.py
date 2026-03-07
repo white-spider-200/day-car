@@ -13,9 +13,7 @@ from app.db.session import get_db
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
-def get_current_user(
-    token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
-) -> User:
+def get_current_user_from_token(token: str, db: Session) -> User:
     payload = decode_access_token(token)
     user_id = payload.get("sub")
     if not user_id:
@@ -32,6 +30,12 @@ def get_current_user(
     if user.status != UserStatus.ACTIVE:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User account is not active")
     return user
+
+
+def get_current_user(
+    token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
+) -> User:
+    return get_current_user_from_token(token, db)
 
 
 def require_roles(*roles: UserRole) -> Callable[[User], User]:

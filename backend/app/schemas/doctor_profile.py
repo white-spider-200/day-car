@@ -95,3 +95,11 @@ class DoctorProfileListItem(BaseModel):
     role_badge: RoleBadgeOut
     verification_badges: list[str] | None
     is_top_doctor: bool
+
+
+class DoctorReviewOut(BaseModel):
+    appointment_id: uuid.UUID
+    rating: int
+    comment: str | None
+    submitted_at: datetime
+    author: str

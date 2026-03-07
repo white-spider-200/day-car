@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>الرؤية والرسالة والنبذة</title>
+  <style>
+    :root {
+      --frame-pad: 24px;
+      --bg-1: #090f2b;
+      --bg-2: #1a1442;
+      --card: rgba(14, 21, 54, 0.7);
+      --card-border: rgba(97, 213, 208, 0.22);
+      --text-main: #eef2ff;
+      --text-soft: #c8d0f0;
+      --accent: #61d5d0;
+      --accent-soft: rgba(97, 213, 208, 0.16);
+      --glow: rgba(97, 213, 208, 0.18);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+    }
+
+    html {
+      background:
+        radial-gradient(circle at 85% 12%, rgba(97, 213, 208, 0.14), transparent 35%),
+        radial-gradient(circle at 15% 85%, rgba(115, 85, 219, 0.2), transparent 42%),
+        linear-gradient(140deg, var(--bg-1), var(--bg-2));
+    }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 85% 12%, rgba(97, 213, 208, 0.14), transparent 35%),
+        radial-gradient(circle at 15% 85%, rgba(115, 85, 219, 0.2), transparent 42%),
+        linear-gradient(140deg, var(--bg-1), var(--bg-2));
+      color: var(--text-main);
+      font-family: "Tajawal", "Cairo", "Noto Sans Arabic", sans-serif;
+      min-height: 100%;
+      display: grid;
+      place-items: center;
+      padding: calc(var(--frame-pad) / 2);
+      overflow: hidden;
+    }
+
+    .slide {
+      --slide-w: min(1600px, calc(100vw - var(--frame-pad)), calc((100vh - var(--frame-pad)) * 16 / 9));
+      width: var(--slide-w);
+      height: calc(var(--slide-w) * 9 / 16);
+      position: relative;
+      overflow: hidden;
+      border-radius: 24px;
+      border: 1px solid rgba(97, 213, 208, 0.18);
+      box-shadow: 0 25px 60px rgba(6, 10, 30, 0.45);
+      background:
+        linear-gradient(160deg, rgba(10, 14, 40, 0.8), rgba(21, 16, 55, 0.82));
+      padding: 34px 36px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 18px;
+      isolation: isolate;
+    }
+
+    .slide::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        repeating-linear-gradient(
+          115deg,
+          transparent 0,
+          transparent 68px,
+          rgba(97, 213, 208, 0.035) 69px,
+          rgba(97, 213, 208, 0.035) 70px
+        );
+      z-index: -2;
+      pointer-events: none;
+    }
+
+    .slide::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 80% 16%, rgba(97, 213, 208, 0.24), transparent 24%),
+        radial-gradient(circle at 12% 76%, rgba(123, 103, 242, 0.2), transparent 30%);
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    .title-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      border-bottom: 1px solid rgba(97, 213, 208, 0.22);
+      padding-bottom: 14px;
+    }
+
+    .title {
+      margin: 0;
+      font-size: clamp(24px, 2.2vw, 34px);
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+
+    .subtitle {
+      margin: 6px 0 0;
+      color: var(--text-soft);
+      font-size: clamp(14px, 1vw, 17px);
+      font-weight: 500;
+    }
+
+    .chip {
+      border: 1px solid rgba(97, 213, 208, 0.28);
+      color: var(--accent);
+      background: var(--accent-soft);
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 14px;
+      white-space: nowrap;
+      font-weight: 600;
+    }
+
+    .content {
+      display: grid;
+      grid-template-rows: 1fr auto;
+      gap: 16px;
+      min-height: 0;
+    }
+
+    .top-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      min-height: 0;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 16px 16px 14px;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+      backdrop-filter: blur(4px);
+      min-height: 0;
+    }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      color: var(--accent);
+    }
+
+    .card h2 {
+      margin: 0;
+      font-size: clamp(19px, 1.35vw, 24px);
+      color: var(--text-main);
+      font-weight: 700;
+    }
+
+    .icon {
+      width: 22px;
+      height: 22px;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    p,
+    li {
+      font-size: clamp(13px, 0.87vw, 16px);
+      line-height: 1.65;
+      color: var(--text-soft);
+    }
+
+    .card p {
+      margin: 0;
+    }
+
+    ul {
+      margin: 0;
+      padding: 0 18px 0 0;
+    }
+
+    li {
+      margin-bottom: 4px;
+    }
+
+    .bottom-wrap {
+      border-top: 1px solid rgba(97, 213, 208, 0.2);
+      padding-top: 12px;
+    }
+
+    .bottom-title {
+      margin: 0 0 10px;
+      font-size: clamp(22px, 1.6vw, 27px);
+      color: var(--text-main);
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .target-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .target-card {
+      background: rgba(11, 18, 47, 0.72);
+      border: 1px solid rgba(97, 213, 208, 0.2);
+      border-radius: 14px;
+      padding: 12px 14px;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.03);
+    }
+
+    .target-card h3 {
+      margin: 0 0 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: clamp(16px, 1vw, 20px);
+      color: #ebf9f8;
+      font-weight: 700;
+    }
+
+    .target-card ul {
+      margin: 0;
+    }
+
+    .target-card li {
+      margin-bottom: 3px;
+      line-height: 1.55;
+      font-size: clamp(12px, 0.8vw, 15px);
+    }
+
+    .small-icon {
+      width: 18px;
+      height: 18px;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .foot-note {
+      position: absolute;
+      left: 18px;
+      bottom: 12px;
+      font-size: 12px;
+      color: rgba(216, 229, 255, 0.6);
+      letter-spacing: 0.2px;
+    }
+
+    @media (max-width: 1200px) {
+      body {
+        padding: 16px;
+        overflow: auto;
+      }
+
+      .slide {
+        --slide-w: min(100%, 920px);
+        width: var(--slide-w);
+        height: auto;
+        aspect-ratio: auto;
+      }
+
+      .content {
+        grid-template-rows: auto auto;
+      }
+
+      .top-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .target-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="slide">
+    <header class="title-bar">
+      <span class="chip">عرض جامعي | Pitch استثماري | عرض شركة ناشئة</span>
+      <div>
+        <h1 class="title">الرؤية والرسالة والنبذة</h1>
+        <p class="subtitle">منصة رقمية للصحة النفسية بطابع طبي تقني هادئ واحترافي</p>
+      </div>
+    </header>
+
+    <section class="content">
+      <div class="top-grid">
+        <article class="card">
+          <div class="card-head">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M9.5 2A3.5 3.5 0 0 0 6 5.5V7a2.5 2.5 0 0 0 0 5v1.5A3.5 3.5 0 0 0 9.5 17H10"/>
+              <path d="M14.5 2A3.5 3.5 0 0 1 18 5.5V7a2.5 2.5 0 0 1 0 5v1.5A3.5 3.5 0 0 1 14.5 17H14"/>
+              <path d="M10 17v1.5a2 2 0 0 0 4 0V17"/>
+              <path d="M9 8h1M14 8h1"/>
+            </svg>
+            <h2>الرؤية (Vision)</h2>
+          </div>
+          <p>أن تصبح المنصة الرائدة في العالم العربي في مجال العلاج النفسي الرقمي، من خلال:</p>
+          <ul>
+            <li>ربط الأفراد بأخصائيين نفسيين معتمدين.</li>
+            <li>توفير بيئة آمنة، سرية، ومريحة.</li>
+            <li>استخدام تقنيات حديثة مثل الواقع الافتراضي (VR) والواقع المعزز (AR).</li>
+            <li>تقديم حلول نفسية مبتكرة وسهلة الوصول.</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <div class="card-head">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20"/>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5V4.5A2.5 2.5 0 0 1 6.5 2Z"/>
+            </svg>
+            <h2>نبذة تعريفية عن المنصة (About)</h2>
+          </div>
+          <p>
+            منصة رقمية متخصصة بالصحة النفسية، تهدف إلى تسهيل الوصول إلى خدمات العلاج النفسي عبر الإنترنت.
+            تجمع بين المرضى والأخصائيين المعتمدين في بيئة آمنة تحترم الخصوصية.
+            توفر جلسات مباشرة عبر الفيديو، أدوات تواصل ذكية، ونظام إدارة متكامل للمواعيد والمتابعة.
+          </p>
+        </article>
+
+        <article class="card">
+          <div class="card-head">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/>
+              <path d="m9 12 2 2 4-4"/>
+            </svg>
+            <h2>الرسالة (Mission)</h2>
+          </div>
+          <p>نسعى إلى:</p>
+          <ul>
+            <li>تسهيل الوصول إلى خدمات الصحة النفسية للجميع.</li>
+            <li>تقديم جودة عالية بأسعار مناسبة.</li>
+            <li>ضمان الخصوصية وحماية بيانات المستخدمين.</li>
+            <li>تمكين الأخصائيين بأدوات تقنية متقدمة لتحسين جودة العلاج.</li>
+          </ul>
+        </article>
+      </div>
+
+      <div class="bottom-wrap">
+        <h2 class="bottom-title">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="8.5" cy="7" r="4"/>
+            <path d="M20 8v6"/>
+            <path d="M23 11h-6"/>
+          </svg>
+          الفئات المستهدفة
+        </h2>
+
+        <div class="target-grid">
+          <article class="target-card">
+            <h3>
+              <svg class="small-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="8" r="4"/>
+                <path d="M4 21a8 8 0 0 1 16 0"/>
+              </svg>
+              1) المرضى والمستخدمون
+            </h3>
+            <ul>
+              <li>يعانون من القلق، الاكتئاب، أو الضغوط اليومية.</li>
+              <li>مشاكل أسرية أو شخصية.</li>
+              <li>يفضلون جلسات علاجية عبر الإنترنت.</li>
+            </ul>
+          </article>
+
+          <article class="target-card">
+            <h3>
+              <svg class="small-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M14.5 4.5h-5v5h-5v5h5v5h5v-5h5v-5h-5z"/>
+              </svg>
+              2) الأطباء النفسيون
+            </h3>
+            <ul>
+              <li>مختصون في الطب النفسي.</li>
+              <li>يمكنهم تقديم الاستشارات ووصف الأدوية.</li>
+              <li>إدارة الجلسات والمتابعة عبر النظام.</li>
+            </ul>
+          </article>
+
+          <article class="target-card">
+            <h3>
+              <svg class="small-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 3a8 8 0 0 0-8 8v2a4 4 0 0 0 4 4h.5"/>
+                <path d="M12 3a8 8 0 0 1 8 8v2a4 4 0 0 1-4 4h-.5"/>
+                <path d="M8.5 17c0 1.9 1.6 3.5 3.5 3.5s3.5-1.6 3.5-3.5"/>
+              </svg>
+              3) المعالجون النفسيون
+            </h3>
+            <ul>
+              <li>مختصون في العلاج السلوكي، المعرفي، الأسري وغيرها.</li>
+              <li>يقدمون جلسات علاج نفسي دون وصف أدوية.</li>
+              <li>يمكنهم استخدام تقنيات حديثة مثل VR حسب السياسة الطبية.</li>
+            </ul>
+          </article>
+
+          <article class="target-card">
+            <h3>
+              <svg class="small-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M3 21h18"/>
+                <path d="M5 21V7l7-4 7 4v14"/>
+                <path d="M9 10h.01"/><path d="M15 10h.01"/>
+                <path d="M9 14h.01"/><path d="M15 14h.01"/>
+              </svg>
+              4) إدارة المنصة
+            </h3>
+            <ul>
+              <li>إدارة حسابات الأطباء والمعالجين.</li>
+              <li>مراجعة طلبات الانضمام والتحقق من التراخيص.</li>
+              <li>متابعة التقارير وتحليل الأداء.</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <div class="foot-note">Mental Health Platform | Medical-Tech Presentation Slide</div>
+  </main>
+</body>
+</html>

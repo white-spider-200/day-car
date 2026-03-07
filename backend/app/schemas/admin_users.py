@@ -3,7 +3,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
-from app.db.models import AppointmentStatus, UserRole, UserStatus
+from app.db.models import AppointmentStatus, TreatmentRequestStatus, UserRole, UserStatus
 from app.schemas.users import UserOut
 
 
@@ -37,6 +37,19 @@ class AdminUserAppointmentOut(BaseModel):
     created_at: datetime
 
 
+class AdminUserTreatmentRequestOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    doctor_user_id: uuid.UUID
+    doctor_display_name: str | None
+    status: TreatmentRequestStatus
+    message: str
+    doctor_note: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
 class AdminUserDetailOut(BaseModel):
     user: UserOut
     appointments_count: int
@@ -45,3 +58,4 @@ class AdminUserDetailOut(BaseModel):
     cancelled_count: int
     last_appointment_at: datetime | None
     appointments: list[AdminUserAppointmentOut]
+    treatment_requests: list[AdminUserTreatmentRequestOut]

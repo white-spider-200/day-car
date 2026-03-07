@@ -15,6 +15,8 @@ type MessageCenterProps = {
   title?: string;
   className?: string;
   allowedPartnerIds?: string[];
+  partnerNames?: Record<string, string>;
+  initialPartnerId?: string | null;
 };
 
 type ChatMessage = MessageItem & {
@@ -34,7 +36,17 @@ function formatTime(value: string): string {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-export default function MessageCenter({ title = 'Messages', className = '', allowedPartnerIds }: MessageCenterProps) {
+function fallbackPartnerLabel(partnerId: string): string {
+  return `User #${partnerId.slice(0, 8)}`;
+}
+
+export default function MessageCenter({
+  title = 'Messages',
+  className = '',
+  allowedPartnerIds,
+  partnerNames,
+  initialPartnerId = null
+}: MessageCenterProps) {
   const [inbox, setInbox] = useState<MessageItem[]>([]);
   const [outbox, setOutbox] = useState<MessageItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,9 +56,13 @@ export default function MessageCenter({ title = 'Messages', className = '', allo
   const [body, setBody] = useState('');
   const [isSending, setIsSending] = useState(false);
 
-  const loadMessages = async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
+  const loadMessages = async (silent = false) => {
+    if (!silent) {
+      setIsLoading(true);
+    }
+    if (!silent) {
+      setErrorMessage(null);
+    }
     try {
       const [inboxPayload, outboxPayload] = await Promise.all([
         apiJson<MessageItem[]>('/messages?box=inbox', undefined, true, 'Failed to load inbox'),
@@ -55,16 +71,34 @@ export default function MessageCenter({ title = 'Messages', className = '', allo
       setInbox(inboxPayload);
       setOutbox(outboxPayload);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to load chat messages');
-      setInbox([]);
-      setOutbox([]);
+      if (!silent) {
+        setErrorMessage(error instanceof Error ? error.message : 'Failed to load chat messages');
+        setInbox([]);
+        setOutbox([]);
+      }
     } finally {
-      setIsLoading(false);
+      if (!silent) {
+        setIsLoading(false);
+      }
     }
   };
 
   useEffect(() => {
     void loadMessages();
+  }, []);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      void loadMessages(true);
+    }, 3000);
+    const onFocus = () => {
+      void loadMessages(true);
+    };
+    window.addEventListener('focus', onFocus);
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', onFocus);
+    };
   }, []);
 
   const conversations = useMemo(() => {
@@ -99,21 +133,40 @@ export default function MessageCenter({ title = 'Messages', className = '', allo
       byPartner.set(message.partnerId, current);
     }
 
+    if (allowed) {
+      for (const partnerId of allowed) {
+        if (!byPartner.has(partnerId)) {
+          byPartner.set(partnerId, {
+            partnerId,
+            messages: [],
+            unreadIncoming: 0
+          });
+        }
+      }
+    }
+
     return [...byPartner.values()].sort((a, b) => {
       const aLast = a.messages[a.messages.length - 1];
       const bLast = b.messages[b.messages.length - 1];
+      if (!aLast && !bLast) return 0;
+      if (!aLast) return 1;
+      if (!bLast) return -1;
       return new Date(bLast.created_at).getTime() - new Date(aLast.created_at).getTime();
     });
   }, [inbox, outbox, allowedPartnerIds]);
 
   useEffect(() => {
+    if (initialPartnerId && conversations.some((item) => item.partnerId === initialPartnerId)) {
+      setSelectedPartnerId(initialPartnerId);
+      return;
+    }
     if (!selectedPartnerId && conversations.length > 0) {
       setSelectedPartnerId(conversations[0].partnerId);
     }
     if (selectedPartnerId && !conversations.some((item) => item.partnerId === selectedPartnerId)) {
       setSelectedPartnerId(conversations[0]?.partnerId ?? null);
     }
-  }, [conversations, selectedPartnerId]);
+  }, [conversations, selectedPartnerId, initialPartnerId]);
 
   const selectedConversation = conversations.find((item) => item.partnerId === selectedPartnerId) ?? null;
 
@@ -195,6 +248,7 @@ export default function MessageCenter({ title = 'Messages', className = '', allo
               {conversations.map((conversation) => {
                 const last = conversation.messages[conversation.messages.length - 1];
                 const active = selectedPartnerId === conversation.partnerId;
+                const partnerLabel = partnerNames?.[conversation.partnerId] ?? fallbackPartnerLabel(conversation.partnerId);
                 return (
                   <li key={conversation.partnerId}>
                     <button
@@ -207,15 +261,15 @@ export default function MessageCenter({ title = 'Messages', className = '', allo
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-xs font-bold text-textMain">User #{conversation.partnerId.slice(0, 8)}</p>
+                        <p className="text-xs font-bold text-textMain">{partnerLabel}</p>
                         {conversation.unreadIncoming > 0 && (
                           <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-white">
                             {conversation.unreadIncoming}
                           </span>
                         )}
                       </div>
-                      <p className="mt-1 line-clamp-1 text-xs text-muted">{last.body}</p>
-                      <p className="mt-1 text-[11px] text-muted">{formatDate(last.created_at)}</p>
+                      <p className="mt-1 line-clamp-1 text-xs text-muted">{last?.body ?? 'No messages yet.'}</p>
+                      <p className="mt-1 text-[11px] text-muted">{last ? formatDate(last.created_at) : 'Ready to chat'}</p>
                     </button>
                   </li>
                 );
@@ -227,7 +281,9 @@ export default function MessageCenter({ title = 'Messages', className = '', allo
         <div className="rounded-2xl border border-borderGray bg-[#efeae2] p-3">
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-borderGray bg-white px-3 py-2">
             <p className="text-sm font-bold text-textMain">
-              {selectedConversation ? `Chat with User #${selectedConversation.partnerId.slice(0, 8)}` : 'Start a new chat'}
+              {selectedConversation
+                ? `Chat with ${partnerNames?.[selectedConversation.partnerId] ?? fallbackPartnerLabel(selectedConversation.partnerId)}`
+                : 'Start a new chat'}
             </p>
             {selectedConversation && selectedConversation.unreadIncoming > 0 && (
               <button
@@ -242,25 +298,29 @@ export default function MessageCenter({ title = 'Messages', className = '', allo
 
           <div className="mt-3 max-h-[420px] space-y-2 overflow-y-auto rounded-xl border border-borderGray bg-[#e5ddd5] p-3">
             {selectedConversation ? (
-              selectedConversation.messages.map((message) => (
-                <div key={message.id} className={`flex ${message.isOutgoing ? 'justify-end' : 'justify-start'}`}>
-                  <div
-                    className={`max-w-[82%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
-                      message.isOutgoing
-                        ? 'rounded-br-md border border-primary/30 bg-[#dcf8c6] text-textMain'
-                        : 'rounded-bl-md border border-borderGray bg-white text-textMain'
-                    }`}
-                  >
-                    <p>{message.body}</p>
-                    <p className="mt-1 text-[10px] text-muted">
-                      {formatTime(message.created_at)}
-                    </p>
+              selectedConversation.messages.length > 0 ? (
+                selectedConversation.messages.map((message) => (
+                  <div key={message.id} className={`flex ${message.isOutgoing ? 'justify-end' : 'justify-start'}`}>
+                    <div
+                      className={`max-w-[82%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
+                        message.isOutgoing
+                          ? 'rounded-br-md border border-primary/30 bg-[#dcf8c6] text-textMain'
+                          : 'rounded-bl-md border border-borderGray bg-white text-textMain'
+                      }`}
+                    >
+                      <p>{message.body}</p>
+                      <p className="mt-1 text-[10px] text-muted">
+                        {formatTime(message.created_at)}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))
+                ))
+              ) : (
+                <p className="text-sm text-muted">No messages yet. Send the first message.</p>
+              )
             ) : (
               <p className="text-sm text-muted">
-                {allowedPartnerIds ? 'No chat available for current appointments.' : 'Select a chat or enter a user ID to start chatting.'}
+                {allowedPartnerIds ? 'No chat available for your current allowed contacts.' : 'Select a chat or enter a user ID to start chatting.'}
               </p>
             )}
           </div>

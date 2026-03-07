@@ -16,6 +16,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [locale, setLocale] = useState("en");
+  const [detailsConfirmed, setDetailsConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -31,7 +32,8 @@ export default function RegisterPage() {
           name,
           email,
           password,
-          locale
+          locale,
+          detailsConfirmed
         })
       });
 
@@ -83,9 +85,20 @@ export default function RegisterPage() {
                 <option value="ar">Arabic</option>
               </Select>
             </div>
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={detailsConfirmed}
+                onChange={(e) => setDetailsConfirmed(e.target.checked)}
+              />
+              I confirm my account information is correct.
+            </label>
+            <p className="text-xs text-slate-500">
+              Username is generated automatically after account creation.
+            </p>
 
             {error ? <p className="text-sm text-red-600">{error}</p> : null}
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading || !detailsConfirmed}>
               {loading ? "Creating account..." : "Create account"}
             </Button>
           </form>

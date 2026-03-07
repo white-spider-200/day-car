@@ -26,6 +26,7 @@ export type SlotDTO = {
 export type AppointmentDTO = {
   id: string;
   status: "requested" | "confirmed" | "canceled" | "completed";
+  sessionMode?: "zoom" | "vr";
   startAt: string;
   endAt: string;
   doctorId: string;

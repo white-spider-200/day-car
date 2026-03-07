@@ -9,11 +9,18 @@ export type AvailabilitySlot = {
 
 type AvailabilityInputSlot = string | AvailabilitySlot;
 
-type AvailabilitySectionProps = {
-  weeklyAvailability: Record<string, AvailabilityInputSlot[]>;
+export type AvailabilitySlotSelection = {
+  day: string;
+  time: string;
 };
 
-export default function AvailabilitySection({ weeklyAvailability }: AvailabilitySectionProps) {
+type AvailabilitySectionProps = {
+  weeklyAvailability: Record<string, AvailabilityInputSlot[]>;
+  onSlotSelect?: (selection: AvailabilitySlotSelection) => void;
+  selectedSlotKeys?: string[];
+};
+
+export default function AvailabilitySection({ weeklyAvailability, onSlotSelect, selectedSlotKeys }: AvailabilitySectionProps) {
   const [selectedSlot, setSelectedSlot] = useState('Thu-18:00');
 
   const dayEntries = useMemo(() => {
@@ -54,7 +61,7 @@ export default function AvailabilitySection({ weeklyAvailability }: Availability
               <div className="mt-3 space-y-2">
                 {slots.map((slot) => {
                   const slotKey = `${day}-${slot.time}`;
-                  const isSelected = selectedSlot === slotKey;
+                  const isSelected = selectedSlotKeys ? selectedSlotKeys.includes(slotKey) : selectedSlot === slotKey;
                   const isUnavailable = slot.status === 'unavailable';
                   const isBooked = slot.status === 'booked';
                   const isAvailable = slot.status === 'available';
@@ -63,13 +70,21 @@ export default function AvailabilitySection({ weeklyAvailability }: Availability
                     <button
                       key={slotKey}
                       type="button"
-                      onClick={() => !isUnavailable && !isBooked && setSelectedSlot(slotKey)}
+                      onClick={() => {
+                        if (isUnavailable || isBooked) {
+                          return;
+                        }
+                        if (!selectedSlotKeys) {
+                          setSelectedSlot(slotKey);
+                        }
+                        onSlotSelect?.({ day, time: slot.time });
+                      }}
                       disabled={isUnavailable || isBooked}
                       className={`focus-outline w-full rounded-xl border px-2 py-1.5 text-xs font-semibold transition ${
                         isUnavailable
                           ? 'cursor-not-allowed border-slate-300 bg-slate-200 text-slate-500'
                           : isBooked
-                            ? 'cursor-not-allowed border-rose-400 bg-rose-500 text-white'
+                            ? 'cursor-not-allowed border-red-500 bg-red-500 text-white'
                             : isSelected
                               ? 'border-emerald-600 bg-emerald-500 text-white'
                               : isAvailable

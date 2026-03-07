@@ -9,7 +9,9 @@ from app.db.models import DoctorApplication, DoctorDocument, DoctorProfile, Docu
 
 _PSYCHIATRIST_REQUIRED_DOC_TYPES = {
     DocumentType.LICENSE,
+    DocumentType.MEDICAL_DEGREE,
     DocumentType.PSYCHIATRY_SPECIALIZATION,
+    DocumentType.ACTIVE_PRACTICE_PROOF,
 }
 _THERAPIST_REQUIRED_DOC_TYPES = {
     DocumentType.LICENSE,
@@ -44,9 +46,6 @@ def validate_application_by_professional_type(db: Session, application: DoctorAp
             missing_fields.append("legal_prescription_declaration")
         if application.psychiatrist_prescription_ack is not True:
             missing_fields.append("psychiatrist_prescription_ack")
-        if not application.national_id:
-            missing_fields.append("national_id")
-
         missing_docs = _missing_doc_types(
             db, application_id=application.id, required_types=_PSYCHIATRIST_REQUIRED_DOC_TYPES
         )
@@ -74,8 +73,6 @@ def validate_application_by_professional_type(db: Session, application: DoctorAp
         missing_fields.append("no_prescription_declaration")
     if application.therapist_no_prescription_ack is not True:
         missing_fields.append("therapist_no_prescription_ack")
-    if not application.national_id:
-        missing_fields.append("national_id")
     missing_docs = _missing_doc_types(
         db, application_id=application.id, required_types=_THERAPIST_REQUIRED_DOC_TYPES
     )

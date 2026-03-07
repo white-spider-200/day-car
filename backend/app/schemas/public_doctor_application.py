@@ -28,6 +28,7 @@ class PublicDoctorApplicationCreate(BaseModel):
     professional_type: ProfessionalType
     full_name: str = Field(min_length=2, max_length=255)
     email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
     phone: str = Field(pattern=r"^\+?[1-9]\d{6,14}$")
     national_id: str | None = Field(default=None, max_length=100)
     license_number: str | None = Field(default=None, min_length=3, max_length=120)

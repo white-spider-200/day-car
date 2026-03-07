@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
-import { getStoredAuthRole, isDoctorLikeRole, logout, roleHomePath, type AuthRole } from '../utils/auth';
-import { ApiError, apiJson } from '../utils/api';
+import { getStoredAuthRole, getStoredAuthToken, isDoctorLikeRole, logout, roleHomePath, type AuthRole } from '../utils/auth';
+import { ApiError, apiJson, buildWebSocketUrls } from '../utils/api';
 import sabinaLogo from '../assets/sabina-logo.png';
 
 type HeaderNavItem = {
@@ -48,6 +48,10 @@ const staticDoctorNavItems: HeaderNavItem[] = [
   { labelKey: 'nav.about', href: '/about' }
 ];
 
+const NOTIFICATION_POLL_INTERVAL_MS = 10000;
+const NOTIFICATION_WS_RECONNECT_BASE_MS = 1500;
+const NOTIFICATION_WS_RECONNECT_MAX_MS = 10000;
+
 export default function Header({
   brandHref = '/home',
   navItems,
@@ -63,6 +67,12 @@ export default function Header({
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   const [isClearingNotifications, setIsClearingNotifications] = useState(false);
+  const hasLoadedNotificationsRef = useRef(false);
+  const knownNotificationIdsRef = useRef<Set<string>>(new Set());
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const notificationSocketRef = useRef<WebSocket | null>(null);
+  const notificationSocketReconnectTimerRef = useRef<number | null>(null);
+  const isNotificationSocketConnectedRef = useRef(false);
 
   const navigateTo = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
     e.preventDefault();
@@ -125,30 +135,228 @@ export default function Header({
     };
   }, []);
 
-  const loadNotifications = async () => {
-    if (!authRole) {
-      setNotifications([]);
-      return;
-    }
-    setIsLoadingNotifications(true);
+  const playNotificationSound = useCallback(() => {
     try {
-      const payload = await apiJson<NotificationItem[]>(
-        '/notifications',
-        undefined,
-        true,
-        'Failed to load notifications'
-      );
-      setNotifications(payload);
+      type WindowWithWebkitAudio = Window & { webkitAudioContext?: typeof AudioContext };
+      const AudioContextCtor = window.AudioContext ?? (window as WindowWithWebkitAudio).webkitAudioContext;
+      if (!AudioContextCtor) return;
+
+      const audioContext = audioContextRef.current ?? new AudioContextCtor();
+      audioContextRef.current = audioContext;
+      if (audioContext.state === 'suspended') {
+        void audioContext.resume().catch(() => {});
+      }
+
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      const now = audioContext.currentTime;
+
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(920, now);
+      oscillator.frequency.exponentialRampToValueAtTime(660, now + 0.16);
+      gainNode.gain.setValueAtTime(0.0001, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      oscillator.start(now);
+      oscillator.stop(now + 0.22);
     } catch {
-      setNotifications([]);
-    } finally {
-      setIsLoadingNotifications(false);
+      // Ignore playback failures caused by browser autoplay policies.
     }
-  };
+  }, []);
+
+  const loadNotifications = useCallback(
+    async ({ silent = false, withSound = true }: { silent?: boolean; withSound?: boolean } = {}) => {
+      if (!authRole) {
+        setNotifications([]);
+        hasLoadedNotificationsRef.current = false;
+        knownNotificationIdsRef.current = new Set();
+        return;
+      }
+
+      if (!silent) {
+        setIsLoadingNotifications(true);
+      }
+
+      try {
+        const payload = await apiJson<NotificationItem[]>(
+          '/notifications',
+          undefined,
+          true,
+          'Failed to load notifications'
+        );
+
+        const hasNewNotifications =
+          hasLoadedNotificationsRef.current && payload.some((item) => !knownNotificationIdsRef.current.has(item.id));
+
+        setNotifications(payload);
+        knownNotificationIdsRef.current = new Set(payload.map((item) => item.id));
+        hasLoadedNotificationsRef.current = true;
+
+        if (withSound && hasNewNotifications) {
+          playNotificationSound();
+        }
+      } catch {
+        if (!silent) {
+          setNotifications([]);
+        }
+      } finally {
+        if (!silent) {
+          setIsLoadingNotifications(false);
+        }
+      }
+    },
+    [authRole, playNotificationSound]
+  );
 
   useEffect(() => {
-    void loadNotifications();
-  }, [authRole]);
+    void loadNotifications({ withSound: false });
+  }, [loadNotifications]);
+
+  useEffect(() => {
+    if (!authRole) {
+      return;
+    }
+
+    const pollNotifications = () => {
+      if (document.hidden || isNotificationSocketConnectedRef.current) {
+        return;
+      }
+      void loadNotifications({ silent: true, withSound: true });
+    };
+
+    const intervalId = window.setInterval(pollNotifications, NOTIFICATION_POLL_INTERVAL_MS);
+    window.addEventListener('focus', pollNotifications);
+    document.addEventListener('visibilitychange', pollNotifications);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', pollNotifications);
+      document.removeEventListener('visibilitychange', pollNotifications);
+    };
+  }, [authRole, loadNotifications]);
+
+  useEffect(() => {
+    if (!authRole) {
+      return;
+    }
+
+    const token = getStoredAuthToken();
+    if (!token) {
+      return;
+    }
+
+    const urls = buildWebSocketUrls('/notifications/ws', { token });
+    if (urls.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+    let reconnectAttempts = 0;
+    let nextUrlIndex = 0;
+
+    const cleanupSocket = (socket: WebSocket | null) => {
+      if (!socket) {
+        return;
+      }
+      socket.onopen = null;
+      socket.onmessage = null;
+      socket.onerror = null;
+      socket.onclose = null;
+      socket.close();
+    };
+
+    const clearReconnectTimer = () => {
+      if (notificationSocketReconnectTimerRef.current === null) {
+        return;
+      }
+      window.clearTimeout(notificationSocketReconnectTimerRef.current);
+      notificationSocketReconnectTimerRef.current = null;
+    };
+
+    const connect = () => {
+      if (cancelled) {
+        return;
+      }
+
+      const targetUrl = urls[nextUrlIndex % urls.length];
+      nextUrlIndex += 1;
+      let socket: WebSocket;
+      try {
+        socket = new WebSocket(targetUrl);
+      } catch {
+        scheduleReconnect();
+        return;
+      }
+
+      notificationSocketRef.current = socket;
+
+      socket.onopen = () => {
+        isNotificationSocketConnectedRef.current = true;
+        reconnectAttempts = 0;
+        void loadNotifications({ silent: true, withSound: false });
+      };
+
+      socket.onmessage = (event) => {
+        let payload: { type?: string } | null = null;
+        if (typeof event.data === 'string') {
+          try {
+            payload = JSON.parse(event.data) as { type?: string };
+          } catch {
+            return;
+          }
+        }
+
+        if (payload?.type === 'notification:new') {
+          void loadNotifications({ silent: true, withSound: true });
+        }
+      };
+
+      socket.onerror = () => {
+        socket.close();
+      };
+
+      socket.onclose = () => {
+        if (notificationSocketRef.current === socket) {
+          notificationSocketRef.current = null;
+        }
+        isNotificationSocketConnectedRef.current = false;
+        if (!cancelled) {
+          scheduleReconnect();
+        }
+      };
+    };
+
+    const scheduleReconnect = () => {
+      if (cancelled || notificationSocketReconnectTimerRef.current !== null) {
+        return;
+      }
+
+      const exp = Math.min(reconnectAttempts, 5);
+      const delay = Math.min(
+        NOTIFICATION_WS_RECONNECT_BASE_MS * (2 ** exp),
+        NOTIFICATION_WS_RECONNECT_MAX_MS
+      );
+      reconnectAttempts += 1;
+
+      notificationSocketReconnectTimerRef.current = window.setTimeout(() => {
+        notificationSocketReconnectTimerRef.current = null;
+        connect();
+      }, delay);
+    };
+
+    connect();
+
+    return () => {
+      cancelled = true;
+      isNotificationSocketConnectedRef.current = false;
+      clearReconnectTimer();
+      cleanupSocket(notificationSocketRef.current);
+      notificationSocketRef.current = null;
+    };
+  }, [authRole, loadNotifications]);
 
   const unreadCount = notifications.filter((item) => !item.is_read).length;
 
@@ -232,6 +440,7 @@ export default function Header({
                     const nextOpen = !isNotificationsOpen;
                     setIsNotificationsOpen(nextOpen);
                     if (nextOpen) {
+                      void loadNotifications({ silent: true, withSound: false });
                       void apiJson('/notifications/read', { method: 'POST' }, true, 'Failed to mark notifications');
                       setNotifications((previous) => previous.map((item) => ({ ...item, is_read: true })));
                     }

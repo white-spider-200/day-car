@@ -8,7 +8,7 @@ import CTAForDoctors from '../components/CTAForDoctors';
 import Footer from '../components/Footer';
 import { useLanguage } from '../context/LanguageContext';
 import type { Doctor } from '../data/homeData';
-import { fetchFirstReachable } from '../utils/api';
+import { fetchFirstReachable, getBackendOrigin } from '../utils/api';
 
 type ApiDoctor = {
   doctor_user_id: string;
@@ -50,11 +50,7 @@ function resolveMediaUrl(url: string | null): string | undefined {
   if (typeof window !== 'undefined' && path.startsWith('/images/')) {
     return `${window.location.origin}${path}`;
   }
-  const env = import.meta.env as Record<string, string | boolean | undefined>;
-  const envBase = typeof env.VITE_API_BASE_URL === 'string' ? env.VITE_API_BASE_URL.trim() : '';
-  const fallbackBase =
-    typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8000` : 'http://localhost:8000';
-  const base = (envBase && envBase !== '/api' ? envBase : fallbackBase).replace(/\/+$/, '').replace(/\/api$/, '');
+  const base = getBackendOrigin();
   return `${base}${path}`;
 }
 

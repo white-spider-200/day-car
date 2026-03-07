@@ -2,6 +2,7 @@ import { Role } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { decodeNotesAndSessionMode } from "@/lib/session-mode";
 import { canAccessMeetingWindow } from "@/lib/time";
 
 export async function POST(request: Request) {
@@ -23,6 +24,11 @@ export async function POST(request: Request) {
         zoomMeeting: true
       }
     });
+
+    const { sessionMode } = decodeNotesAndSessionMode(appointment?.notes);
+    if (sessionMode === "vr") {
+      return NextResponse.json({ error: "This is a VR session. Open the VR session page instead." }, { status: 409 });
+    }
 
     if (!appointment?.zoomMeeting) {
       return NextResponse.json({ error: "Meeting not ready" }, { status: 404 });

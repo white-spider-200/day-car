@@ -8,6 +8,7 @@ declare module "next-auth" {
       role: Role;
       doctorId?: string | null;
       locale?: "en" | "ar";
+      username?: string | null;
     } & DefaultSession["user"];
   }
 
@@ -16,6 +17,7 @@ declare module "next-auth" {
     role: Role;
     doctorId?: string | null;
     locale?: "en" | "ar";
+    username?: string | null;
   }
 }
 
@@ -25,5 +27,6 @@ declare module "next-auth/jwt" {
     role: Role;
     doctorId?: string | null;
     locale?: "en" | "ar";
+    username?: string | null;
   }
 }

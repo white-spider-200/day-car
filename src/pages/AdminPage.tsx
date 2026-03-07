@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import Header from '../components/Header';
 import { useLanguage } from '../context/LanguageContext';
-import { apiJson } from '../utils/api';
+import { apiJson, getBackendOrigin } from '../utils/api';
 
 type ApplicationStatus =
   | 'PENDING'
@@ -103,11 +103,7 @@ function resolveMediaUrl(url: string | null): string | null {
   if (typeof window !== 'undefined' && path.startsWith('/images/')) {
     return `${window.location.origin}${path}`;
   }
-  const env = import.meta.env as Record<string, string | boolean | undefined>;
-  const envBase = typeof env.VITE_API_BASE_URL === 'string' ? env.VITE_API_BASE_URL.trim() : '';
-  const fallbackBase =
-    typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8000` : 'http://localhost:8000';
-  const base = (envBase && envBase !== '/api' ? envBase : fallbackBase).replace(/\/+$/, '').replace(/\/api$/, '');
+  const base = getBackendOrigin();
 
   return `${base}${path}`;
 }
@@ -402,6 +398,7 @@ export default function AdminPage() {
         navItems={[
           { labelKey: 'nav.dashboard', href: '/admin/applications' },
           { labelKey: 'nav.users', href: '/admin/users' },
+          { labelKey: 'nav.complaints', href: '/admin/complaints' },
           { labelKey: 'nav.doctors', href: '/home#featured-doctors' }
         ]}
       />
@@ -420,6 +417,12 @@ export default function AdminPage() {
                 className="rounded-lg border border-borderGray px-3 py-2 text-xs font-semibold text-textMain transition hover:border-primary/40 hover:text-primary"
               >
                 Financial Reports
+              </a>
+              <a
+                href="/admin/complaints"
+                className="rounded-lg border border-borderGray px-3 py-2 text-xs font-semibold text-textMain transition hover:border-primary/40 hover:text-primary"
+              >
+                Complaints
               </a>
               <label className="text-xs font-semibold text-muted" htmlFor="status-filter">
                 {copy.filter}

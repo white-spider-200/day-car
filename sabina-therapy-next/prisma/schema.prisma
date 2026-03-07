@@ -47,9 +47,16 @@ enum AdminActionType {
   APPOINTMENT_OVERRIDE
 }
 
+enum VrSessionStatus {
+  WAITING
+  LIVE
+  ENDED
+}
+
 model User {
   id            String        @id @default(uuid())
   name          String
+  username      String?       @unique
   email         String        @unique
   passwordHash  String
   role          Role          @default(USER)
@@ -64,6 +71,8 @@ model User {
   // NextAuth adapter models
   accounts      Account[]
   sessions      Session[]
+  vrScenarios   VrScenario[]  @relation("VrScenarioCreator")
+  vrSessions    VrSession[]   @relation("VrSessionPatient")
 }
 
 model Doctor {
@@ -85,10 +94,49 @@ model Doctor {
   scheduleSlots    DoctorScheduleSlot[]
   appointments     Appointment[]
   reviews          Review[]
+  vrSessions       VrSession[]
 
   @@index([location])
   @@index([specialty])
   @@index([fees])
+}
+
+model VrScenario {
+  id             String      @id @default(uuid())
+  titleEn        String
+  titleAr        String
+  descriptionEn  String
+  descriptionAr  String
+  slug           String      @unique
+  youtubeId      String
+  createdById    String
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  createdBy      User        @relation("VrScenarioCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  sessions       VrSession[]
+
+  @@index([createdAt])
+  @@index([createdById])
+}
+
+model VrSession {
+  id              String          @id @default(uuid())
+  scenarioId      String
+  doctorId        String
+  patientId       String?
+  status          VrSessionStatus @default(WAITING)
+  startedAt       DateTime?
+  endedAt         DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  scenario        VrScenario      @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  doctor          Doctor          @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  patient         User?           @relation("VrSessionPatient", fields: [patientId], references: [id], onDelete: SetNull)
+
+  @@index([scenarioId, createdAt])
+  @@index([doctorId, createdAt])
+  @@index([patientId])
+  @@index([status, createdAt])
 }
 
 model DoctorVerification {

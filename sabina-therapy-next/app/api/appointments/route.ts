@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createAppointment, listAppointmentsByRole, updateAppointmentStatus } from "@/lib/appointments";
 import { requireAuth } from "@/lib/auth";
 import { sendMockEmail } from "@/lib/mail";
+import { decodeNotesAndSessionMode } from "@/lib/session-mode";
 import { fromClientStatus, toClientStatus } from "@/lib/status";
 import { createAppointmentSchema, updateAppointmentStatusSchema } from "@/lib/validation";
 
@@ -11,6 +12,7 @@ function serializeAppointment(appointment: {
   status: string;
   startAt: Date;
   endAt: Date;
+  notes: string | null;
   doctor: {
     id: string;
     slug: string;
@@ -23,8 +25,11 @@ function serializeAppointment(appointment: {
     provider: string;
   } | null;
 }) {
+  const { sessionMode, notes } = decodeNotesAndSessionMode(appointment.notes);
   return {
     ...appointment,
+    notes,
+    sessionMode,
     status: toClientStatus(appointment.status as never),
     doctorName: appointment.doctor.user.name,
     patientName: appointment.patient.name,
@@ -60,6 +65,7 @@ export async function POST(request: Request) {
       patientId: auth.session.user.id,
       doctorId: payload.doctorId,
       slotId: payload.slotId,
+      sessionMode: payload.sessionMode,
       contactEmail: payload.contactEmail,
       notes: payload.notes
     });
@@ -76,6 +82,7 @@ export async function POST(request: Request) {
       {
         appointment: {
           ...appointment,
+          sessionMode: payload.sessionMode,
           status: toClientStatus(appointment.status)
         }
       },

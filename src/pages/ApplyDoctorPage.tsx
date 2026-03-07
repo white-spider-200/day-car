@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Footer from '../components/Footer';
 import Header from '../components/Header';
 import { useLanguage } from '../context/LanguageContext';
@@ -31,6 +31,8 @@ export default function ApplyDoctorPage() {
   const [fullNameAr, setFullNameAr] = useState('');
   const [fullNameEn, setFullNameEn] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [phone, setPhone] = useState('+962');
   const [country, setCountry] = useState('Jordan');
   const [city, setCity] = useState('');
@@ -49,6 +51,7 @@ export default function ApplyDoctorPage() {
   const [membershipNumber, setMembershipNumber] = useState('');
 
   const [governmentIdFile, setGovernmentIdFile] = useState<File | null>(null);
+  const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
   const [professionalLicenseFile, setProfessionalLicenseFile] = useState<File | null>(null);
   const [medicalDegreeFile, setMedicalDegreeFile] = useState<File | null>(null);
   const [psychiatryCertFile, setPsychiatryCertFile] = useState<File | null>(null);
@@ -56,6 +59,7 @@ export default function ApplyDoctorPage() {
   const [therapistLicenseProofFile, setTherapistLicenseProofFile] = useState<File | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -103,11 +107,17 @@ export default function ApplyDoctorPage() {
     [isAr]
   );
 
+  useEffect(() => {
+    setEmail('');
+  }, []);
+
   const resetForm = () => {
     setWizardStep(0);
     setFullNameAr('');
     setFullNameEn('');
     setEmail('');
+    setPassword('');
+    setConfirmPassword('');
     setPhone('+962');
     setCountry('Jordan');
     setCity('');
@@ -123,11 +133,19 @@ export default function ApplyDoctorPage() {
     setTherapyMethods('');
     setMembershipNumber('');
     setGovernmentIdFile(null);
+    setProfilePhotoFile(null);
     setProfessionalLicenseFile(null);
     setMedicalDegreeFile(null);
     setPsychiatryCertFile(null);
     setHighestDegreeFile(null);
     setTherapistLicenseProofFile(null);
+  };
+
+  const startNewApplication = () => {
+    setIsSubmitted(false);
+    setSuccessMessage(null);
+    setErrorMessage(null);
+    resetForm();
   };
 
   const validateStep = (step: number): string | null => {
@@ -139,6 +157,12 @@ export default function ApplyDoctorPage() {
       }
       if (!email.trim() || !phone.trim()) {
         return isAr ? 'البريد الإلكتروني ورقم الهاتف مطلوبان.' : 'Email and phone are required.';
+      }
+      if (password.length < 8) {
+        return isAr ? 'كلمة المرور يجب أن تكون 8 أحرف على الأقل.' : 'Password must be at least 8 characters.';
+      }
+      if (password !== confirmPassword) {
+        return isAr ? 'تأكيد كلمة المرور غير مطابق.' : 'Password confirmation does not match.';
       }
       const emailValue = email.trim().toLowerCase();
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)) {
@@ -185,8 +209,8 @@ export default function ApplyDoctorPage() {
       return null;
     }
 
-    if (!governmentIdFile || !professionalLicenseFile) {
-      return isAr ? 'رفع الهوية والترخيص المهني إلزامي.' : 'Government ID and professional license uploads are required.';
+    if (!profilePhotoFile || !governmentIdFile || !professionalLicenseFile) {
+      return isAr ? 'رفع الصورة الشخصية والهوية والترخيص المهني إلزامي.' : 'Profile photo, government ID, and professional license uploads are required.';
     }
 
     if (role === 'PSYCHIATRIST') {
@@ -227,6 +251,7 @@ export default function ApplyDoctorPage() {
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (isSubmitted) return;
     setErrorMessage(null);
     setSuccessMessage(null);
 
@@ -242,6 +267,7 @@ export default function ApplyDoctorPage() {
     formData.set('professional_type', role);
     formData.set('full_name', `${fullNameEn.trim()} / ${fullNameAr.trim()}`);
     formData.set('email', email.trim().toLowerCase());
+    formData.set('password', password);
     formData.set('phone', phone.trim());
     formData.set('experience_years', yearsExperience.trim());
     formData.set(
@@ -292,6 +318,7 @@ export default function ApplyDoctorPage() {
     ].join('\n');
     formData.set('about', aboutDetails);
 
+    formData.set('photo', profilePhotoFile as File);
     formData.set('national_id_photo', governmentIdFile as File);
     formData.set('license_document', professionalLicenseFile as File);
 
@@ -346,8 +373,14 @@ export default function ApplyDoctorPage() {
         isAr ? 'فشل إرسال الطلب' : 'Failed to submit application'
       );
 
-      setSuccessMessage(payload.message || (isAr ? 'تم إرسال الطلب بنجاح.' : 'Application submitted successfully.'));
+      setSuccessMessage(
+        payload.message ||
+          (isAr
+            ? 'تم إرسال الطلب. يمكنك الآن تسجيل الدخول بالبريد الإلكتروني وكلمة المرور لعرض لوحة الطبيب.'
+            : 'Application submitted. You can now log in with email and password to open your doctor dashboard.')
+      );
       resetForm();
+      setIsSubmitted(true);
     } catch (error) {
       if (error instanceof ApiError) {
         setErrorMessage(error.message);
@@ -408,7 +441,7 @@ export default function ApplyDoctorPage() {
         </section>
 
         {role && (
-          <form onSubmit={onSubmit} className="mt-6 space-y-6">
+          <form onSubmit={onSubmit} autoComplete="off" className="mt-6 space-y-6">
             <section className="rounded-hero border border-cyan-100 bg-white p-6 shadow-card sm:p-8">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-xl font-black text-textMain">{isAr ? 'الخطوة 2: النموذج الديناميكي' : 'Step 2: Dynamic Multi-Step Form'}</h2>
@@ -429,7 +462,23 @@ export default function ApplyDoctorPage() {
                   </label>
                   <label className={fieldLabelClass}>
                     {isAr ? 'البريد الإلكتروني' : 'Email'}
-                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} required />
+                    <input
+                      type="email"
+                      name="doctor_application_email"
+                      autoComplete="off"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className={inputClass}
+                      required
+                    />
+                  </label>
+                  <label className={fieldLabelClass}>
+                    {isAr ? 'كلمة المرور' : 'Password'}
+                    <input type="password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} required />
+                  </label>
+                  <label className={fieldLabelClass}>
+                    {isAr ? 'تأكيد كلمة المرور' : 'Confirm Password'}
+                    <input type="password" minLength={8} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className={inputClass} required />
                   </label>
                   <label className={fieldLabelClass}>
                     {isAr ? 'الهاتف' : 'Phone'}
@@ -521,6 +570,10 @@ export default function ApplyDoctorPage() {
               {wizardStep === 2 && (
                 <div className="mt-5 grid gap-4 sm:grid-cols-2">
                   <label className={fieldLabelClass}>
+                    {isAr ? 'الصورة الشخصية (إلزامي)' : 'Profile Photo Upload (Required)'}
+                    <input type="file" accept="image/*" onChange={(e) => setProfilePhotoFile(e.target.files?.[0] ?? null)} className={inputClass} required />
+                  </label>
+                  <label className={fieldLabelClass}>
                     {isAr ? 'رفع الهوية الحكومية (إلزامي)' : 'Government ID Upload (Required)'}
                     <input type="file" accept="application/pdf,image/*" onChange={(e) => setGovernmentIdFile(e.target.files?.[0] ?? null)} className={inputClass} required />
                   </label>
@@ -562,7 +615,7 @@ export default function ApplyDoctorPage() {
               )}
 
               {errorMessage && <p className="mt-4 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">{errorMessage}</p>}
-              {successMessage && <p className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{successMessage}</p>}
+              {successMessage && !isSubmitted && <p className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{successMessage}</p>}
 
               <div className="mt-6 flex flex-wrap items-center gap-3">
                 {wizardStep > 0 && (
@@ -575,7 +628,7 @@ export default function ApplyDoctorPage() {
                   <button
                     type="button"
                     onClick={nextStep}
-                    disabled={!canMoveNext}
+                    disabled={!canMoveNext || isSubmitted}
                     className="rounded-xl bg-primary px-5 py-2 text-sm font-bold text-white hover:bg-primaryDark disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {isAr ? 'التالي' : 'Next'}
@@ -583,13 +636,25 @@ export default function ApplyDoctorPage() {
                 ) : (
                   <button
                     type="submit"
-                    disabled={isSubmitting || !canSubmit}
+                    disabled={isSubmitting || !canSubmit || isSubmitted}
                     className="rounded-xl bg-primary px-5 py-2 text-sm font-bold text-white hover:bg-primaryDark disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {isSubmitting ? (isAr ? 'جاري الإرسال...' : 'Submitting...') : isAr ? 'إرسال الطلب' : 'Submit Application'}
                   </button>
                 )}
               </div>
+              {isSubmitted && (
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <p className="text-sm font-semibold text-emerald-700">Your application is under review</p>
+                  <button
+                    type="button"
+                    onClick={startNewApplication}
+                    className="rounded-xl border border-borderGray bg-white px-4 py-2 text-xs font-semibold text-textMain transition hover:bg-slate-50"
+                  >
+                    {isAr ? 'بدء طلب جديد' : 'Start New Application'}
+                  </button>
+                </div>
+              )}
             </section>
           </form>
         )}

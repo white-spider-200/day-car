@@ -11,6 +11,7 @@ type AppointmentResponse = {
   appointments: Array<{
     id: string;
     status: "requested" | "confirmed" | "canceled" | "completed";
+    sessionMode?: "zoom" | "vr";
     startAt: string;
     endAt: string;
     doctorName: string;
@@ -94,10 +95,16 @@ export function UserDashboardClient({
               <p className="font-medium">{appointment.doctorName}</p>
               <p>{toAmmanLabel(new Date(appointment.startAt))} (Asia/Amman)</p>
               <p className="capitalize">Status: {appointment.status}</p>
+              <p className="capitalize">Session: {appointment.sessionMode === "vr" ? "VR" : "Zoom"}</p>
               <div className="mt-2 flex flex-wrap gap-2">
-                {appointment.status === "confirmed" ? (
+                {appointment.status === "confirmed" && appointment.sessionMode === "vr" ? (
+                  <Button size="sm" onClick={() => window.open(`/vr-session/${appointment.id}`, "_blank", "noopener,noreferrer")}>
+                    Open VR Session
+                  </Button>
+                ) : null}
+                {appointment.status === "confirmed" && appointment.sessionMode !== "vr" ? (
                   <Button size="sm" onClick={() => joinMutation.mutate(appointment.id)}>
-                    Join Call
+                    Join Zoom
                   </Button>
                 ) : null}
                 {appointment.status === "requested" || appointment.status === "confirmed" ? (

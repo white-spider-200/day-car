@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ApiError, apiJson } from '../utils/api';
-import { getStoredAuthRole } from '../utils/auth';
+import { getStoredAuthRole, isDoctorLikeRole } from '../utils/auth';
 
 type TimelinePost = {
   id: string;
@@ -124,7 +124,7 @@ export default function TimelineFeed({ title = 'Medical Timeline', className = '
         </button>
       </div>
 
-      {authRole === 'DOCTOR' && (
+      {isDoctorLikeRole(authRole) && (
         <div className="mt-4 rounded-xl border border-borderGray bg-slate-50 p-3">
           <label className="text-xs font-semibold uppercase tracking-wide text-muted">Share a professional update</label>
           <textarea

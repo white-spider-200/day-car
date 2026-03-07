@@ -67,7 +67,7 @@ def test_public_profile_role_badges_are_distinct(client, admin_token):
     assert "لا يملك صلاحية وصف الأدوية" in therapist_payload["role_badge"]["clarification_note"]
 
 
-def test_backend_blocks_therapist_prescription_entries(client, admin_token):
+def test_backend_blocks_therapist_medical_entries(client, admin_token):
     therapist_token, therapist_id = _approve_doctor_with_role(
         client, admin_token, "doctor-therapist-medication@testmail.dev", "THERAPIST"
     )
@@ -86,12 +86,13 @@ def test_backend_blocks_therapist_prescription_entries(client, admin_token):
     assert create_record.status_code == 200, create_record.text
     record_id = create_record.json()["id"]
 
-    diagnosis_entry = client.post(
+    blocked_diagnosis = client.post(
         f"/records/{record_id}/entries",
         headers=auth_headers(therapist_token),
         json={"entry_type": "DIAGNOSIS", "content": "Generalized anxiety disorder symptoms observed."},
     )
-    assert diagnosis_entry.status_code == 200, diagnosis_entry.text
+    assert blocked_diagnosis.status_code == 403, blocked_diagnosis.text
+    assert "Only psychiatrists" in blocked_diagnosis.json()["detail"]
 
     blocked_prescription = client.post(
         f"/records/{record_id}/entries",
@@ -101,3 +102,76 @@ def test_backend_blocks_therapist_prescription_entries(client, admin_token):
     assert blocked_prescription.status_code == 403, blocked_prescription.text
     assert "Only psychiatrists" in blocked_prescription.json()["detail"]
 
+
+def test_patient_profile_transfers_to_new_assigned_doctor(client, admin_token):
+    doctor_1_token, doctor_1_id = _approve_doctor_with_role(
+        client, admin_token, "doctor-transfer-1@testmail.dev", "PSYCHIATRIST"
+    )
+    doctor_2_token, doctor_2_id = _approve_doctor_with_role(
+        client, admin_token, "doctor-transfer-2@testmail.dev", "THERAPIST"
+    )
+
+    register(client, "patient-transfer@testmail.dev", "UserPass123!", "USER")
+    user_login = client.post(
+        "/auth/login", json={"email": "patient-transfer@testmail.dev", "password": "UserPass123!"}
+    )
+    user_token = user_login.json()["access_token"]
+    user_id = client.get("/auth/me", headers=auth_headers(user_token)).json()["id"]
+
+    request_1 = client.post(
+        "/treatment-requests",
+        headers=auth_headers(user_token),
+        json={"doctor_id": doctor_1_id, "message": "Need support from doctor 1."},
+    )
+    assert request_1.status_code == 200, request_1.text
+    accept_1 = client.patch(
+        f"/treatment-requests/{request_1.json()['id']}",
+        headers=auth_headers(doctor_1_token),
+        json={"status": "ACCEPTED"},
+    )
+    assert accept_1.status_code == 200, accept_1.text
+
+    record_1 = client.post(
+        "/doctor/patient-records",
+        headers=auth_headers(doctor_1_token),
+        json={"user_id": user_id, "title": "Private User Profile"},
+    )
+    assert record_1.status_code == 200, record_1.text
+    record_payload_1 = record_1.json()
+    record_id = record_payload_1["id"]
+    assert record_payload_1["doctor_id"] == doctor_1_id
+
+    request_2 = client.post(
+        "/treatment-requests",
+        headers=auth_headers(user_token),
+        json={"doctor_id": doctor_2_id, "message": "Need support from doctor 2."},
+    )
+    assert request_2.status_code == 200, request_2.text
+    accept_2 = client.patch(
+        f"/treatment-requests/{request_2.json()['id']}",
+        headers=auth_headers(doctor_2_token),
+        json={"status": "ACCEPTED"},
+    )
+    assert accept_2.status_code == 200, accept_2.text
+
+    transfer = client.post(
+        "/doctor/patient-records",
+        headers=auth_headers(doctor_2_token),
+        json={"user_id": user_id, "title": "Private User Profile"},
+    )
+    assert transfer.status_code == 200, transfer.text
+    transfer_payload = transfer.json()
+    assert transfer_payload["id"] == record_id
+    assert transfer_payload["doctor_id"] == doctor_2_id
+
+    old_doctor_access = client.get(f"/records/{record_id}", headers=auth_headers(doctor_1_token))
+    assert old_doctor_access.status_code == 403, old_doctor_access.text
+
+    new_doctor_access = client.get(f"/records/{record_id}", headers=auth_headers(doctor_2_token))
+    assert new_doctor_access.status_code == 200, new_doctor_access.text
+
+    user_access = client.get(f"/records/{record_id}", headers=auth_headers(user_token))
+    assert user_access.status_code == 200, user_access.text
+
+    admin_access = client.get(f"/records/{record_id}", headers=auth_headers(admin_token))
+    assert admin_access.status_code == 403, admin_access.text

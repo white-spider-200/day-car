@@ -25,5 +25,6 @@ class TreatmentRequestOut(BaseModel):
     status: TreatmentRequestStatus
     message: str
     doctor_note: str | None
+    doctor_display_name: str | None = None
     created_at: datetime
     updated_at: datetime

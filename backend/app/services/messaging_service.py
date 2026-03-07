@@ -3,10 +3,10 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.db.models import Message, User
+from app.db.models import Message, User, UserRole
 from app.services.notification_service import create_notification
 
 
@@ -25,6 +25,14 @@ def send_message(
     if not receiver:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Receiver not found")
 
+    existing_unread_from_sender = db.scalar(
+        select(func.count(Message.id)).where(
+            Message.sender_user_id == sender_user.id,
+            Message.receiver_user_id == receiver_user_id,
+            Message.read_at.is_(None),
+        )
+    ) or 0
+
     message = Message(
         sender_user_id=sender_user.id,
         receiver_user_id=receiver_user_id,
@@ -34,14 +42,30 @@ def send_message(
     db.add(message)
     db.flush()
 
-    create_notification(
-        db,
-        user_id=receiver_user_id,
-        event_type="MESSAGE_RECEIVED",
-        title="New message",
-        body="You received a new message.",
-        metadata_json={"message_id": str(message.id), "sender_user_id": str(sender_user.id)},
-    )
+    # Notify receiver only once while unread messages from this sender exist.
+    if existing_unread_from_sender == 0:
+        if sender_user.role == UserRole.DOCTOR:
+            title = "New message from your doctor"
+            body_text = "Your doctor sent you a new message."
+            event_type = "MESSAGE_FROM_DOCTOR"
+        elif sender_user.role == UserRole.USER:
+            title = "New message from a patient"
+            body_text = "A patient sent you a new message."
+            event_type = "MESSAGE_FROM_USER"
+        else:
+            title = "New message"
+            body_text = "You received a new message."
+            event_type = "MESSAGE_RECEIVED"
+
+        create_notification(
+            db,
+            user_id=receiver_user_id,
+            event_type=event_type,
+            title=title,
+            body=body_text,
+            metadata_json={"message_id": str(message.id), "sender_user_id": str(sender_user.id)},
+        )
+
     db.commit()
     db.refresh(message)
     return message

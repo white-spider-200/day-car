@@ -1,11 +1,13 @@
 import { AppointmentStatus, Prisma, Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { decodeNotesAndSessionMode, encodeNotesWithSessionMode, type SessionMode } from "@/lib/session-mode";
 import { createZoomMeetingForAppointment } from "@/lib/zoom";
 
 export async function createAppointment(input: {
   patientId: string;
   doctorId: string;
   slotId: string;
+  sessionMode: SessionMode;
   contactEmail?: string;
   notes?: string;
 }) {
@@ -31,7 +33,7 @@ export async function createAppointment(input: {
         endAt: slot.endAt,
         status: AppointmentStatus.REQUESTED,
         contactEmail: input.contactEmail || null,
-        notes: input.notes || null
+        notes: encodeNotesWithSessionMode(input.notes, input.sessionMode)
       }
     });
 
@@ -129,7 +131,10 @@ export async function updateAppointmentStatus(input: {
   });
 
   if (input.status === AppointmentStatus.CONFIRMED) {
-    await createZoomMeetingForAppointment(appointment.id);
+    const { sessionMode } = decodeNotesAndSessionMode(appointment.notes);
+    if (sessionMode === "zoom") {
+      await createZoomMeetingForAppointment(appointment.id);
+    }
   }
 
   return updated;

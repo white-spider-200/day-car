@@ -830,13 +830,20 @@ export default function DoctorDashboardPage() {
                   ? 'لا توجد مواعيد قادمة'
                   : 'No upcoming appointments'}
             </p>
-            <div className="mt-3">
+            <div className="mt-3 flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => navigateTo('/doctor/prescriptions')}
                 className="rounded-lg border border-borderGray bg-white px-3 py-1.5 text-xs font-semibold text-textMain transition hover:border-primary/40 hover:text-primary"
               >
                 {isAr ? 'صفحة الوصفات الدوائية + QR' : 'Open Prescription + QR Page'}
+              </button>
+              <button
+                type="button"
+                onClick={() => navigateTo('/doctor/vr-session')}
+                className="rounded-lg border border-primary bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary hover:text-white"
+              >
+                {isAr ? 'بدء جلسة علاج بالواقع الافتراضي (VR)' : 'Launch VR Therapy Session'}
               </button>
             </div>
           </div>

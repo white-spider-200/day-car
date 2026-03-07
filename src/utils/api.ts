@@ -23,9 +23,31 @@ function normalizeBase(base: string): string {
   return base.replace(/\/+$/, '');
 }
 
-function buildApiCandidates(): string[] {
+function stripApiSuffix(base: string): string {
+  return base.replace(/\/+$/, '').replace(/\/api$/, '');
+}
+
+function readEnvApiBase(): string {
   const env = import.meta.env as Record<string, string | boolean | undefined>;
   const envBase = typeof env.VITE_API_BASE_URL === 'string' ? env.VITE_API_BASE_URL : '';
+  return envBase.trim();
+}
+
+export function getBackendOrigin(): string {
+  const envBase = readEnvApiBase();
+  if (envBase && /^https?:\/\//i.test(envBase)) {
+    return stripApiSuffix(envBase);
+  }
+
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+
+  return '';
+}
+
+function buildApiCandidates(): string[] {
+  const envBase = readEnvApiBase();
 
   const browserHostBase =
     typeof window !== 'undefined'
@@ -33,11 +55,9 @@ function buildApiCandidates(): string[] {
       : '';
 
   return uniqueNonEmpty([
-    envBase,
     '/api',
+    envBase,
     browserHostBase,
-    'http://127.0.0.1:8000',
-    'http://localhost:8000',
   ]).map(normalizeBase);
 }
 
@@ -46,6 +66,34 @@ function toUrl(base: string, path: string): string {
     throw new Error(`API path must start with '/': ${path}`);
   }
   return `${base}${path}`;
+}
+
+export function buildWebSocketUrls(path: string, query?: Record<string, string>): string[] {
+  if (!path.startsWith('/')) {
+    throw new Error(`WebSocket path must start with '/': ${path}`);
+  }
+
+  const queryEntries = Object.entries(query ?? {}).filter(([, value]) => value.trim().length > 0);
+
+  return uniqueNonEmpty(
+    buildApiCandidates().flatMap((base) => {
+      if (typeof window === 'undefined') {
+        return [];
+      }
+
+      const absoluteBase = /^https?:\/\//i.test(base) ? base : `${window.location.origin}${base}`;
+      try {
+        const url = new URL(`${absoluteBase}${path}`);
+        for (const [key, value] of queryEntries) {
+          url.searchParams.set(key, value);
+        }
+        url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+        return [url.toString()];
+      } catch {
+        return [];
+      }
+    })
+  );
 }
 
 export async function fetchFirstReachable(path: string, init?: RequestInit): Promise<Response> {
@@ -81,6 +129,17 @@ export class ApiError extends Error {
 }
 
 function buildErrorMessage(defaultMessage: string, responseBody: unknown): string {
+  if (
+    typeof responseBody === 'object' &&
+    responseBody !== null &&
+    'detail' in responseBody &&
+    typeof (responseBody as { detail?: unknown }).detail === 'object' &&
+    (responseBody as { detail?: { message?: unknown } }).detail !== null &&
+    typeof (responseBody as { detail: { message?: unknown } }).detail.message === 'string'
+  ) {
+    return (responseBody as { detail: { message: string } }).detail.message;
+  }
+
   if (
     typeof responseBody === 'object' &&
     responseBody !== null &&

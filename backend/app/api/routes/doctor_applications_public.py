@@ -4,10 +4,12 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, status
 from pydantic import ValidationError
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError, ProgrammingError
 from sqlalchemy.orm import Session
 
 from app.core.professional_roles import ProfessionalType
-from app.db.models import ApplicationStatus, DoctorApplication
+from app.core.security import hash_password
+from app.db.models import ApplicationStatus, DoctorApplication, User, UserRole, UserStatus
 from app.db.models.doctor_document import DoctorDocument, DocumentType
 from app.db.session import get_db
 from app.schemas.public_doctor_application import (
@@ -48,6 +50,7 @@ def doctor_application_meta():
                     "psychiatrist_prescription_ack",
                 ],
                 "required_documents": [
+                    "LICENSE",
                     "MEDICAL_DEGREE",
                     "PSYCHIATRY_SPECIALIZATION",
                     "ACTIVE_PRACTICE_PROOF",
@@ -67,6 +70,7 @@ def doctor_application_meta():
                     "therapist_no_prescription_ack",
                 ],
                 "required_documents": [
+                    "LICENSE",
                     "THERAPY_SPECIALIZATION",
                     "SPECIALIZATION_CERTIFICATE",
                 ],
@@ -131,12 +135,32 @@ async def submit_public_doctor_application(
         ) from exc
     email = required_text("email")
     normalized_email = email.strip().lower()
-    existing_application = db.scalar(
-        select(DoctorApplication).where(func.lower(DoctorApplication.email) == normalized_email)
-    )
+    try:
+        existing_application = db.scalar(
+            select(DoctorApplication).where(func.lower(DoctorApplication.email) == normalized_email)
+        )
+    except ProgrammingError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database schema is outdated. Run: alembic upgrade head",
+        ) from exc
     if existing_application:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An application with this email already exists")
     phone = required_text("phone")
+    password = required_text("password")
+    existing_email_user = db.scalar(select(User).where(func.lower(User.email) == normalized_email))
+    if existing_email_user:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Email already registered. Please login with your password.",
+        )
+    existing_phone_user = db.scalar(select(User).where(User.phone == phone))
+    if existing_phone_user:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Phone number already registered.",
+        )
     national_id = optional_text("national_id")
     license_number = optional_text("license_number")
     license_issuing_authority = optional_text("license_issuing_authority")
@@ -176,10 +200,20 @@ async def submit_public_doctor_application(
         return isinstance(value, UploadFile) or (hasattr(value, "filename") and hasattr(value, "read"))
 
     if professional_type == ProfessionalType.PSYCHIATRIST:
+        if not _is_file(medical_degree_certificate):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="medical_degree_certificate is required",
+            )
         if not _is_file(psychiatry_specialization_certificate):
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="psychiatry_specialization_certificate is required",
+            )
+        if not _is_file(active_practice_proof):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="active_practice_proof is required",
             )
     else:
         if not _is_file(therapy_specialization_certificate):
@@ -209,6 +243,7 @@ async def submit_public_doctor_application(
         "professional_type": professional_type,
         "full_name": full_name,
         "email": normalized_email,
+        "password": password,
         "phone": phone,
         "national_id": national_id,
         "license_number": license_number,
@@ -265,10 +300,29 @@ async def submit_public_doctor_application(
     specialty_values = [payload.specialty]
     if payload.sub_specialties:
         specialty_values.extend(payload.sub_specialties)
+    doctor_user = User(
+        email=payload.email,
+        phone=payload.phone,
+        password_hash=hash_password(payload.password),
+        role=UserRole.DOCTOR,
+        status=UserStatus.ACTIVE,
+    )
+    db.add(doctor_user)
+    try:
+        db.flush()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email or phone already registered") from exc
+    except ProgrammingError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database schema is outdated. Run: alembic upgrade head",
+        ) from exc
 
     application = DoctorApplication(
         status=ApplicationStatus.SUBMITTED,
-        doctor_user_id=None,
+        doctor_user_id=doctor_user.id,
         display_name=payload.full_name,
         full_name=payload.full_name,
         email=payload.email,
@@ -310,8 +364,15 @@ async def submit_public_doctor_application(
         admin_note=None,
         internal_notes=None,
     )
-    db.add(application)
-    db.flush()
+    try:
+        db.add(application)
+        db.flush()
+    except ProgrammingError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database schema is outdated. Run: alembic upgrade head",
+        ) from exc
 
     document_rows: list[DoctorDocument] = []
     if license_document_url:
@@ -350,10 +411,17 @@ async def submit_public_doctor_application(
                 file_url=specialization_certificate_url,
             )
         )
-    if document_rows:
-        db.add_all(document_rows)
-    db.commit()
-    db.refresh(application)
+    try:
+        if document_rows:
+            db.add_all(document_rows)
+        db.commit()
+        db.refresh(application)
+    except ProgrammingError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database schema is outdated. Run: alembic upgrade head",
+        ) from exc
 
     return PublicDoctorApplicationCreateOut(
         id=str(application.id),

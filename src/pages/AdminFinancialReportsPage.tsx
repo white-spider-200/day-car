@@ -150,6 +150,7 @@ export default function AdminFinancialReportsPage() {
         navItems={[
           { labelKey: 'nav.dashboard', href: '/admin/applications' },
           { labelKey: 'nav.users', href: '/admin/users' },
+          { labelKey: 'nav.complaints', href: '/admin/complaints' },
           { labelKey: 'nav.about', href: '/about' }
         ]}
       />

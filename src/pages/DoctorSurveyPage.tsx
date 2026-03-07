@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { DOCTOR_MATCH_QUESTIONS, INITIAL_FILTERS, TYPE_DESCRIPTIONS, TYPE_TITLES, type MatchFilters } from '../data/doctorMatchingTest';
 import { useLanguage } from '../context/LanguageContext';
-import { fetchFirstReachable } from '../utils/api';
+import { fetchFirstReachable, getBackendOrigin } from '../utils/api';
 import { navigateTo } from '../utils/auth';
 import './DoctorSurveyPage.css';
 
@@ -99,8 +99,10 @@ const COPY = {
     male: 'Male',
     arabic: 'Arabic',
     english: 'English',
+    onlineAny: 'Online (Any)',
     onlineVideo: 'Online (Video)',
-    inPerson: 'In-person',
+    onlineCall: 'Online (Call)',
+    onlineChat: 'Online (Chat)',
     pricePlaceholderMin: 'e.g. 40',
     pricePlaceholderMax: 'e.g. 120',
     locationPlaceholder: 'City, country, or online',
@@ -155,8 +157,10 @@ const COPY = {
     male: 'ذكر',
     arabic: 'العربية',
     english: 'الإنجليزية',
+    onlineAny: 'أونلاين (الكل)',
     onlineVideo: 'أونلاين (فيديو)',
-    inPerson: 'حضوري',
+    onlineCall: 'أونلاين (مكالمة)',
+    onlineChat: 'أونلاين (دردشة)',
     pricePlaceholderMin: 'مثال: 40',
     pricePlaceholderMax: 'مثال: 120',
     locationPlaceholder: 'مدينة، دولة، أو أونلاين',
@@ -193,10 +197,7 @@ function resolveMediaUrl(url: string | null): string | undefined {
   if (typeof window !== 'undefined' && path.startsWith('/images/')) {
     return `${window.location.origin}${path}`;
   }
-  const env = import.meta.env as Record<string, string | boolean | undefined>;
-  const envBase = typeof env.VITE_API_BASE_URL === 'string' ? env.VITE_API_BASE_URL.trim() : '';
-  const fallback = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8000` : 'http://localhost:8000';
-  const base = (envBase && envBase !== '/api' ? envBase : fallback).replace(/\/+$/, '').replace(/\/api$/, '');
+  const base = getBackendOrigin();
   return `${base}${path}`;
 }
 
@@ -522,10 +523,10 @@ export default function DoctorSurveyPage() {
                 {copy.sessionType}
                 <select value={filters.sessionType} onChange={(e) => setFilters((prev) => ({ ...prev, sessionType: e.target.value }))}>
                   <option value="">{copy.any}</option>
+                  <option value="ONLINE">{copy.onlineAny}</option>
                   <option value="VIDEO">{copy.onlineVideo}</option>
-                  <option value="IN_PERSON">{copy.inPerson}</option>
-                  <option value="AUDIO">Audio</option>
-                  <option value="CHAT">Chat</option>
+                  <option value="AUDIO">{copy.onlineCall}</option>
+                  <option value="CHAT">{copy.onlineChat}</option>
                 </select>
               </label>
 

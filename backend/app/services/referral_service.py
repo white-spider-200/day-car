@@ -39,6 +39,14 @@ def create_referral(
         body="A doctor sent you a referral.",
         metadata_json={"referral_id": str(referral.id), "patient_id": str(patient_id)},
     )
+    create_notification(
+        db,
+        user_id=sender_doctor.id,
+        event_type="REFERRAL_SENT",
+        title="Referral sent",
+        body="Your referral was sent successfully.",
+        metadata_json={"referral_id": str(referral.id), "receiver_doctor_id": str(receiver_doctor_id), "patient_id": str(patient_id)},
+    )
     db.commit()
     db.refresh(referral)
     return referral
@@ -86,10 +94,17 @@ def update_referral(
         referral.note = note
     db.flush()
 
-    notify_target = referral.sender_doctor_id if is_receiver else referral.receiver_doctor_id
     create_notification(
         db,
-        user_id=notify_target,
+        user_id=referral.sender_doctor_id,
+        event_type="REFERRAL_UPDATED",
+        title="Referral updated",
+        body=f"Referral status changed to {status_update.value}.",
+        metadata_json={"referral_id": str(referral.id), "status": status_update.value},
+    )
+    create_notification(
+        db,
+        user_id=referral.receiver_doctor_id,
         event_type="REFERRAL_UPDATED",
         title="Referral updated",
         body=f"Referral status changed to {status_update.value}.",

@@ -62,3 +62,15 @@ def test_verify_login_code_rejects_invalid_code(client):
         json={"email": "otp-invalid@testmail.dev", "code": "000000"},
     )
     assert verify.status_code == 401, verify.text
+
+
+def test_user_registration_requires_name_age_country(client):
+    res = client.post(
+        "/auth/register",
+        json={
+            "email": "missing-fields@testmail.dev",
+            "password": "UserPass123!",
+            "role": "USER",
+        },
+    )
+    assert res.status_code == 422, res.text

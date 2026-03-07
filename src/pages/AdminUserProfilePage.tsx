@@ -6,6 +6,7 @@ import { ApiError, apiJson } from '../utils/api';
 type UserStatus = 'ACTIVE' | 'SUSPENDED';
 type UserRole = 'USER' | 'DOCTOR' | 'ADMIN';
 type AppointmentStatus = 'REQUESTED' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'NO_SHOW';
+type TreatmentRequestStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED';
 
 type AdminUserListItem = {
   id: string;
@@ -51,6 +52,16 @@ type AdminUserDetail = {
   cancelled_count: number;
   last_appointment_at: string | null;
   appointments: AdminUserAppointment[];
+  treatment_requests: Array<{
+    id: string;
+    doctor_user_id: string;
+    doctor_display_name: string | null;
+    status: TreatmentRequestStatus;
+    message: string;
+    doctor_note: string | null;
+    created_at: string;
+    updated_at: string;
+  }>;
 };
 
 type ViewMode = 'list' | 'detail';
@@ -108,6 +119,12 @@ function appointmentStatusClass(status: AppointmentStatus): string {
   return 'border-slate-200 bg-slate-100 text-slate-700';
 }
 
+function treatmentRequestStatusClass(status: TreatmentRequestStatus): string {
+  if (status === 'ACCEPTED') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+  if (status === 'DECLINED') return 'border-rose-200 bg-rose-50 text-rose-700';
+  return 'border-amber-200 bg-amber-50 text-amber-700';
+}
+
 export default function AdminUserProfilePage() {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -135,6 +152,36 @@ export default function AdminUserProfilePage() {
       return matchesSearch && matchesStatus;
     });
   }, [searchQuery, statusFilter, users]);
+
+  const feedbackByDoctor = useMemo(() => {
+    if (!selectedUserDetail) return [];
+
+    const groups = new Map<
+      string,
+      {
+        doctorUserId: string;
+        doctorDisplayName: string;
+        requests: AdminUserDetail['treatment_requests'];
+      }
+    >();
+
+    for (const request of selectedUserDetail.treatment_requests) {
+      const key = request.doctor_user_id;
+      const existing = groups.get(key);
+      if (existing) {
+        existing.requests.push(request);
+        continue;
+      }
+
+      groups.set(key, {
+        doctorUserId: request.doctor_user_id,
+        doctorDisplayName: request.doctor_display_name ?? `Doctor ${request.doctor_user_id.slice(0, 8)}`,
+        requests: [request]
+      });
+    }
+
+    return Array.from(groups.values());
+  }, [selectedUserDetail]);
 
   const loadUsers = async () => {
     setIsListLoading(true);
@@ -443,20 +490,56 @@ export default function AdminUserProfilePage() {
                               <p className="mt-1 text-xs text-muted">{formatDate(appointment.start_at)}</p>
                               <p className="mt-1 text-xs text-muted">Timezone: {appointment.timezone}</p>
                               {appointment.notes && <p className="mt-2 text-xs text-muted">Notes: {appointment.notes}</p>}
-                              {appointment.meeting_link && (
-                                <a
-                                  href={appointment.meeting_link}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="mt-2 inline-block text-xs font-semibold text-primary hover:text-primaryDark"
-                                >
-                                  Open meeting link
-                                </a>
-                              )}
                             </div>
                             <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${appointmentStatusClass(appointment.status)}`}>
                               {appointment.status}
                             </span>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </section>
+
+                <section className="rounded-hero border border-borderGray bg-white p-6 shadow-card">
+                  <h2 className="text-xl font-black text-textMain">Doctor Notes & User Messages</h2>
+
+                  {feedbackByDoctor.length === 0 ? (
+                    <p className="mt-4 text-sm text-muted">No doctor notes or treatment requests for this user.</p>
+                  ) : (
+                    <div className="mt-4 space-y-3">
+                      {feedbackByDoctor.map((group) => (
+                        <article key={group.doctorUserId} className="rounded-xl border border-borderGray bg-slate-50 p-4">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-sm font-bold text-textMain">{group.doctorDisplayName}</p>
+                            <span className="rounded-full border border-borderGray bg-white px-2.5 py-1 text-xs font-semibold text-muted">
+                              {group.requests.length} interaction{group.requests.length > 1 ? 's' : ''}
+                            </span>
+                          </div>
+
+                          <div className="mt-3 space-y-2">
+                            {group.requests.map((request) => (
+                              <div key={request.id} className="rounded-lg border border-borderGray bg-white p-3">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <p className="text-xs text-muted">Created: {formatDate(request.created_at)}</p>
+                                  <span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${treatmentRequestStatusClass(request.status)}`}>
+                                    {request.status}
+                                  </span>
+                                </div>
+
+                                <div className="mt-2 rounded-md border border-borderGray bg-slate-50 p-2">
+                                  <p className="text-[11px] font-black uppercase tracking-wide text-muted">Feedback To User</p>
+                                  <p className="mt-1 text-sm text-textMain whitespace-pre-wrap break-words">
+                                    {request.doctor_note?.trim() ? request.doctor_note : 'No feedback yet from this doctor.'}
+                                  </p>
+                                </div>
+
+                                <div className="mt-2 rounded-md border border-borderGray bg-slate-50 p-2">
+                                  <p className="text-[11px] font-black uppercase tracking-wide text-muted">User Message</p>
+                                  <p className="mt-1 text-sm text-textMain whitespace-pre-wrap break-words">{request.message}</p>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </article>
                       ))}

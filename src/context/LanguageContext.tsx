@@ -18,6 +18,7 @@ const translations = {
     'nav.howVerificationWorks': 'How verification works',
     'nav.forDoctors': 'For Doctors',
     'nav.about': 'About',
+    'nav.complaints': 'Complaints',
     'nav.users': 'Users',
     'nav.dashboard': 'Dashboard',
     // Auth
@@ -179,6 +180,7 @@ const translations = {
             'nav.howVerificationWorks': 'كيف تعمل المصادقة',
             'nav.forDoctors': 'للأطباء',
             'nav.about': 'حول',
+            'nav.complaints': 'الشكاوى',
             'nav.users': 'المستخدمين',
             'nav.dashboard': 'لوحة التحكم',
             // Auth

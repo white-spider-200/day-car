@@ -1,5 +1,6 @@
 import { Hero } from "@/components/home/hero";
 import { TopDoctors } from "@/components/home/top-doctors";
+import { VrDemoLibrary } from "@/components/home/vr-demo-library";
 import { doctorPublicSelect } from "@/lib/doctors";
 import { prisma } from "@/lib/prisma";
 
@@ -16,10 +17,21 @@ export default async function HomePage() {
     orderBy: [{ fees: "asc" }]
   });
 
+  const topVrScenarios = await prisma.vrScenario.findMany({
+    include: {
+      _count: {
+        select: { sessions: true }
+      }
+    },
+    orderBy: [{ sessions: { _count: "desc" } }, { createdAt: "desc" }],
+    take: 3
+  });
+
   return (
     <>
       <Hero />
       <TopDoctors doctors={topDoctors} />
+      <VrDemoLibrary scenarios={topVrScenarios} />
     </>
   );
 }

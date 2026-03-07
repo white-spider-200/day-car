@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
+import AvailabilitySection, { type AvailabilitySlot } from '../components/profile/AvailabilitySection';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { useLanguage } from '../context/LanguageContext';
+import { weeklyAvailability as fallbackWeeklyAvailability } from '../data/doctorProfileData';
 import { getTherapistBySlug, therapists, type TherapistLicense } from '../data/therapists';
+
+const WEEKDAY_ORDER: Array<'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun'> = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 function getSlugFromPath(pathname: string): string {
   const chunks = pathname.split('/').filter(Boolean);
@@ -26,6 +30,46 @@ function formatPrice(min: number | null, max: number | null, currency: string, f
   }
 
   return `${min ?? max} ${currency}`;
+}
+
+function toWeeklyAvailabilityFromIsoSlots(isoSlots: string[], timezone = 'Asia/Amman'): Record<string, AvailabilitySlot[]> {
+  const dayFormatter = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: timezone });
+  const timeFormatter = new Intl.DateTimeFormat('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: timezone
+  });
+
+  const grouped = new Map<string, string[]>();
+  for (const day of WEEKDAY_ORDER) {
+    grouped.set(day, []);
+  }
+
+  for (const value of isoSlots) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      continue;
+    }
+    const day = dayFormatter.format(date);
+    const time = timeFormatter.format(date);
+    const existing = grouped.get(day);
+    if (!existing || existing.includes(time)) {
+      continue;
+    }
+    existing.push(time);
+  }
+
+  const output: Record<string, AvailabilitySlot[]> = {};
+  for (const day of WEEKDAY_ORDER) {
+    const sorted = (grouped.get(day) ?? []).sort();
+    output[day] = sorted.slice(0, 4).map((time) => ({ time, status: 'available' }));
+  }
+  return output;
+}
+
+function hasAnyLiveAvailability(weeklyMap: Record<string, AvailabilitySlot[]>): boolean {
+  return Object.values(weeklyMap).some((daySlots) => daySlots.length > 0);
 }
 
 export default function TherapistProfilePage() {
@@ -152,6 +196,10 @@ export default function TherapistProfilePage() {
   const localizedOfficeHours = cleanList(isAr ? therapist.office_hours_ar : therapist.office_hours_en);
   const localizedMedia = cleanList(isAr ? therapist.media_highlights_ar : therapist.media_highlights_en);
   const localizedLicenses: TherapistLicense[] = (isAr ? therapist.licenses_ar : undefined) ?? therapist.licenses;
+  const liveWeeklyAvailability = useMemo(() => {
+    const mapped = toWeeklyAvailabilityFromIsoSlots(therapist.availability_slots ?? []);
+    return hasAnyLiveAvailability(mapped) ? mapped : fallbackWeeklyAvailability;
+  }, [therapist.availability_slots]);
 
   const yearsText =
     therapist.years_experience === null
@@ -363,6 +411,8 @@ export default function TherapistProfilePage() {
               </div>
             </dl>
           </section>
+
+          <AvailabilitySection weeklyAvailability={liveWeeklyAvailability} />
 
           <section className="rounded-hero border border-borderGray bg-white p-5 shadow-card sm:p-6">
             <h2 className="text-xl font-black text-textMain sm:text-2xl">{copy.reputation}</h2>

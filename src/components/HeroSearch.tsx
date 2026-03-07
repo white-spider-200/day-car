@@ -6,6 +6,7 @@ import therapyManPsychiatristVideo from '../assets/media/therapy-man-psychiatris
 import therapyOnlineLaptopVideo from '../assets/media/therapy-online-laptop.mp4';
 import therapyPregnantWomanVideo from '../assets/media/therapy-pregnant-woman.mp4';
 import therapyStressConceptVideo from '../assets/media/therapy-stress-concept.mp4';
+import founderPhoto from '../assets/media/unnamed.jpg';
 import therapyWomanMentalHealthVideo from '../assets/media/therapy-woman-mental-health.mp4';
 import sabinaLogo from '../assets/sabina-logo.png';
 import { useLanguage } from '../context/LanguageContext';
@@ -163,7 +164,7 @@ export default function HeroSearch() {
             <div className="relative mx-auto max-w-[460px]">
               <article className="group relative overflow-hidden rounded-[26px] border border-[#dbe8ef] bg-white p-3 shadow-[0_16px_34px_rgba(13,31,60,0.1)] transition duration-300 hover:-translate-y-1">
                 <img
-                  src="https://lh3.googleusercontent.com/gps-cs-s/AHVAweoQoTHslLTqlg2ImLSt9ojJMaAFpIY_RzhR8a0xS4TCWK0qfmCFurOnzViOYWF851dAWe9YL7iSz0RcSuq5m489lRyzTVIFLUQmK8nq8tJlMKKPvghBmgpO5gKvmf1XCkW1UWMbOw=s680-w680-h510"
+                  src={founderPhoto}
                   alt={isAr ? 'طبيب نفسي' : 'Therapist'}
                   loading="lazy"
                   className="h-[350px] w-full rounded-[20px] object-cover"

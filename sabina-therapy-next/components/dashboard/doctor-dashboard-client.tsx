@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ type AppointmentResponse = {
   appointments: Array<{
     id: string;
     status: "requested" | "confirmed" | "canceled" | "completed";
+    sessionMode?: "zoom" | "vr";
     startAt: string;
     patientName: string;
   }>;
@@ -201,6 +203,7 @@ export function DoctorDashboardClient() {
             <div key={appointment.id} className="rounded-md border border-slate-200 p-3 text-sm">
               <p className="font-medium">{appointment.patientName}</p>
               <p>{toAmmanLabel(new Date(appointment.startAt))}</p>
+              <p className="capitalize">Session: {appointment.sessionMode === "vr" ? "VR" : "Zoom"}</p>
               <div className="mt-2 flex gap-2">
                 <Button
                   size="sm"
@@ -235,10 +238,17 @@ export function DoctorDashboardClient() {
             <div key={appointment.id} className="rounded-md border border-slate-200 p-3 text-sm">
               <p className="font-medium">{appointment.patientName}</p>
               <p>{toAmmanLabel(new Date(appointment.startAt))}</p>
+              <p className="capitalize">Session: {appointment.sessionMode === "vr" ? "VR" : "Zoom"}</p>
               <div className="mt-2 flex gap-2">
-                <Button size="sm" onClick={() => joinMutation.mutate(appointment.id)}>
-                  Start Call
-                </Button>
+                {appointment.sessionMode === "vr" ? (
+                  <Link href={`/dashboard/doctor/vr?appointmentId=${appointment.id}`}>
+                    <Button size="sm">Open VR Workspace</Button>
+                  </Link>
+                ) : (
+                  <Button size="sm" onClick={() => joinMutation.mutate(appointment.id)}>
+                    Start Zoom
+                  </Button>
+                )}
                 <Button
                   size="sm"
                   variant="outline"
@@ -270,17 +280,43 @@ export function DoctorDashboardClient() {
           </div>
           <div className="space-y-2">
             {slotsQuery.data?.slots.map((slot) => (
-              <div key={slot.id} className="flex items-center justify-between rounded-md border p-2 text-sm">
+              <div
+                key={slot.id}
+                className={`flex items-center justify-between rounded-md border p-2 text-sm ${
+                  slot.isBooked ? "border-red-200 bg-red-50" : ""
+                }`}
+              >
                 <span>{toAmmanLabel(new Date(slot.startAt))}</span>
                 {!slot.isBooked ? (
                   <Button size="sm" variant="outline" onClick={() => deleteSlotMutation.mutate(slot.id)}>
                     Delete
                   </Button>
                 ) : (
-                  <span className="text-xs text-slate-500">Booked</span>
+                  <span className="rounded-full border border-red-200 bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
+                    Booked
+                  </span>
                 )}
               </div>
             ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>VR Workspace</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-slate-600">
+            Use the special VR page to choose scenarios and play VR videos during a VR appointment.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Link href="/dashboard/doctor/vr">
+              <Button size="sm">Open Doctor VR Workspace</Button>
+            </Link>
+            <Link href="/doctor/vr">
+              <Button size="sm" variant="outline">Create VR Session Link</Button>
+            </Link>
           </div>
         </CardContent>
       </Card>

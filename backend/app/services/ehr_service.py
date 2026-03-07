@@ -63,8 +63,18 @@ def create_patient_record(db: Session, *, doctor_user: User, user_id, title: str
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only doctors can create records")
     if not _has_doctor_patient_relationship(db, doctor_id=doctor_user.id, user_id=user_id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Doctor is not assigned to this patient")
+    normalized_title = title.strip()
+    existing_record = db.scalar(select(PatientRecord).where(PatientRecord.user_id == user_id))
+    if existing_record:
+        # Transfer profile visibility to the currently assigned doctor.
+        existing_record.doctor_id = doctor_user.id
+        if normalized_title:
+            existing_record.title = normalized_title
+        db.commit()
+        db.refresh(existing_record)
+        return existing_record
 
-    record = PatientRecord(user_id=user_id, doctor_id=doctor_user.id, title=title.strip())
+    record = PatientRecord(user_id=user_id, doctor_id=doctor_user.id, title=normalized_title)
     db.add(record)
     db.commit()
     db.refresh(record)
@@ -101,8 +111,6 @@ def get_record_for_actor(db: Session, *, record_id, actor_user: User) -> Patient
         return record
     if actor_user.role == UserRole.USER and record.user_id == actor_user.id:
         return record
-    if actor_user.role == UserRole.ADMIN:
-        return record
     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to access this record")
 
 
@@ -119,12 +127,17 @@ def list_record_entries(db: Session, *, record_id) -> list[RecordEntry]:
 def create_record_entry(db: Session, *, record: PatientRecord, doctor_user: User, entry_type, content: str) -> RecordEntry:
     if doctor_user.role != UserRole.DOCTOR or record.doctor_id != doctor_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only assigned doctor can write entries")
-    if entry_type == RecordEntryType.PRESCRIPTION:
+    if entry_type in {RecordEntryType.PRESCRIPTION, RecordEntryType.DIAGNOSIS}:
         professional_type = get_doctor_professional_type(db, doctor_user_id=doctor_user.id)
         if professional_type != ProfessionalType.PSYCHIATRIST:
+            detail = (
+                "Only psychiatrists are allowed to create prescription entries"
+                if entry_type == RecordEntryType.PRESCRIPTION
+                else "Only psychiatrists are allowed to create medical diagnosis entries"
+            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only psychiatrists are allowed to create prescription entries",
+                detail=detail,
             )
     entry = RecordEntry(
         record_id=record.id,
@@ -229,8 +242,6 @@ def verify_document_download_access(db: Session, *, document_id, token: str, act
     record = db.scalar(select(PatientRecord).where(PatientRecord.id == document.record_id))
     if not record:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Record not found")
-    if actor_user.role == UserRole.ADMIN:
-        return document
     if actor_user.role == UserRole.DOCTOR and record.doctor_id == actor_user.id:
         return document
     if actor_user.role == UserRole.USER and record.user_id == actor_user.id:

@@ -49,6 +49,14 @@ def create_treatment_request(db: Session, *, user: User, doctor_id, message: str
         body="A new patient has sent a treatment request.",
         metadata_json={"treatment_request_id": str(request.id), "user_id": str(user.id)},
     )
+    create_notification(
+        db,
+        user_id=user.id,
+        event_type="TREATMENT_REQUEST_SUBMITTED",
+        title="Treatment request sent",
+        body="Your treatment request was sent to the doctor.",
+        metadata_json={"treatment_request_id": str(request.id), "doctor_user_id": str(doctor_id)},
+    )
     db.commit()
     db.refresh(request)
     return request
@@ -59,6 +67,16 @@ def list_doctor_treatment_requests(db: Session, *, doctor_user_id) -> list[Treat
         db.scalars(
             select(TreatmentRequest)
             .where(TreatmentRequest.doctor_id == doctor_user_id)
+            .order_by(TreatmentRequest.created_at.desc())
+        )
+    )
+
+
+def list_user_treatment_requests(db: Session, *, user_id) -> list[TreatmentRequest]:
+    return list(
+        db.scalars(
+            select(TreatmentRequest)
+            .where(TreatmentRequest.user_id == user_id)
             .order_by(TreatmentRequest.created_at.desc())
         )
     )
@@ -92,6 +110,14 @@ def update_treatment_request(
         title="Treatment request update",
         body=f"Your request status is now {status_update.value}.",
         metadata_json={"treatment_request_id": str(request.id), "status": status_update.value},
+    )
+    create_notification(
+        db,
+        user_id=doctor_user.id,
+        event_type="TREATMENT_REQUEST_UPDATED",
+        title="Treatment request updated",
+        body=f"You changed this request to {status_update.value}.",
+        metadata_json={"treatment_request_id": str(request.id), "status": status_update.value, "user_id": str(request.user_id)},
     )
     db.commit()
     db.refresh(request)

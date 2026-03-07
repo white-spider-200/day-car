@@ -31,7 +31,7 @@ def test_doctor_can_save_and_submit_and_save_blocked_after_submit(client, admin_
     assert save.status_code == 200, save.text
     assert save.json()["status"] == "DRAFT"
 
-    for doc_type in ["MEDICAL_DEGREE", "PSYCHIATRY_SPECIALIZATION", "ACTIVE_PRACTICE_PROOF"]:
+    for doc_type in ["LICENSE", "MEDICAL_DEGREE", "PSYCHIATRY_SPECIALIZATION", "ACTIVE_PRACTICE_PROOF"]:
         upload = client.post(
             "/doctor/documents/upload",
             headers=auth_headers(doctor_token),

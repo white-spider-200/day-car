@@ -19,18 +19,19 @@ def init_payment(
     current_user: User = Depends(require_roles(UserRole.USER)),
     db: Session = Depends(get_db),
 ):
-    payment, checkout_url, client_token = initialize_payment(
+    payment, checkout_url, client_token, quote = initialize_payment(
         db,
         user=current_user,
         appointment_id=payload.appointment_id,
-        amount=payload.amount,
         method=payload.method,
         insurance_provider=payload.insurance_provider,
+        package_sessions=payload.package_sessions,
     )
     return PaymentInitOut(
         payment=PaymentOut.model_validate(payment),
         checkout_url=checkout_url,
         client_token=client_token,
+        quote=PaymentInitOut.PricingQuoteOut.model_validate(quote),
     )
 
 

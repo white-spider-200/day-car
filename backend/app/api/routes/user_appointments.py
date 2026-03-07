@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.deps import get_current_user, require_roles
 from app.db.models import User, UserRole
 from app.db.session import get_db
-from app.schemas.appointment import AppointmentOut, AppointmentRequestIn, AppointmentRescheduleIn
+from app.schemas.appointment import AppointmentFeedbackIn, AppointmentOut, AppointmentRequestIn, AppointmentRescheduleIn
 from app.schemas.waiting_list import WaitingListJoinResponse, WaitingListItemOut, WaitingListViewOut
 from app.services.appointment_service import (
     cancel_appointment,
@@ -16,7 +16,7 @@ from app.services.appointment_service import (
     reschedule_appointment,
     user_appointments,
 )
-from app.services.video_call_service import end_video_call, generate_video_join_token
+from app.services.video_call_service import end_video_call, generate_video_join_token, submit_video_feedback
 
 router = APIRouter(tags=["appointments"])
 
@@ -119,3 +119,19 @@ def close_appointment_video(
     db: Session = Depends(get_db),
 ):
     return end_video_call(db, appointment_id=appointment_id, actor_user=current_user)
+
+
+@router.post("/appointments/{appointment_id}/feedback", response_model=AppointmentOut)
+def submit_appointment_feedback(
+    appointment_id: uuid.UUID,
+    payload: AppointmentFeedbackIn,
+    current_user: User = Depends(require_roles(UserRole.USER)),
+    db: Session = Depends(get_db),
+):
+    return submit_video_feedback(
+        db,
+        appointment_id=appointment_id,
+        actor_user=current_user,
+        rating=payload.rating,
+        comment=payload.comment,
+    )

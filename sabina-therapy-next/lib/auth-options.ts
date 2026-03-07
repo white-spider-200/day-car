@@ -47,6 +47,7 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           email: user.email,
           name: user.name,
+          username: user.username,
           role: user.role as Role,
           doctorId: user.doctor?.id ?? null,
           locale: user.locale as Locale
@@ -61,6 +62,7 @@ export const authOptions: NextAuthOptions = {
         token.role = user.role;
         token.doctorId = user.doctorId;
         token.locale = user.locale;
+        token.username = user.username;
       }
       return token;
     },
@@ -70,6 +72,7 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role;
         session.user.doctorId = token.doctorId;
         session.user.locale = token.locale;
+        session.user.username = token.username;
       }
       return session;
     }

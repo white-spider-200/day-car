@@ -2,6 +2,7 @@
 // Takes the ApiDoctor shape fetched from /doctors and scores against survey answers.
 
 import { SurveyAnswers } from '../data/surveyData';
+import { getBackendOrigin } from './api';
 type MatchLanguage = 'ar' | 'en';
 
 // ── ApiDoctor shape (mirrors MainHomePage.tsx) ────────────────────────────────
@@ -69,12 +70,7 @@ function resolvePhotoUrl(url: string | null): string | undefined {
     if (!t) return undefined;
     if (/^(https?:)?\/\//i.test(t) || t.startsWith('data:') || t.startsWith('blob:')) return t;
     const path = t.startsWith('/') ? t : `/${t}`;
-    const env = import.meta.env as Record<string, string | boolean | undefined>;
-    const envBase = typeof env.VITE_API_BASE_URL === 'string' ? env.VITE_API_BASE_URL.trim() : '';
-    const fallback = typeof window !== 'undefined'
-        ? `${window.location.protocol}//${window.location.hostname}:8000`
-        : 'http://localhost:8000';
-    const base = (envBase && envBase !== '/api' ? envBase : fallback).replace(/\/+$/, '').replace(/\/api$/, '');
+    const base = getBackendOrigin();
     return `${base}${path}`;
 }
 

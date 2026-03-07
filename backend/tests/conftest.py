@@ -40,10 +40,10 @@ def client() -> Generator[TestClient, None, None]:
 
 
 def register(client: TestClient, email: str, password: str, role: str):
-    return client.post(
-        "/auth/register",
-        json={"email": email, "password": password, "role": role},
-    )
+    payload = {"email": email, "password": password, "role": role}
+    if role == "USER":
+        payload.update({"name": "Test User", "age": 30, "country": "Jordan"})
+    return client.post("/auth/register", json=payload)
 
 
 def login(client: TestClient, email: str, password: str) -> str:
@@ -81,7 +81,7 @@ def submit_psychiatrist_application(
     save = client.post("/doctor/application/save", headers=auth_headers(doctor_token), json=payload)
     assert save.status_code == 200, save.text
 
-    for doc_type in ["MEDICAL_DEGREE", "PSYCHIATRY_SPECIALIZATION", "ACTIVE_PRACTICE_PROOF"]:
+    for doc_type in ["LICENSE", "MEDICAL_DEGREE", "PSYCHIATRY_SPECIALIZATION", "ACTIVE_PRACTICE_PROOF"]:
         upload = client.post(
             "/doctor/documents/upload",
             headers=auth_headers(doctor_token),
@@ -119,7 +119,7 @@ def submit_therapist_application(
     save = client.post("/doctor/application/save", headers=auth_headers(doctor_token), json=payload)
     assert save.status_code == 200, save.text
 
-    for doc_type in ["THERAPY_SPECIALIZATION", "SPECIALIZATION_CERTIFICATE"]:
+    for doc_type in ["LICENSE", "THERAPY_SPECIALIZATION", "SPECIALIZATION_CERTIFICATE"]:
         upload = client.post(
             "/doctor/documents/upload",
             headers=auth_headers(doctor_token),

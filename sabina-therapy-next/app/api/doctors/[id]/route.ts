@@ -12,7 +12,6 @@ export async function GET(_request: Request, { params }: { params: { id: string 
       ...doctorPublicSelect,
       scheduleSlots: {
         where: {
-          isBooked: false,
           startAt: { gte: new Date() }
         },
         orderBy: { startAt: "asc" },
