@@ -1,14 +1,14 @@
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.deps import get_current_user, require_roles
+from app.core.deps import require_roles
 from app.db.models import Payment, User, UserRole
 from app.db.session import get_db
 from app.schemas.payment import PaymentConfirmOut, PaymentInitIn, PaymentInitOut, PaymentOut
-from app.services.payment_service import confirm_payment, initialize_payment
+from app.services.payment_service import confirm_payment, handle_stripe_webhook, initialize_payment
 
 router = APIRouter(tags=["payments"])
 
@@ -38,11 +38,21 @@ def init_payment(
 @router.post("/payments/{payment_id}/confirm", response_model=PaymentConfirmOut)
 def complete_payment(
     payment_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles(UserRole.ADMIN)),
     db: Session = Depends(get_db),
 ):
     payment = confirm_payment(db, payment_id=payment_id, actor_user=current_user)
     return PaymentConfirmOut(payment=PaymentOut.model_validate(payment), appointment_fee_paid=True)
+
+
+@router.post("/payments/stripe/webhook")
+async def stripe_webhook(
+    request: Request,
+    stripe_signature: str = Header(..., alias="stripe-signature"),
+    db: Session = Depends(get_db),
+):
+    payload = await request.body()
+    return handle_stripe_webhook(db, payload=payload, signature=stripe_signature)
 
 
 @router.get("/payments/my", response_model=list[PaymentOut])

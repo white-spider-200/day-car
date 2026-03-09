@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { Route } from "next";
 import { useMemo, useState } from "react";
 import { useLanguage } from "@/components/providers/language-provider";
 import { Button } from "@/components/ui/button";
@@ -10,11 +11,11 @@ export function Hero() {
   const [search, setSearch] = useState("");
   const { dictionary } = useLanguage();
 
-  const href = useMemo(() => {
+  const href = useMemo<Route>(() => {
     const q = search.trim();
     if (!q) return "/doctors";
     const params = new URLSearchParams({ q });
-    return `/doctors?${params.toString()}`;
+    return `/doctors?${params.toString()}` as Route;
   }, [search]);
 
   return (

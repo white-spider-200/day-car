@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     payment_provider: str = "STRIPE"
     payment_public_base_url: str = "http://localhost:5173"
     payment_webhook_secret: str = "dev-payment-webhook-secret"
+    stripe_secret_key: str | None = None
+    stripe_publishable_key: str | None = None
+    stripe_webhook_secret: str | None = None
     sabina_platform_fee_percent: Decimal = Decimal("20.00")
 
     video_provider: str = "TWILIO"

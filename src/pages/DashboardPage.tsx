@@ -358,21 +358,18 @@ export default function DashboardPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             appointment_id: appointment.id,
-            method: 'CARD',
+            method: 'STRIPE',
             package_sessions: plan
           })
         },
         true,
         'Failed to initialize payment'
       );
-      await apiJson(
-        `/payments/${payment.payment.id}/confirm`,
-        { method: 'POST' },
-        true,
-        'Failed to confirm payment'
-      );
-      await loadDashboard();
-      setPaymentTarget(null);
+      if (!payment.checkout_url) {
+        throw new Error('Failed to create Stripe checkout link');
+      }
+      window.location.assign(payment.checkout_url);
+      return;
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to complete payment');
     } finally {

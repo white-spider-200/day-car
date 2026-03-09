@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 from io import BytesIO
+from types import SimpleNamespace
 
 from tests.conftest import auth_headers, register
 
@@ -172,7 +173,7 @@ def test_treatment_request_workflow(client, admin_token):
     assert accept.json()["status"] == "ACCEPTED"
 
 
-def test_admin_financial_report_aggregate(client, admin_token):
+def test_admin_financial_report_aggregate(client, admin_token, monkeypatch):
     doctor_token, doctor_user_id = _setup_approved_doctor(
         client, admin_token, "doctor.finance@testmail.dev"
     )
@@ -191,25 +192,49 @@ def test_admin_financial_report_aggregate(client, admin_token):
     assert request_appointment.status_code == 200, request_appointment.text
     appointment_id = request_appointment.json()["id"]
 
+    monkeypatch.setattr(
+        "app.services.payment_service._create_stripe_checkout_session",
+        lambda **kwargs: SimpleNamespace(
+            id="cs_test_123",
+            url="https://checkout.stripe.test/session/cs_test_123",
+        ),
+    )
+
     payment_init = client.post(
         "/payments",
         headers=auth_headers(user_token),
         json={
             "appointment_id": appointment_id,
-            "amount": "45.00",
-            "method": "CARD",
+            "method": "STRIPE",
             "insurance_provider": "TestInsurance",
+            "package_sessions": 1,
         },
     )
     assert payment_init.status_code == 200, payment_init.text
     payment_id = payment_init.json()["payment"]["id"]
+    assert payment_init.json()["checkout_url"] == "https://checkout.stripe.test/session/cs_test_123"
+
+    monkeypatch.setattr(
+        "app.services.payment_service._construct_stripe_event",
+        lambda **kwargs: {
+            "type": "checkout.session.completed",
+            "data": {
+                "object": {
+                    "id": "cs_test_123",
+                    "client_reference_id": payment_id,
+                    "metadata": {"payment_id": payment_id},
+                }
+            },
+        },
+    )
 
     payment_confirm = client.post(
-        f"/payments/{payment_id}/confirm",
-        headers=auth_headers(user_token),
+        "/payments/stripe/webhook",
+        headers={"stripe-signature": "test-signature"},
+        content=b"{}",
     )
     assert payment_confirm.status_code == 200, payment_confirm.text
-    assert payment_confirm.json()["payment"]["status"] == "PAID"
+    assert payment_confirm.json()["event_type"] == "checkout.session.completed"
 
     today = date.today().isoformat()
     report = client.get(

@@ -7,7 +7,7 @@ import { getStoredAuthRole, getStoredAuthToken, navigateTo } from '../utils/auth
 
 type PackageSessions = 1 | 2 | 3 | 4 | 5 | 6;
 
-const PAYMENT_METHODS = ['CARD', 'APPLE_PAY', 'CLIQ'] as const;
+const PAYMENT_METHODS = ['STRIPE'] as const;
 type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 const SESSION_FORMATS = ['TEXT', 'VOICE', 'VIDEO', 'VR'] as const;
 type SessionFormat = (typeof SESSION_FORMATS)[number];
@@ -76,7 +76,7 @@ function parseDoctorPreferences(value: string | null): string[] {
 
 export default function BookingConfirmPage() {
   const { isRtl } = useLanguage();
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CARD');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('STRIPE');
   const [sessionFormat, setSessionFormat] = useState<SessionFormat>('VIDEO');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showVrWarningModal, setShowVrWarningModal] = useState(false);
@@ -188,7 +188,7 @@ export default function BookingConfirmPage() {
         throw new Error(isRtl ? 'تعذر إنشاء المواعيد المحددة.' : 'Failed to create selected appointments.');
       }
 
-      const paymentInit = await apiJson<{ payment: { id: string } }>(
+      const paymentInit = await apiJson<{ payment: { id: string }; checkout_url: string }>(
         '/payments',
         {
           method: 'POST',
@@ -203,21 +203,17 @@ export default function BookingConfirmPage() {
         'Failed to initialize payment'
       );
 
-      await apiJson(
-        `/payments/${paymentInit.payment.id}/confirm`,
-        { method: 'POST' },
-        true,
-        'Failed to confirm payment'
-      );
+      if (!paymentInit.checkout_url) {
+        throw new Error(isRtl ? 'تعذر إنشاء رابط الدفع.' : 'Failed to create Stripe checkout link.');
+      }
 
       setSuccessMessage(
         isRtl
-          ? 'تم تأكيد الموعد والدفع بنجاح. سيتم تحويلك إلى لوحة المستخدم.'
-          : 'Appointment and payment confirmed successfully. Redirecting to your dashboard.'
+          ? 'تم تجهيز جلسة الدفع عبر Stripe. سيتم تحويلك الآن.'
+          : 'Stripe checkout is ready. Redirecting now.'
       );
-      window.setTimeout(() => {
-        navigateTo('/dashboard');
-      }, 1200);
+      window.location.assign(paymentInit.checkout_url);
+      return;
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         navigateTo('/login');
@@ -343,10 +339,15 @@ export default function BookingConfirmPage() {
                         : 'border-borderGray bg-white text-textMain hover:border-primary/30'
                     }`}
                   >
-                    {method}
+                    {method === 'STRIPE' ? 'Stripe Checkout' : method}
                   </button>
                 ))}
               </div>
+              <p className="mt-3 rounded-lg border border-sky-100 bg-sky-50 px-3 py-2 text-sm text-sky-800">
+                {isRtl
+                  ? 'سيتم تحويلك إلى Stripe لإتمام الدفع بشكل آمن. قد تظهر Apple Pay أو البطاقات حسب جهازك وإعدادات Stripe.'
+                  : 'You will be redirected to Stripe Checkout to complete payment securely. Apple Pay or cards may appear there depending on your device and Stripe setup.'}
+              </p>
 
               <p className="mt-4 text-xs font-bold uppercase tracking-wide text-muted">
                 {isRtl ? 'نوع الجلسة' : 'Session format'}
